@@ -216,7 +216,7 @@ export default function KioskPage() {
       </div>
 
       {/* 2x3 grid of issue buttons */}
-      <div className="flex-1 grid grid-cols-2 gap-3 px-4 pb-4" style={{ gridTemplateRows: 'repeat(3, 1fr)' }}>
+      <div className="flex-1 grid grid-cols-2 gap-3 px-4 pb-4" style={{ gridTemplateRows: 'repeat(3, minmax(0, 1fr))', minHeight: 0 }}>
         {ISSUE_BUTTONS.map((btn) => {
           const issueType = issueTypes.find((it) => it.code === btn.code);
           const label = issueType

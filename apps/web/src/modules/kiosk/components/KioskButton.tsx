@@ -18,7 +18,7 @@ export default function KioskButton({ icon, label, onPress }: Props) {
   return (
     <button
       onPointerDown={handlePress}
-      className="flex flex-col items-center justify-center gap-3 rounded-2xl transition-all select-none"
+      className="flex flex-col items-center justify-center gap-3 rounded-2xl transition-all select-none w-full h-full"
       style={{
         background: 'var(--color-card)',
         border: `1px solid ${pressed ? 'var(--color-accent)' : 'rgba(0,229,204,0.25)'}`,

@@ -38,6 +38,10 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    // Target Chrome 67+ (Android 7 can run Chrome 67+)
+    target: ['chrome67', 'firefox68', 'safari12'],
+  },
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },

@@ -19,12 +19,29 @@
 
   html, body, #root {
     height: 100%;
+    width: 100%;
     margin: 0;
     padding: 0;
     background-color: var(--color-bg);
     color: var(--color-text);
     font-family: 'Heebo', 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* Android 7 overscroll fix */
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Android 7 touch highlight removal */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  /* Fix 100vh on Android Chrome (URL bar issue) */
+  .h-screen {
+    height: 100vh;
+    height: -webkit-fill-available;
   }
 
   /* Prevent text selection on kiosk */
