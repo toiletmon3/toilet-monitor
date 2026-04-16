@@ -1,0 +1,17 @@
+{
+  "name": "toilet-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "build": "pnpm --filter=@toilet/shared-types build && pnpm --parallel --filter=./apps/* build",
+    "server:dev": "pnpm --filter=@toilet/server dev",
+    "web:dev": "pnpm --filter=@toilet/web dev",
+    "db:migrate": "pnpm --filter=@toilet/server db:migrate",
+    "db:seed": "pnpm --filter=@toilet/server db:seed",
+    "db:studio": "pnpm --filter=@toilet/server db:studio"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

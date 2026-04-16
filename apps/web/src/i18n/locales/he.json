@@ -1,0 +1,117 @@
+{
+  "kiosk": {
+    "title": "!תודה על העזרה",
+    "weeklyUsers": "משתמשים השבוע",
+    "avgResponse": "זמן תגובה ממוצע",
+    "minutes": "דקות",
+    "positiveFeedback": "עבודה טובה / משוב חיובי",
+    "buttons": {
+      "toilet_paper": "החלפת נייר טואלט",
+      "floor_cleaning": "ניקוי רצפה",
+      "toilet_cleaning": "ניקוי אסלה",
+      "trash_empty": "ריקון פח",
+      "soap_refill": "מילוי סבון",
+      "fault_report": "דיווח על תקלה"
+    },
+    "confirmation": {
+      "title": "!הבקשה שלך התקבלה",
+      "subtitle": "הצוות שלנו יטפל בזה בהקדם",
+      "returning": "חוזר בעוד..."
+    },
+    "offline": "לא מחובר",
+    "syncing": "מסנכרן...",
+    "online": "מחובר",
+    "cleanerMode": {
+      "enterPin": "הכנס מספר ת.ז",
+      "login": "כניסה",
+      "openIssues": "בקשות פתוחות בתא זה",
+      "resolveAll": "סמן הכל כטופל",
+      "resolve": "טופל",
+      "noIssues": "אין בקשות פתוחות",
+      "back": "חזרה"
+    }
+  },
+  "cleaner": {
+    "title": "משימות שלי",
+    "login": {
+      "title": "כניסה למנקה",
+      "idLabel": "מספר תעודת זהות",
+      "idPlaceholder": "הכנס ת.ז",
+      "submit": "כניסה",
+      "error": "מספר ת.ז לא נמצא במערכת"
+    },
+    "noTasks": "אין משימות פתוחות כרגע",
+    "status": {
+      "OPEN": "פתוח",
+      "IN_PROGRESS": "בטיפול",
+      "RESOLVED": "טופל"
+    },
+    "actions": {
+      "accept": "קבל משימה",
+      "resolve": "סמן כטופל"
+    },
+    "reportedAgo": "לפני {{time}}",
+    "logout": "יציאה"
+  },
+  "admin": {
+    "title": "לוח בקרה",
+    "nav": {
+      "dashboard": "סקירה כללית",
+      "incidents": "בקשות",
+      "analytics": "סטטיסטיקות",
+      "cleaners": "מנקים",
+      "settings": "הגדרות"
+    },
+    "login": {
+      "title": "כניסה למנהל",
+      "email": "אימייל",
+      "password": "סיסמה",
+      "submit": "כניסה"
+    },
+    "summary": {
+      "totalIncidents": "סה\"כ בקשות",
+      "openIncidents": "בקשות פתוחות",
+      "avgResolution": "זמן טיפול ממוצע",
+      "activeCleaners": "מנקים פעילים",
+      "onlineDevices": "טאבלטים מחוברים"
+    },
+    "incidents": {
+      "title": "כל הבקשות",
+      "filter": "סינון",
+      "all": "הכל",
+      "open": "פתוח",
+      "inProgress": "בטיפול",
+      "resolved": "טופל",
+      "empty": "אין בקשות",
+      "location": "מיקום",
+      "issue": "בקשה",
+      "reported": "דווח ב",
+      "resolved_at": "טופל ב",
+      "cleaner": "מנקה"
+    },
+    "analytics": {
+      "title": "סטטיסטיקות",
+      "issueFrequency": "תדירות בקשות",
+      "hourlyDistribution": "התפלגות שעות",
+      "cleanerPerformance": "ביצועי מנקים",
+      "days": "ימים",
+      "count": "כמות",
+      "avgTime": "זמן ממוצע (דקות)",
+      "resolved": "טיפולים"
+    },
+    "devices": {
+      "title": "מכשירים",
+      "online": "מחובר",
+      "offline": "מנותק",
+      "lastSeen": "נראה לאחרונה"
+    }
+  },
+  "common": {
+    "loading": "טוען...",
+    "error": "שגיאה",
+    "retry": "נסה שוב",
+    "save": "שמור",
+    "cancel": "ביטול",
+    "minutes": "דק'"
+  }
+}

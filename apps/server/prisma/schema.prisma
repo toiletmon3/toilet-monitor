@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================
+// MULTI-TENANT ORGANIZATIONS
+// =============================================
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  settings  Json     @default("{\"defaultLanguage\":\"he\",\"rateLimit\":300,\"autoResolveAfterHours\":24}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buildings  Building[]
+  users      User[]
+  issueTypes IssueType[]
+
+  @@map("organizations")
+}
+
+// =============================================
+// LOCATION HIERARCHY
+// =============================================
+
+model Building {
+  id        String  @id @default(uuid())
+  orgId     String
+  name      String
+  address   String  @default("")
+  latitude  Float?
+  longitude Float?
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  floors       Floor[]
+
+  @@map("buildings")
+}
+
+model Floor {
+  id          String @id @default(uuid())
+  buildingId  String
+  floorNumber Int
+  name        String
+
+  building  Building   @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  restrooms Restroom[]
+
+  @@unique([buildingId, floorNumber])
+  @@map("floors")
+}
+
+model Restroom {
+  id      String        @id @default(uuid())
+  floorId String
+  name    String
+  gender  Gender        @default(UNISEX)
+  status  RestroomStatus @default(ACTIVE)
+
+  floor     Floor      @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  devices   Device[]
+  incidents Incident[]
+
+  @@map("restrooms")
+}
+
+// =============================================
+// DEVICES (tablets, sensors)
+// =============================================
+
+model Device {
+  id            String     @id @default(uuid())
+  restroomId    String
+  deviceCode    String     @unique
+  type          DeviceType @default(KIOSK)
+  lastHeartbeat DateTime?
+  isOnline      Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+
+  restroom  Restroom   @relation(fields: [restroomId], references: [id], onDelete: Cascade)
+  incidents Incident[]
+
+  @@map("devices")
+}
+
+// =============================================
+// USERS
+// =============================================
+
+model User {
+  id           String   @id @default(uuid())
+  orgId        String
+  idNumber     String
+  name         String
+  email        String?
+  phone        String?
+  role         UserRole @default(CLEANER)
+  passwordHash String?
+  preferredLang String  @default("he")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  organization     Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  incidentActions  IncidentAction[]
+  assignedIncidents Incident[]       @relation("AssignedCleaner")
+
+  @@unique([orgId, idNumber])
+  @@map("users")
+}
+
+// =============================================
+// ISSUE TYPES
+// =============================================
+
+model IssueType {
+  id       String  @id @default(uuid())
+  orgId    String?
+  code     String
+  nameI18n Json    // { "he": "נייר טואלט", "en": "Toilet Paper" }
+  icon     String  @default("📋")
+  priority Int     @default(3) // 1=highest
+  isActive Boolean @default(true)
+
+  organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  incidents    Incident[]
+
+  @@unique([orgId, code])
+  @@map("issue_types")
+}
+
+// =============================================
+// INCIDENTS (core entity)
+// =============================================
+
+model Incident {
+  id               String         @id @default(uuid())
+  clientId         String         @unique // device-generated UUID for dedup
+  restroomId       String
+  issueTypeId      String
+  deviceId         String
+  assignedCleanerId String?
+  status           IncidentStatus @default(OPEN)
+  reportedAt       DateTime       // device timestamp
+  acknowledgedAt   DateTime?
+  resolvedAt       DateTime?
+  createdAt        DateTime       @default(now()) // server receipt time
+
+  restroom        Restroom       @relation(fields: [restroomId], references: [id])
+  issueType       IssueType      @relation(fields: [issueTypeId], references: [id])
+  device          Device         @relation(fields: [deviceId], references: [id])
+  assignedCleaner User?          @relation("AssignedCleaner", fields: [assignedCleanerId], references: [id])
+  actions         IncidentAction[]
+
+  @@index([restroomId, status])
+  @@index([reportedAt])
+  @@index([status, reportedAt])
+  @@map("incidents")
+}
+
+model IncidentAction {
+  id          String     @id @default(uuid())
+  clientId    String?    @unique // for offline dedup
+  incidentId  String
+  userId      String?
+  actionType  ActionType
+  notes       String?
+  performedAt DateTime   // device timestamp
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id])
+
+  @@map("incident_actions")
+}
+
+// =============================================
+// ENUMS
+// =============================================
+
+enum Gender {
+  MALE
+  FEMALE
+  UNISEX
+}
+
+enum RestroomStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum DeviceType {
+  KIOSK
+  SENSOR
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ORG_ADMIN
+  MANAGER
+  CLEANER
+}
+
+enum IncidentStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum ActionType {
+  REPORTED
+  ACKNOWLEDGED
+  RESOLVED
+  ESCALATED
+}

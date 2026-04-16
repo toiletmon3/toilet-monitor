@@ -1,0 +1,117 @@
+{
+  "kiosk": {
+    "title": "Thank You for Your Help!",
+    "weeklyUsers": "Weekly Users",
+    "avgResponse": "Avg Response Time",
+    "minutes": "min",
+    "positiveFeedback": "Good Job / Positive Feedback",
+    "buttons": {
+      "toilet_paper": "Toilet Paper",
+      "floor_cleaning": "Floor Cleaning",
+      "toilet_cleaning": "Toilet Cleaning",
+      "trash_empty": "Empty Trash",
+      "soap_refill": "Soap Refill",
+      "fault_report": "Report Fault"
+    },
+    "confirmation": {
+      "title": "Your Request Was Received!",
+      "subtitle": "Our team will take care of it shortly",
+      "returning": "Returning in..."
+    },
+    "offline": "Offline",
+    "syncing": "Syncing...",
+    "online": "Online",
+    "cleanerMode": {
+      "enterPin": "Enter ID Number",
+      "login": "Login",
+      "openIssues": "Open Issues in This Restroom",
+      "resolveAll": "Mark All as Resolved",
+      "resolve": "Resolved",
+      "noIssues": "No open issues",
+      "back": "Back"
+    }
+  },
+  "cleaner": {
+    "title": "My Tasks",
+    "login": {
+      "title": "Cleaner Login",
+      "idLabel": "ID Number",
+      "idPlaceholder": "Enter ID",
+      "submit": "Login",
+      "error": "ID not found in system"
+    },
+    "noTasks": "No open tasks right now",
+    "status": {
+      "OPEN": "Open",
+      "IN_PROGRESS": "In Progress",
+      "RESOLVED": "Resolved"
+    },
+    "actions": {
+      "accept": "Accept Task",
+      "resolve": "Mark Resolved"
+    },
+    "reportedAgo": "{{time}} ago",
+    "logout": "Logout"
+  },
+  "admin": {
+    "title": "Dashboard",
+    "nav": {
+      "dashboard": "Overview",
+      "incidents": "Incidents",
+      "analytics": "Analytics",
+      "cleaners": "Cleaners",
+      "settings": "Settings"
+    },
+    "login": {
+      "title": "Admin Login",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Login"
+    },
+    "summary": {
+      "totalIncidents": "Total Incidents",
+      "openIncidents": "Open Incidents",
+      "avgResolution": "Avg Resolution Time",
+      "activeCleaners": "Active Cleaners",
+      "onlineDevices": "Online Tablets"
+    },
+    "incidents": {
+      "title": "All Incidents",
+      "filter": "Filter",
+      "all": "All",
+      "open": "Open",
+      "inProgress": "In Progress",
+      "resolved": "Resolved",
+      "empty": "No incidents",
+      "location": "Location",
+      "issue": "Issue",
+      "reported": "Reported",
+      "resolved_at": "Resolved",
+      "cleaner": "Cleaner"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "issueFrequency": "Issue Frequency",
+      "hourlyDistribution": "Hourly Distribution",
+      "cleanerPerformance": "Cleaner Performance",
+      "days": "days",
+      "count": "Count",
+      "avgTime": "Avg Time (min)",
+      "resolved": "Resolved"
+    },
+    "devices": {
+      "title": "Devices",
+      "online": "Online",
+      "offline": "Offline",
+      "lastSeen": "Last Seen"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "minutes": "min"
+  }
+}
