@@ -15,13 +15,6 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e
             cd /opt/toilet-monitor
             git pull
-            pnpm --filter=@toilet/server build
-            pm2 restart toilet-server
-            pm2 save
-            pnpm --filter=@toilet/web build
-            docker cp apps/web/dist/. toilet_nginx:/usr/share/nginx/html/
-            docker exec toilet_nginx nginx -s reload
-            echo "Deploy complete"
+            bash scripts/deploy.sh
