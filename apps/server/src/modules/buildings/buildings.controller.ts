@@ -67,6 +67,12 @@ export class BuildingsController {
   }
 
   @Public()
+  @Get('public-structure/:orgId')
+  getPublicStructure(@Param('orgId') orgId: string) {
+    return this.buildingsService.getPublicStructure(orgId);
+  }
+
+  @Public()
   @Patch('devices/:deviceCode/heartbeat')
   heartbeat(@Param('deviceCode') deviceCode: string) {
     return this.buildingsService.heartbeat(deviceCode);

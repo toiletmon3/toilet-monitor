@@ -58,6 +58,8 @@ export class UsersService {
   }
 
   async deleteUser(userId: string) {
+    await this.prisma.incidentAction.updateMany({ where: { userId }, data: { userId: null } });
+    await this.prisma.incident.updateMany({ where: { assignedCleanerId: userId }, data: { assignedCleanerId: null } });
     return this.prisma.user.delete({ where: { id: userId } });
   }
 }

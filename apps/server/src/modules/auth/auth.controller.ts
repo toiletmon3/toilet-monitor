@@ -29,4 +29,10 @@ export class AuthController {
   validateKiosk(@Param('deviceCode') deviceCode: string) {
     return this.authService.validateKioskDevice(deviceCode);
   }
+
+  @Public()
+  @Get('default-org')
+  getDefaultOrg() {
+    return this.authService.getDefaultOrg();
+  }
 }

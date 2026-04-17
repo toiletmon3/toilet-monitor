@@ -8,7 +8,6 @@ export default function CleanerLoginPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [idNumber, setIdNumber] = useState('');
-  const [orgId, setOrgId] = useState(localStorage.getItem('orgId') ?? '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const lang = i18n.language as 'he' | 'en';
@@ -18,11 +17,11 @@ export default function CleanerLoginPage() {
     setError('');
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/cleaner/login', { orgId, idNumber });
+      const { data } = await api.post('/auth/cleaner/login', { idNumber });
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('orgId', orgId);
+      localStorage.setItem('orgId', data.user.orgId);
       navigate('/cleaner');
     } catch {
       setError(t('cleaner.login.error'));
@@ -60,23 +59,6 @@ export default function CleanerLoginPage() {
         </div>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
-          <div>
-            <label className="text-sm mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>
-              Org ID (temporary)
-            </label>
-            <input
-              type="text"
-              value={orgId}
-              onChange={(e) => setOrgId(e.target.value)}
-              placeholder="org id"
-              required
-              className="w-full px-4 py-3 rounded-xl outline-none text-white"
-              style={{
-                background: '#0a0e1a',
-                border: '1px solid rgba(0,229,204,0.3)',
-              }}
-            />
-          </div>
           <div>
             <label className="text-sm mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>
               {t('cleaner.login.idLabel')}

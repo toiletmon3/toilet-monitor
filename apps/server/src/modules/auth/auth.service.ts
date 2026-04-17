@@ -25,9 +25,12 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
-  async loginCleaner(orgId: string, idNumber: string) {
+  async loginCleaner(orgId: string | undefined, idNumber: string) {
+    const where: any = { idNumber, isActive: true, role: 'CLEANER' };
+    if (orgId) where.orgId = orgId;
+
     const user = await this.prisma.user.findFirst({
-      where: { orgId, idNumber, isActive: true, role: 'CLEANER' },
+      where,
       include: { organization: true },
     });
     if (!user) throw new UnauthorizedException('Cleaner not found');
@@ -35,8 +38,13 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
+  async getDefaultOrg() {
+    const org = await this.prisma.organization.findFirst({ orderBy: { createdAt: 'asc' } });
+    return org ? { orgId: org.id, orgName: org.name } : null;
+  }
+
   async validateKioskDevice(deviceCode: string) {
-    const device = await this.prisma.device.findUnique({
+    let device = await this.prisma.device.findUnique({
       where: { deviceCode },
       include: {
         restroom: {
@@ -46,6 +54,30 @@ export class AuthService {
         },
       },
     });
+
+    // Auto-create device for selector-based kiosks (ROOM-{restroomId})
+    if (!device && deviceCode.startsWith('ROOM-')) {
+      const restroomId = deviceCode.slice(5);
+      const restroom = await this.prisma.restroom.findUnique({
+        where: { id: restroomId },
+        include: { floor: { include: { building: { include: { organization: true } } } } },
+      });
+      if (!restroom) throw new UnauthorizedException('Restroom not found');
+
+      device = await this.prisma.device.upsert({
+        where: { deviceCode },
+        create: { deviceCode, restroomId, type: 'KIOSK' },
+        update: {},
+        include: {
+          restroom: {
+            include: {
+              floor: { include: { building: { include: { organization: true } } } },
+            },
+          },
+        },
+      });
+    }
+
     if (!device) throw new UnauthorizedException('Device not registered');
     return device;
   }

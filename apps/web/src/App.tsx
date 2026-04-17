@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import KioskPage from './modules/kiosk/KioskPage';
+import KioskSelector from './modules/kiosk/KioskSelector';
 import CleanerPage from './modules/cleaner/CleanerPage';
 import CleanerLoginPage from './modules/cleaner/CleanerLoginPage';
 import AdminLoginPage from './modules/admin/AdminLoginPage';
@@ -15,6 +16,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Kiosk - full screen on tablet */}
+        <Route path="/kiosk" element={<KioskSelector />} />
         <Route path="/kiosk/:deviceCode" element={<KioskPage />} />
 
         {/* Cleaner mobile app */}

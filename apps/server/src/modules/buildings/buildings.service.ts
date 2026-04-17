@@ -55,6 +55,25 @@ export class BuildingsService {
     });
   }
 
+  async getPublicStructure(orgId: string) {
+    return this.prisma.building.findMany({
+      where: { orgId },
+      select: {
+        id: true, name: true,
+        floors: {
+          orderBy: { floorNumber: 'asc' },
+          select: {
+            id: true, name: true, floorNumber: true,
+            restrooms: {
+              select: { id: true, name: true, gender: true },
+            },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   async getIssueTypes(orgId: string) {
     return this.prisma.issueType.findMany({
       where: { OR: [{ orgId }, { orgId: null }], isActive: true },
