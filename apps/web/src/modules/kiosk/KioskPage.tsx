@@ -29,9 +29,9 @@ export default function KioskPage() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('online');
   const [pendingCount, setPendingCount] = useState(0);
   const [showCleanerMode, setShowCleanerMode] = useState(false);
-  const [stats, setStats] = useState({ weeklyUsers: 287, avgMinutes: 13 });
+  const [stats] = useState({ weeklyUsers: 287, avgMinutes: 13 });
   const cornerTapCount = useRef(0);
-  const cornerTapTimer = useRef<ReturnType<typeof setTimeout>>();
+  const cornerTapTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lang = i18n.language as 'he' | 'en';
 
   // Load device info and issue types

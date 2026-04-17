@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../../../lib/api';
 import { ArrowLeft } from 'lucide-react';

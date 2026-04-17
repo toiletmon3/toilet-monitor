@@ -22,9 +22,9 @@ echo "🗄️ Generating Prisma client..."
 cd apps/server
 pnpm exec prisma generate
 
-# Run migrations
-echo "🗄️ Running database migrations..."
-pnpm exec prisma migrate deploy
+# Push schema to database (creates/updates tables)
+echo "🗄️ Pushing database schema..."
+pnpm exec prisma db push --accept-data-loss
 
 # Seed if first deploy
 if [ "$1" = "--seed" ]; then
