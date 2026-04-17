@@ -11,7 +11,7 @@ export class BuildingsController {
   @UseGuards(JwtAuthGuard)
   @Get('structure')
   getStructure(@CurrentUser() user: any) {
-    return this.buildingsService.getOrgStructure(user.orgId);
+    return this.buildingsService.getStructure(user.orgId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -82,12 +82,6 @@ export class BuildingsController {
   @Delete('devices/:deviceId')
   deleteDevice(@Param('deviceId') deviceId: string) {
     return this.buildingsService.deleteDevice(deviceId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('structure')
-  getStructure(@CurrentUser() user: any) {
-    return this.buildingsService.getStructure(user.orgId);
   }
 
   // ── Kiosk templates ──────────────────────────────────────────────────────────

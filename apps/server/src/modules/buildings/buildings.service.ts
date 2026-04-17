@@ -5,7 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class BuildingsService {
   constructor(private prisma: PrismaService) {}
 
-  async getOrgStructure(orgId: string) {
+  async getStructure(orgId: string) {
     return this.prisma.building.findMany({
       where: { orgId },
       include: {
@@ -25,6 +25,7 @@ export class BuildingsService {
         },
       },
       orderBy: { name: 'asc' },
+      // kioskTemplateId is returned automatically via include
     });
   }
 
@@ -100,18 +101,6 @@ export class BuildingsService {
     if (!device) return this.defaultButtons();
     const template = device.restroom.floor.building.kioskTemplate;
     return template ? (template.buttons as any[]) : this.defaultButtons();
-  }
-
-  async getStructure(orgId: string) {
-    return this.prisma.building.findMany({
-      where: { orgId },
-      select: { id: true, name: true, address: true, kioskTemplateId: true,
-        floors: { orderBy: { floorNumber: 'asc' },
-          select: { id: true, name: true, floorNumber: true,
-            restrooms: { select: { id: true, name: true, gender: true,
-              devices: { select: { id: true, deviceCode: true, name: true } } } } } } },
-      orderBy: { name: 'asc' },
-    });
   }
 
   async getPublicStructure(orgId: string) {
