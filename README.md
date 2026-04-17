@@ -5,17 +5,38 @@
 
 ---
 
-## 🌐 גישה מהירה (Production)
+## 🌐 גישה מהירה — Production
 
-| ממשק | DuckDNS (HTTPS) | IP ישיר |
-|------|----------------|---------|
-| **Admin** | https://toiletcleanpro.duckdns.org/admin | http://188.166.163.75/admin |
-| **Kiosk** | https://toiletcleanpro.duckdns.org/kiosk | http://188.166.163.75/kiosk |
-| **Cleaner** | https://toiletcleanpro.duckdns.org/cleaner | http://188.166.163.75/cleaner |
+### DuckDNS (HTTPS + SSL — מומלץ)
+| ממשק | קישור |
+|------|-------|
+| 🖥️ **Admin** | [https://toiletcleanpro.duckdns.org/admin](https://toiletcleanpro.duckdns.org/admin) |
+| 📋 **Kiosk** | [https://toiletcleanpro.duckdns.org/kiosk](https://toiletcleanpro.duckdns.org/kiosk) |
+| 🧹 **Cleaner** | [https://toiletcleanpro.duckdns.org/cleaner](https://toiletcleanpro.duckdns.org/cleaner) |
+| 🔌 **API** | [https://toiletcleanpro.duckdns.org/api](https://toiletcleanpro.duckdns.org/api) |
+
+### IP ישיר (DigitalOcean)
+| ממשק | קישור |
+|------|-------|
+| 🖥️ **Admin** | [http://188.166.163.75/admin](http://188.166.163.75/admin) |
+| 📋 **Kiosk** | [http://188.166.163.75/kiosk](http://188.166.163.75/kiosk) |
+| 🧹 **Cleaner** | [http://188.166.163.75/cleaner](http://188.166.163.75/cleaner) |
+| 🔌 **API** | [http://188.166.163.75/api](http://188.166.163.75/api) |
 
 > **Admin** — נכנס אוטומטית ללא סיסמה (bypass לפיתוח)  
 > **Cleaner** — כניסה עם ת.ז בלבד  
-> **Kiosk** — בחירת בניין / קומה / שירותים
+> **Kiosk** — בחירת בניין / קומה / שירותים → מעבר לטאבלט הספציפי
+
+---
+
+## 🔑 פרטי כניסה (Demo Seed)
+
+| ממשק | פרטים |
+|------|--------|
+| Admin (רגיל) | `admin@demo.com` / `Admin123!` |
+| Admin (bypass) | פתח [/admin](https://toiletcleanpro.duckdns.org/admin) — נכנס אוטומטית |
+| Cleaner | ת.ז: `123456789` · `234567890` · `345678901` |
+| Kiosk | [https://toiletcleanpro.duckdns.org/kiosk](https://toiletcleanpro.duckdns.org/kiosk) → בחר מיקום |
 
 ---
 
@@ -31,7 +52,7 @@ apps/
               ├── Auth (JWT + Refresh Tokens)
               ├── Buildings / Floors / Restrooms / Devices
               ├── Incidents (תקלות + סטטוס + הקצאה)
-              ├── Analytics
+              ├── Analytics (SLA, דפוסים, עומסים)
               └── Kiosk Templates
 packages/
   shared-types/ → TypeScript interfaces משותפות
@@ -48,27 +69,31 @@ packages/
 ## ✨ תכונות
 
 ### Kiosk (טאבלט בשירותים)
-- בחירת בניין / קומה / שירותים (Selector page)
-- דיווח תקלות בלחיצה אחת (סטים של כפתורים מותאמים אישית — Kiosk Templates)
-- כניסת צוות ניקוי דרך הקיוסק (ת.ז בפינה)
-- עיצוב glassmorphism, gradient background, תמיכה מלאה ב-RTL
-- Offline mode — שמירה ב-IndexedDB, סנכרון אוטומטי כשהחיבור חוזר
+- בחירת בניין / קומה / שירותים
+- דיווח תקלות בלחיצה אחת — כפתורים מותאמים אישית (Kiosk Templates)
+- כניסת צוות ניקוי דרך הקיוסק (ת.ז) + סגירה אוטומטית אחרי 20 שניות
+- משוב חיובי — נשמר בלוג ללא יצירת משימה
+- סטטיסטיקות אמיתיות: כמות דיווחים שבועית + זמן תגובה ממוצע
+- Offline mode — שמירה ב-IndexedDB, סנכרון אוטומטי
 
 ### Cleaner (מנקה)
-- כניסה עם ת.ז בלבד
-- 2 רשימות: **"בטיפולי"** + **"ממתינות"**
+- כניסה עם ת.ז בלבד (הצג/הסתר ספרות)
+- שעון חי + תאריך בכותרת
+- 2 רשימות: **"בטיפולי"** + **"ממתינות לטיפול"**
 - "החזר משימה לתור" (un-assign)
+- עדכונים בזמן אמת (WebSocket)
 - מנקים רואים רק תקלות של הבניין שלהם
 
 ### Admin (מנהל)
+- שעון חי + תאריך בסרגל הצד
 - Dashboard עם סיכום תקלות פעילות
-- ניהול תקלות (שינוי סטטוס, הקצאה למנקה, הערות)
-- Analytics — נתונים ותרשימים
-- ניהול בניינים / קומות / שירותים / מכשירים (inline editing, cascading delete)
-- ניהול מנקים + שיוך לבניין ספציפי
-- Kiosk Templates — בניית סטים של כפתורים לכל בניין
-- Dark / Light mode
-- תמיכה בעברית ואנגלית (i18n)
+- תקלות מחולקות לסקציות: **בטיפול** / **ממתין** / **טופלו** / **משובים חיוביים**
+- עדכונים בזמן אמת (WebSocket) + toast לתקלה חדשה
+- Analytics מלא: SLA · תדירות · דפוסים · עומסים שעתיים · לפי יום · ביצועי מנקים
+- איפוס נתונים: מחק טופלו / ישנים / הכל (עם אישור כפול)
+- ניהול בניינים / קומות / שירותים / מכשירים (inline editing)
+- Kiosk Templates — בניית סטים של כפתורים
+- Dark / Light mode · עברית / אנגלית
 
 ---
 
@@ -90,7 +115,7 @@ cp .env.example apps/server/.env
 # ערוך apps/server/.env לפי הצורך
 ```
 
-### 3. יצירת הסכמה ונתוני דמו
+### 3. יצירת סכמה ונתוני דמו
 ```bash
 pnpm db:migrate    # יצור את כל הטבלאות
 pnpm db:seed       # ימלא נתוני דמו
@@ -101,20 +126,13 @@ pnpm db:seed       # ימלא נתוני דמו
 pnpm dev           # מריץ server + web ביחד
 ```
 
-| ממשק | כתובת |
-|------|--------|
+| ממשק | כתובת מקומית |
+|------|-------------|
 | Frontend | http://localhost:5173 |
+| Admin | http://localhost:5173/admin |
+| Kiosk | http://localhost:5173/kiosk |
+| Cleaner | http://localhost:5173/cleaner |
 | API | http://localhost:3001 |
-
----
-
-## 🔑 פרטי כניסה (Demo Seed)
-
-| ממשק | פרטים |
-|------|--------|
-| Admin | `admin@demo.com` / `Admin123!` (או נכנס אוטומטית ב-bypass mode) |
-| Cleaner | ת.ז: `123456789` (אחמד) · `234567890` (מרים) · `345678901` (יוסף) |
-| Kiosk | http://localhost:5173/kiosk → בחר בניין/קומה/שירותים |
 
 ---
 
@@ -132,9 +150,9 @@ push → GitHub Actions → SSH לשרת → git pull → prisma db push → bui
 ### פרטי שרת
 | פרט | ערך |
 |-----|-----|
-| שרת | DigitalOcean (Ubuntu) |
-| IP | `188.166.163.75` |
-| דומיין | `toiletcleanpro.duckdns.org` |
+| שרת | DigitalOcean (Ubuntu 22.04) |
+| IP | [`188.166.163.75`](http://188.166.163.75) |
+| דומיין | [`toiletcleanpro.duckdns.org`](https://toiletcleanpro.duckdns.org) |
 | SSL | Let's Encrypt (auto-renew) |
 | Process manager | PM2 |
 | Web server | Nginx |
@@ -180,5 +198,5 @@ pm2 logs           # לוגים
 | פריט | עלות |
 |------|------|
 | DigitalOcean Droplet (2 vCPU / 2GB RAM) | ~$12/חודש |
-| דומיין | ~50 ₪/שנה |
+| DuckDNS | חינם |
 | SSL (Let's Encrypt) | חינם |
