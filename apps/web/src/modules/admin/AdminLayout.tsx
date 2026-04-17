@@ -1,14 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Outlet, useNavigate, NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { setLanguage } from '../../i18n';
 import { LayoutDashboard, AlertCircle, BarChart2, Users, Settings, LogOut, Sun, Moon, LayoutTemplate } from 'lucide-react';
+
+function useClock() {
+  const [now, setNow] = useState(new Date());
+  const ref = useRef<ReturnType<typeof setInterval>>(null);
+  useEffect(() => {
+    ref.current = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(ref.current!);
+  }, []);
+  return now;
+}
 
 export default function AdminLayout() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') ?? '{}');
   const lang = i18n.language as 'he' | 'en';
+  const now = useClock();
   const [theme, setTheme] = useState<'dark' | 'light'>(() =>
     (localStorage.getItem('adminTheme') as 'dark' | 'light') ?? 'dark'
   );
@@ -74,6 +85,14 @@ export default function AdminLayout() {
         <div className="px-3 mb-8">
           <div className="text-xl font-bold" style={{ color: 'var(--color-accent)' }}>🚾 ToiletMon</div>
           <div className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>{user.name}</div>
+          <div className="mt-3 px-3 py-2.5 rounded-xl" style={{ background: 'rgba(0,229,204,0.06)', border: '1px solid rgba(0,229,204,0.12)' }}>
+            <div className="text-2xl font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>
+              {now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+              {now.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </div>
+          </div>
         </div>
 
         {/* Nav links */}

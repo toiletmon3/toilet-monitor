@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -66,6 +66,16 @@ function IncidentCard({ inc, lang, onAccept, onResolve, onReturn }: {
   );
 }
 
+function useClock() {
+  const [now, setNow] = useState(new Date());
+  const ref = useRef<ReturnType<typeof setInterval>>(null);
+  useEffect(() => {
+    ref.current = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(ref.current!);
+  }, []);
+  return now;
+}
+
 function timeAgo(date: string, lang: string) {
   const diff = Math.floor((Date.now() - new Date(date).getTime()) / 60000);
   if (diff < 1) return lang === 'he' ? 'עכשיו' : 'just now';
@@ -78,6 +88,7 @@ function timeAgo(date: string, lang: string) {
 export default function CleanerPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const now = useClock();
   const queryClient = useQueryClient();
   const user = JSON.parse(localStorage.getItem('user') ?? '{}');
   const lang = i18n.language;
@@ -206,8 +217,15 @@ export default function CleanerPage() {
         style={{ background: 'var(--color-surface)', borderBottom: '1px solid rgba(0,229,204,0.15)' }}
       >
         <div>
-          <h1 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>{t('cleaner.title')}</h1>
-          <p className="text-xs flex items-center gap-2 flex-wrap" style={{ color: 'var(--color-text-secondary)' }}>
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>{t('cleaner.title')}</h1>
+            <span className="text-xl font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>
+              {now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          </div>
+          <p className="text-xs flex items-center gap-2 flex-wrap mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+            <span>{now.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            <span>·</span>
             <span>{user.name}</span>
             {user.buildingName && (
               <span className="px-1.5 py-0.5 rounded text-xs" style={{ background: 'rgba(0,229,204,0.12)', color: 'var(--color-accent)' }}>
