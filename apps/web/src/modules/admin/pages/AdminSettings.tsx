@@ -214,7 +214,6 @@ function RestroomRow({ room, onDeviceAdded, onDeleted }: { room: any; onDeviceAd
   const { t } = useTranslation();
   const [showDeviceModal, setShowDeviceModal] = useState(false);
   const [gender, setGender] = useState(room.gender);
-  const genderIcon = (g: string) => g === 'MALE' ? '🚹' : g === 'FEMALE' ? '🚺' : '🚻';
 
   const handleDeleteDevice = async (deviceId: string, deviceCode: string) => {
     if (!window.confirm(`${t('common.delete')} ${deviceCode}?`)) return;
@@ -298,7 +297,7 @@ function FloorRow({ floor, onRestroomAdded, onDeleted }: { floor: any; onRestroo
         <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
           <button onClick={() => setOpen(o => !o)}>{open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>
           <Layers2 size={14} />
-          <InlineEdit value={floor.name} className="font-medium" style={{ color: 'var(--color-accent)' }}
+          <InlineEdit value={floor.name} className="font-medium"
             onSave={async v => { await api.patch(`/buildings/floors/${floor.id}`, { name: v }); onDeleted(); }} />
           <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
             {(floor.restrooms ?? []).length}

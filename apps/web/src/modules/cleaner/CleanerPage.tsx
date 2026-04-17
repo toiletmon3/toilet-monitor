@@ -15,11 +15,6 @@ function timeAgo(date: string, lang: string) {
   return lang === 'he' ? `לפני ${h} שע'` : `${h}h ago`;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  OPEN: '#ef4444',
-  IN_PROGRESS: '#f59e0b',
-  RESOLVED: '#22c55e',
-};
 
 export default function CleanerPage() {
   const { t, i18n } = useTranslation();
