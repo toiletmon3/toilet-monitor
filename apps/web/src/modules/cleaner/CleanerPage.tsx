@@ -155,7 +155,7 @@ export default function CleanerPage() {
 
   // Real-time updates
   useEffect(() => {
-    const orgId = localStorage.getItem('orgId');
+    const orgId = user.orgId;
     if (orgId) joinOrg(orgId);
 
     const socket = getSocket();

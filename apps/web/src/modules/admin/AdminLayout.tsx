@@ -1,8 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { Outlet, useNavigate, NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { setLanguage } from '../../i18n';
 import { LayoutDashboard, AlertCircle, BarChart2, Users, Settings, LogOut, Sun, Moon, LayoutTemplate } from 'lucide-react';
+import { getSocket, joinOrg } from '../../lib/socket';
+import toast from 'react-hot-toast';
 
 function useClock() {
   const [now, setNow] = useState(new Date());
@@ -24,6 +27,7 @@ export default function AdminLayout() {
     (localStorage.getItem('adminTheme') as 'dark' | 'light') ?? 'dark'
   );
 
+  const qc = useQueryClient();
   const [bypassReady, setBypassReady] = useState(!!localStorage.getItem('accessToken'));
   useEffect(() => {
     if (bypassReady) return;
@@ -46,6 +50,28 @@ export default function AdminLayout() {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('adminTheme', theme);
   }, [theme]);
+
+  // WebSocket — join org room and refresh incidents in real-time
+  useEffect(() => {
+    if (!bypassReady) return;
+    const orgId = user.orgId;
+    if (!orgId) return;
+    joinOrg(orgId);
+    const socket = getSocket();
+    const refresh = () => {
+      qc.invalidateQueries({ queryKey: ['incidents'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+    };
+    const onCreated = () => { toast('📋 תקלה חדשה!', { duration: 4000 }); refresh(); };
+    socket.on('incident:created', onCreated);
+    socket.on('incident:updated', refresh);
+    socket.on('incident:resolved', refresh);
+    return () => {
+      socket.off('incident:created', onCreated);
+      socket.off('incident:updated', refresh);
+      socket.off('incident:resolved', refresh);
+    };
+  }, [bypassReady, user.orgId, qc]);
 
   if (!bypassReady) {
     return (
