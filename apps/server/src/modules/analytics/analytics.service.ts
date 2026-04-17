@@ -111,6 +111,101 @@ export class AnalyticsService {
     });
   }
 
+  async getSlaStats(orgId: string, days = 30, targetMinutes = 15) {
+    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const resolved = await this.prisma.incident.findMany({
+      where: {
+        restroom: { floor: { building: { orgId } } },
+        status: 'RESOLVED',
+        resolvedAt: { not: null },
+        reportedAt: { gte: from },
+      },
+      select: { reportedAt: true, resolvedAt: true, acknowledgedAt: true },
+    });
+
+    if (resolved.length === 0) return { totalResolved: 0, withinSla: 0, slaPercent: 0, avgMinutes: 0, targetMinutes };
+
+    const times = resolved
+      .map(i => (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000)
+      .sort((a, b) => a - b);
+
+    const withinSla = times.filter(t => t <= targetMinutes).length;
+    const avgMinutes = Math.round(times.reduce((s, t) => s + t, 0) / times.length);
+    const p50 = Math.round(times[Math.floor(times.length * 0.5)]);
+    const p90 = Math.round(times[Math.floor(times.length * 0.9)]);
+
+    return {
+      totalResolved: resolved.length,
+      withinSla,
+      slaPercent: Math.round((withinSla / resolved.length) * 100),
+      avgMinutes,
+      p50,
+      p90,
+      targetMinutes,
+    };
+  }
+
+  async getDayOfWeekStats(orgId: string, days = 30) {
+    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const incidents = await this.prisma.incident.findMany({
+      where: { restroom: { floor: { building: { orgId } } }, reportedAt: { gte: from } },
+      select: { reportedAt: true },
+    });
+
+    const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+    const counts = Array.from({ length: 7 }, (_, i) => ({ day: DAY_NAMES[i], count: 0 }));
+    for (const inc of incidents) counts[inc.reportedAt.getDay()].count++;
+    return counts;
+  }
+
+  async getPatterns(orgId: string, days = 30) {
+    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const incidents = await this.prisma.incident.findMany({
+      where: { restroom: { floor: { building: { orgId } } }, reportedAt: { gte: from } },
+      select: {
+        issueTypeId: true,
+        issueType: { select: { nameI18n: true, icon: true } },
+        restroomId: true,
+        restroom: {
+          select: {
+            name: true,
+            floor: { select: { name: true, building: { select: { name: true } } } },
+          },
+        },
+        reportedAt: true,
+      },
+    });
+
+    // Top repeating issue types
+    const issueMap = new Map<string, { icon: string; name: string; count: number }>();
+    for (const inc of incidents) {
+      const key = inc.issueTypeId;
+      const existing = issueMap.get(key) ?? { icon: (inc.issueType as any).icon ?? '⚠️', name: (inc.issueType as any).nameI18n?.he ?? key, count: 0 };
+      existing.count++;
+      issueMap.set(key, existing);
+    }
+    const topIssues = [...issueMap.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+    const avgPerIssue = incidents.length / Math.max(issueMap.size, 1);
+
+    // Top hotspot restrooms
+    const restroomMap = new Map<string, { location: string; count: number }>();
+    for (const inc of incidents) {
+      const key = inc.restroomId;
+      const location = [inc.restroom.floor.building.name, inc.restroom.floor.name, inc.restroom.name].filter(Boolean).join(' › ');
+      const existing = restroomMap.get(key) ?? { location, count: 0 };
+      existing.count++;
+      restroomMap.set(key, existing);
+    }
+    const hotspots = [...restroomMap.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+
+    return {
+      topIssues: topIssues.map(i => ({ ...i, aboveAvg: i.count > avgPerIssue * 1.5 })),
+      hotspots,
+      totalIncidents: incidents.length,
+      avgPerIssue: Math.round(avgPerIssue),
+    };
+  }
+
   async getKioskStats(restroomId: string) {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 

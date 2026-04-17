@@ -34,6 +34,25 @@ export class AnalyticsController {
     return this.analyticsService.getCleanerPerformance(user.orgId, days ? +days : 30);
   }
 
+  @Get('sla')
+  getSlaStats(
+    @CurrentUser() user: any,
+    @Query('days') days?: string,
+    @Query('targetMinutes') targetMinutes?: string,
+  ) {
+    return this.analyticsService.getSlaStats(user.orgId, days ? +days : 30, targetMinutes ? +targetMinutes : 15);
+  }
+
+  @Get('day-of-week')
+  getDayOfWeek(@CurrentUser() user: any, @Query('days') days?: string) {
+    return this.analyticsService.getDayOfWeekStats(user.orgId, days ? +days : 30);
+  }
+
+  @Get('patterns')
+  getPatterns(@CurrentUser() user: any, @Query('days') days?: string) {
+    return this.analyticsService.getPatterns(user.orgId, days ? +days : 30);
+  }
+
   @Public()
   @Get('kiosk-stats/:restroomId')
   getKioskStats(@Param('restroomId') restroomId: string) {

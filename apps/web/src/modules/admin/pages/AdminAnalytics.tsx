@@ -1,129 +1,255 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  RadialBarChart, RadialBar, PolarAngleAxis,
+} from 'recharts';
 import api from '../../../lib/api';
 
 const CYAN = '#00e5cc';
+const AMBER = '#f59e0b';
+const RED = '#ef4444';
+const GREEN = '#22c55e';
+
+const DAY_COLORS = ['#60a5fa','#818cf8','#a78bfa','#c084fc','#e879f9','#f472b6','#fb7185'];
+
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+      <h2 className="font-semibold text-sm uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function StatBig({ value, label, color = CYAN, sub }: { value: string | number; label: string; color?: string; sub?: string }) {
+  return (
+    <div className="text-center">
+      <div className="text-4xl font-bold tabular-nums" style={{ color }}>{value}</div>
+      <div className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>{label}</div>
+      {sub && <div className="text-xs mt-0.5 opacity-60" style={{ color: 'var(--color-text-secondary)' }}>{sub}</div>}
+    </div>
+  );
+}
+
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl px-3 py-2 text-sm" style={{ background: '#1a1f2e', border: '1px solid rgba(0,229,204,0.3)', color: '#fff' }}>
+      <p className="font-medium mb-1">{label}</p>
+      {payload.map((p: any) => (
+        <p key={p.name} style={{ color: p.color ?? CYAN }}>{p.name}: {p.value}</p>
+      ))}
+    </div>
+  );
+}
 
 export default function AdminAnalytics() {
-  const { t } = useTranslation();
   const [days, setDays] = useState(30);
+  const [slaTarget, setSlaTarget] = useState(15);
 
-  const { data: frequency } = useQuery({
-    queryKey: ['analytics-frequency', days],
-    queryFn: async () => (await api.get(`/analytics/issue-frequency?days=${days}`)).data,
+  const q = (key: string, url: string) => useQuery({
+    queryKey: [key, days],
+    queryFn: async () => (await api.get(url)).data,
   });
 
-  const { data: hourly } = useQuery({
-    queryKey: ['analytics-hourly'],
-    queryFn: async () => (await api.get('/analytics/hourly?days=7')).data,
-  });
+  const { data: frequency } = q('freq', `/analytics/issue-frequency?days=${days}`);
+  const { data: hourly }    = useQuery({ queryKey: ['hourly'], queryFn: async () => (await api.get('/analytics/hourly?days=7')).data });
+  const { data: cleaners }  = q('cleaners', `/analytics/cleaners?days=${days}`);
+  const { data: sla }       = useQuery({ queryKey: ['sla', days, slaTarget], queryFn: async () => (await api.get(`/analytics/sla?days=${days}&targetMinutes=${slaTarget}`)).data });
+  const { data: dow }       = q('dow', `/analytics/day-of-week?days=${days}`);
+  const { data: patterns }  = q('patterns', `/analytics/patterns?days=${days}`);
 
-  const { data: cleaners } = useQuery({
-    queryKey: ['analytics-cleaners', days],
-    queryFn: async () => (await api.get(`/analytics/cleaners?days=${days}`)).data,
-  });
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div className="rounded-xl px-3 py-2 text-sm" style={{ background: '#1a1f2e', border: '1px solid rgba(0,229,204,0.3)', color: '#fff' }}>
-        <p className="font-medium">{label}</p>
-        {payload.map((p: any) => (
-          <p key={p.name} style={{ color: CYAN }}>{p.name}: {p.value}</p>
-        ))}
-      </div>
-    );
-  };
+  const slaColor = !sla ? CYAN : sla.slaPercent >= 80 ? GREEN : sla.slaPercent >= 50 ? AMBER : RED;
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">{t('admin.analytics.title')}</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>סטטיסטיקות</h1>
         <div className="flex gap-2">
           {[7, 30, 90].map((d) => (
-            <button
-              key={d}
-              onClick={() => setDays(d)}
+            <button key={d} onClick={() => setDays(d)}
               className="px-3 py-1.5 rounded-lg text-sm transition-all"
               style={{
                 background: days === d ? 'rgba(0,229,204,0.15)' : 'var(--color-card)',
-                border: `1px solid ${days === d ? 'var(--color-accent)' : 'rgba(255,255,255,0.08)'}`,
-                color: days === d ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-              }}
-            >
-              {d} {t('admin.analytics.days')}
+                border: `1px solid ${days === d ? CYAN : 'rgba(255,255,255,0.08)'}`,
+                color: days === d ? CYAN : 'var(--color-text-secondary)',
+              }}>
+              {d} יום
             </button>
           ))}
         </div>
       </div>
 
-      {/* Issue Frequency */}
-      <div className="rounded-2xl p-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-        <h2 className="font-semibold text-white mb-4">{t('admin.analytics.issueFrequency')}</h2>
-        <ResponsiveContainer width="100%" height={250}>
-          <BarChart data={frequency ?? []} layout="vertical" margin={{ left: 20, right: 20 }}>
-            <XAxis type="number" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 12 }} />
-            <YAxis
-              type="category"
-              dataKey="nameI18n.he"
-              stroke="#8a9bb0"
-              tick={{ fill: '#8a9bb0', fontSize: 11 }}
-              width={120}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="count" name={t('admin.analytics.count')} radius={[0, 6, 6, 0]}>
-              {(frequency ?? []).map((_: any, index: number) => (
-                <Cell key={index} fill={`rgba(0,229,204,${0.4 + (index * 0.1)})`} />
+      {/* ── Row 1: SLA ── */}
+      <Card title="⏱ עמידה ב-SLA — זמן תגובה">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex flex-col gap-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+            <span>יעד (דקות)</span>
+            <div className="flex gap-1">
+              {[10, 15, 20, 30].map(t => (
+                <button key={t} onClick={() => setSlaTarget(t)}
+                  className="px-2 py-1 rounded-lg text-xs"
+                  style={{
+                    background: slaTarget === t ? 'rgba(0,229,204,0.15)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${slaTarget === t ? CYAN : 'rgba(255,255,255,0.1)'}`,
+                    color: slaTarget === t ? CYAN : 'var(--color-text-secondary)',
+                  }}>
+                  {t}′
+                </button>
               ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Hourly Distribution */}
-        <div className="rounded-2xl p-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-          <h2 className="font-semibold text-white mb-4">{t('admin.analytics.hourlyDistribution')}</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={hourly ?? []}>
-              <XAxis dataKey="hour" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} tickFormatter={(h) => `${h}:00`} />
-              <YAxis stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name={t('admin.analytics.count')} fill={CYAN} fillOpacity={0.6} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Cleaner Performance */}
-        <div className="rounded-2xl p-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-          <h2 className="font-semibold text-white mb-4">{t('admin.analytics.cleanerPerformance')}</h2>
-          <div className="flex flex-col gap-2">
-            {(cleaners ?? []).map((c: any) => (
-              <div key={c.id} className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                <div>
-                  <div className="text-sm font-medium text-white">{c.name}</div>
-                  <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                    {Math.round(c.avgResolutionMinutes)} {t('common.minutes')} {t('admin.analytics.avgTime')}
-                  </div>
-                </div>
-                <div
-                  className="text-lg font-bold"
-                  style={{ color: 'var(--color-accent)' }}
-                >
-                  {c.totalResolved} ✓
-                </div>
-              </div>
-            ))}
-            {(!cleaners || cleaners.length === 0) && (
-              <div className="text-center py-4" style={{ color: 'var(--color-text-secondary)' }}>
-                {t('common.loading')}
-              </div>
-            )}
+            </div>
           </div>
         </div>
+
+        {sla && sla.totalResolved > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+            {/* Radial gauge */}
+            <div className="flex flex-col items-center col-span-2 md:col-span-1">
+              <div style={{ width: 120, height: 120, position: 'relative' }}>
+                <RadialBarChart
+                  width={120} height={120}
+                  innerRadius={38} outerRadius={55}
+                  data={[{ value: sla.slaPercent, fill: slaColor }]}
+                  startAngle={90} endAngle={-270}
+                >
+                  <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+                  <RadialBar dataKey="value" cornerRadius={8} background={{ fill: 'rgba(255,255,255,0.06)' }} />
+                </RadialBarChart>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span className="text-xl font-bold tabular-nums" style={{ color: slaColor }}>{sla.slaPercent}%</span>
+                </div>
+              </div>
+              <div className="text-xs mt-1 text-center" style={{ color: 'var(--color-text-secondary)' }}>
+                עמדו ביעד<br />{sla.withinSla} / {sla.totalResolved}
+              </div>
+            </div>
+
+            <StatBig value={`${sla.avgMinutes}′`} label="ממוצע תגובה" color={CYAN} />
+            <StatBig value={`${sla.p50}′`} label="חציון (P50)" color={CYAN} sub="50% מטופלים תוך כן" />
+            <StatBig value={`${sla.p90}′`} label="P90" color={sla.p90 > slaTarget * 2 ? RED : AMBER} sub="90% מטופלים תוך כן" />
+          </div>
+        ) : (
+          <div className="text-center py-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            אין מספיק נתונים — נדרשות תקלות שטופלו
+          </div>
+        )}
+      </Card>
+
+      {/* ── Row 2: Issue frequency + Patterns ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card title="📊 תדירות בעיות">
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={frequency ?? []} layout="vertical" margin={{ left: 10, right: 20 }}>
+              <XAxis type="number" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} />
+              <YAxis type="category" dataKey="nameI18n.he" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} width={110} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="count" name="דיווחים" radius={[0, 6, 6, 0]}>
+                {(frequency ?? []).map((_: any, i: number) => (
+                  <Cell key={i} fill={`rgba(0,229,204,${Math.max(0.3, 0.9 - i * 0.12)})`} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card title="🔥 זיהוי דפוסים — נקודות חמות">
+          <div className="flex flex-col gap-3">
+            <div>
+              <p className="text-xs mb-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>בעיות חוזרות (מעל הממוצע)</p>
+              {(patterns?.topIssues ?? []).map((issue: any) => (
+                <div key={issue.name} className="flex items-center gap-3 py-1.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  <span className="text-xl">{issue.icon}</span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{issue.name}</span>
+                      {issue.aboveAvg && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.15)', color: RED }}>⚠ גבוה</span>
+                      )}
+                    </div>
+                    <div className="w-full mt-1 rounded-full overflow-hidden" style={{ height: 4, background: 'rgba(255,255,255,0.06)' }}>
+                      <div style={{ width: `${Math.min(100, (issue.count / (patterns?.totalIncidents || 1)) * 100 * 3)}%`, height: '100%', background: issue.aboveAvg ? RED : CYAN, borderRadius: 4 }} />
+                    </div>
+                  </div>
+                  <span className="text-sm font-bold tabular-nums" style={{ color: issue.aboveAvg ? RED : CYAN }}>{issue.count}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-2">
+              <p className="text-xs mb-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>שירותים עמוסים ביותר</p>
+              {(patterns?.hotspots ?? []).slice(0, 3).map((h: any, i: number) => (
+                <div key={i} className="flex items-center justify-between py-1.5 border-b text-sm" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>📍 {h.location}</span>
+                  <span className="font-bold tabular-nums" style={{ color: AMBER }}>{h.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
       </div>
+
+      {/* ── Row 3: Hourly + Day of week ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card title="🕐 התפלגות שעתית (7 ימים אחרונים)">
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={hourly ?? []}>
+              <XAxis dataKey="hour" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} tickFormatter={(h) => `${h}:00`} interval={3} />
+              <YAxis stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="count" name="דיווחים" fill={CYAN} fillOpacity={0.65} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card title="📅 התפלגות לפי יום שבוע">
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={dow ?? []}>
+              <XAxis dataKey="day" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} />
+              <YAxis stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="count" name="דיווחים" radius={[4, 4, 0, 0]}>
+                {(dow ?? []).map((_: any, i: number) => (
+                  <Cell key={i} fill={DAY_COLORS[i]} fillOpacity={0.75} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      {/* ── Row 4: Cleaner performance ── */}
+      <Card title="🧹 ביצועי מנקים">
+        <div className="flex flex-col gap-2">
+          {(cleaners ?? []).map((c: any, i: number) => (
+            <div key={c.id} className="flex items-center gap-4 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                style={{ background: i === 0 ? 'rgba(250,204,21,0.2)' : 'rgba(255,255,255,0.06)', color: i === 0 ? '#facc15' : 'var(--color-text-secondary)' }}>
+                {i === 0 ? '🥇' : i + 1}
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{c.name}</div>
+                <div className="w-full mt-1 rounded-full overflow-hidden" style={{ height: 4, background: 'rgba(255,255,255,0.06)' }}>
+                  <div style={{
+                    width: `${Math.min(100, (c.totalResolved / Math.max(...(cleaners ?? []).map((x: any) => x.totalResolved), 1)) * 100)}%`,
+                    height: '100%', background: CYAN, borderRadius: 4,
+                  }} />
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-base font-bold" style={{ color: CYAN }}>{c.totalResolved} ✓</div>
+                <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                  {Math.round(c.avgResolutionMinutes)}′ ממוצע
+                </div>
+              </div>
+            </div>
+          ))}
+          {(!cleaners || cleaners.length === 0) && (
+            <div className="text-center py-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>אין נתונים</div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
