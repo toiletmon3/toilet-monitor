@@ -13,26 +13,39 @@ export default function AdminLayout() {
     (localStorage.getItem('adminTheme') as 'dark' | 'light') ?? 'dark'
   );
 
-  // Auto-login bypass — if no token, fetch one automatically
+  const [bypassReady, setBypassReady] = useState(!!localStorage.getItem('accessToken'));
   useEffect(() => {
-    if (!localStorage.getItem('accessToken')) {
-      import('../../lib/api').then(({ default: api }) => {
-        api.get('/auth/admin-bypass').then(({ data }) => {
-          if (data?.accessToken) {
-            localStorage.setItem('accessToken', data.accessToken);
-            localStorage.setItem('refreshToken', data.refreshToken);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            window.location.reload();
-          }
-        });
-      });
-    }
-  }, []);
+    if (bypassReady) return;
+    fetch('/api/auth/admin-bypass')
+      .then(r => r.json())
+      .then(data => {
+        if (data?.accessToken) {
+          localStorage.setItem('accessToken', data.accessToken);
+          localStorage.setItem('refreshToken', data.refreshToken);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          setBypassReady(true);
+        } else {
+          navigate('/admin/login');
+        }
+      })
+      .catch(() => navigate('/admin/login'));
+  }, [bypassReady, navigate]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('adminTheme', theme);
   }, [theme]);
+
+  if (!bypassReady) {
+    return (
+      <div className="h-screen flex items-center justify-center" style={{ background: 'var(--color-bg)', color: 'var(--color-text)' }}>
+        <div className="text-center">
+          <div className="text-4xl mb-3">⏳</div>
+          <div>מתחבר...</div>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
