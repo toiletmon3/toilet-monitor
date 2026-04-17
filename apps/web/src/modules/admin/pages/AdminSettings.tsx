@@ -1,9 +1,45 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, ChevronDown, ChevronRight, Building2, Layers2, DoorOpen, Tablet, Trash2 } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Building2, Layers2, DoorOpen, Tablet, Trash2, Pencil, Check, X } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
+
+function InlineEdit({ value, onSave, className }: { value: string; onSave: (v: string) => Promise<void>; className?: string }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(value);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!val.trim() || val === value) { setEditing(false); setVal(value); return; }
+    setSaving(true);
+    try { await onSave(val.trim()); setEditing(false); }
+    catch { toast.error('Error'); setVal(value); }
+    finally { setSaving(false); }
+  };
+
+  if (!editing) return (
+    <button onClick={() => setEditing(true)} className={`group flex items-center gap-1 text-start ${className ?? ''}`}>
+      <span>{value}</span>
+      <Pencil size={11} className="opacity-0 group-hover:opacity-50 transition-opacity" />
+    </button>
+  );
+
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        autoFocus
+        value={val}
+        onChange={e => setVal(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setEditing(false); setVal(value); } }}
+        className="px-2 py-0.5 rounded-lg text-sm text-white outline-none"
+        style={{ background: '#0a0e1a', border: '1px solid rgba(0,229,204,0.4)', minWidth: 120 }}
+      />
+      <button onClick={save} disabled={saving} className="text-green-400 hover:text-green-300"><Check size={14} /></button>
+      <button onClick={() => { setEditing(false); setVal(value); }} className="text-gray-500 hover:text-gray-300"><X size={14} /></button>
+    </div>
+  );
+}
 
 // ─── tiny modal ────────────────────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -177,29 +213,38 @@ function RegisterDeviceModal({ restroomId, onClose, onDone }: { restroomId: stri
 function RestroomRow({ room, onDeviceAdded, onDeleted }: { room: any; onDeviceAdded: () => void; onDeleted: () => void }) {
   const { t } = useTranslation();
   const [showDeviceModal, setShowDeviceModal] = useState(false);
-  const genderIcon = room.gender === 'MALE' ? '🚹' : room.gender === 'FEMALE' ? '🚺' : '🚻';
+  const [gender, setGender] = useState(room.gender);
+  const genderIcon = (g: string) => g === 'MALE' ? '🚹' : g === 'FEMALE' ? '🚺' : '🚻';
 
   const handleDeleteDevice = async (deviceId: string, deviceCode: string) => {
     if (!window.confirm(`${t('common.delete')} ${deviceCode}?`)) return;
-    try {
-      await api.delete(`/buildings/devices/${deviceId}`);
-      onDeviceAdded();
-    } catch { toast.error('Error'); }
+    try { await api.delete(`/buildings/devices/${deviceId}`); onDeviceAdded(); }
+    catch { toast.error('Error'); }
   };
 
   const handleDeleteRestroom = async () => {
     if (!window.confirm(`${t('common.delete')} ${room.name}?`)) return;
-    try {
-      await api.delete(`/buildings/restrooms/${room.id}`);
-      onDeleted();
-    } catch { toast.error('Error'); }
+    try { await api.delete(`/buildings/restrooms/${room.id}`); onDeleted(); }
+    catch { toast.error('Error'); }
+  };
+
+  const handleGenderChange = async (g: string) => {
+    setGender(g);
+    try { await api.patch(`/buildings/restrooms/${room.id}`, { gender: g }); onDeviceAdded(); }
+    catch { toast.error('Error'); setGender(room.gender); }
   };
 
   return (
     <div className="flex items-center justify-between py-2 px-3 rounded-xl" style={{ background: 'rgba(0,0,0,0.2)' }}>
       <div className="flex items-center gap-2 min-w-0">
-        <span>{genderIcon}</span>
-        <span className="text-sm text-white">{room.name}</span>
+        <select value={gender} onChange={e => handleGenderChange(e.target.value)}
+          className="text-sm rounded-lg px-1 py-0.5 outline-none" style={{ background: 'transparent', color: 'inherit', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+          <option value="MALE">🚹</option>
+          <option value="FEMALE">🚺</option>
+          <option value="UNISEX">🚻</option>
+        </select>
+        <InlineEdit value={room.name} className="text-sm text-white"
+          onSave={async v => { await api.patch(`/buildings/restrooms/${room.id}`, { name: v }); onDeviceAdded(); }} />
         <div className="flex items-center gap-1 ms-2">
           {(room.devices ?? []).map((d: any) => (
             <div key={d.id} className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-mono" style={{ background: 'rgba(255,255,255,0.05)', color: '#8a9bb0' }}>
@@ -250,14 +295,15 @@ function FloorRow({ floor, onRestroomAdded, onDeleted }: { floor: any; onRestroo
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <button onClick={() => setOpen(o => !o)} className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
-          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
+          <button onClick={() => setOpen(o => !o)}>{open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>
           <Layers2 size={14} />
-          {floor.name}
-          <span className="text-xs px-1.5 py-0.5 rounded-full ms-1" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
+          <InlineEdit value={floor.name} className="font-medium" style={{ color: 'var(--color-accent)' }}
+            onSave={async v => { await api.patch(`/buildings/floors/${floor.id}`, { name: v }); onDeleted(); }} />
+          <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
             {(floor.restrooms ?? []).length}
           </span>
-        </button>
+        </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setShowModal(true)}
@@ -314,10 +360,10 @@ function BuildingCard({ building, onRefresh }: { building: any; onRefresh: () =>
           {open ? <ChevronDown size={16} style={{ color: 'var(--color-accent)' }} /> : <ChevronRight size={16} style={{ color: 'var(--color-accent)' }} />}
           <Building2 size={18} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
           <div className="min-w-0 text-start">
-            <div className="font-semibold text-white truncate">{building.name}</div>
-            {building.address && (
-              <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>{building.address}</div>
-            )}
+            <InlineEdit value={building.name} className="font-semibold text-white"
+              onSave={async v => { await api.patch(`/buildings/${building.id}`, { name: v }); onRefresh(); }} />
+            <InlineEdit value={building.address || '—'} className="text-xs"
+              onSave={async v => { await api.patch(`/buildings/${building.id}`, { address: v }); onRefresh(); }} />
           </div>
         </button>
         <div className="flex items-center gap-2 flex-shrink-0">

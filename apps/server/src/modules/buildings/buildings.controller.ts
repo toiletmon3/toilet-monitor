@@ -43,6 +43,24 @@ export class BuildingsController {
 
 
   @UseGuards(JwtAuthGuard)
+  @Patch(':buildingId')
+  updateBuilding(@Param('buildingId') buildingId: string, @Body() dto: { name?: string; address?: string }) {
+    return this.buildingsService.updateBuilding(buildingId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('floors/:floorId')
+  updateFloor(@Param('floorId') floorId: string, @Body() dto: { name?: string; floorNumber?: number }) {
+    return this.buildingsService.updateFloor(floorId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('restrooms/:restroomId')
+  updateRestroom(@Param('restroomId') restroomId: string, @Body() dto: { name?: string; gender?: string }) {
+    return this.buildingsService.updateRestroom(restroomId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Delete(':buildingId')
   deleteBuilding(@Param('buildingId') buildingId: string) {
     return this.buildingsService.deleteBuilding(buildingId);

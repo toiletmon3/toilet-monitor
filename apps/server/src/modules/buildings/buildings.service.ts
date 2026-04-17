@@ -81,6 +81,18 @@ export class BuildingsService {
     });
   }
 
+  async updateBuilding(buildingId: string, dto: { name?: string; address?: string }) {
+    return this.prisma.building.update({ where: { id: buildingId }, data: dto });
+  }
+
+  async updateFloor(floorId: string, dto: { name?: string; floorNumber?: number }) {
+    return this.prisma.floor.update({ where: { id: floorId }, data: dto });
+  }
+
+  async updateRestroom(restroomId: string, dto: { name?: string; gender?: string }) {
+    return this.prisma.restroom.update({ where: { id: restroomId }, data: dto as any });
+  }
+
   private async deleteIncidentsForRestrooms(restroomIds: string[]) {
     if (restroomIds.length === 0) return;
     const incidents = await this.prisma.incident.findMany({
