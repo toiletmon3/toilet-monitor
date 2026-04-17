@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards, Patch } from '@nestjs/common';
 import { BuildingsService } from './buildings.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -41,6 +41,30 @@ export class BuildingsController {
     return this.buildingsService.registerDevice(restroomId, dto.deviceCode);
   }
 
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':buildingId')
+  deleteBuilding(@Param('buildingId') buildingId: string) {
+    return this.buildingsService.deleteBuilding(buildingId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('floors/:floorId')
+  deleteFloor(@Param('floorId') floorId: string) {
+    return this.buildingsService.deleteFloor(floorId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('restrooms/:restroomId')
+  deleteRestroom(@Param('restroomId') restroomId: string) {
+    return this.buildingsService.deleteRestroom(restroomId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('devices/:deviceId')
+  deleteDevice(@Param('deviceId') deviceId: string) {
+    return this.buildingsService.deleteDevice(deviceId);
+  }
 
   @Public()
   @Patch('devices/:deviceCode/heartbeat')

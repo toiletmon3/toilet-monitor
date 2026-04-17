@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, ChevronDown, ChevronRight, Building2, Layers2, DoorOpen, Tablet } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Building2, Layers2, DoorOpen, Tablet, Trash2 } from 'lucide-react';
 import api from '../../../lib/api';
+import toast from 'react-hot-toast';
 
 // ─── tiny modal ────────────────────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -173,34 +174,55 @@ function RegisterDeviceModal({ restroomId, onClose, onDone }: { restroomId: stri
 }
 
 // ─── tree nodes ────────────────────────────────────────────────────────────────
-function RestroomRow({ room, onDeviceAdded }: { room: any; onDeviceAdded: () => void }) {
+function RestroomRow({ room, onDeviceAdded, onDeleted }: { room: any; onDeviceAdded: () => void; onDeleted: () => void }) {
   const { t } = useTranslation();
   const [showDeviceModal, setShowDeviceModal] = useState(false);
   const genderIcon = room.gender === 'MALE' ? '🚹' : room.gender === 'FEMALE' ? '🚺' : '🚻';
 
+  const handleDeleteDevice = async (deviceId: string, deviceCode: string) => {
+    if (!window.confirm(`${t('common.delete')} ${deviceCode}?`)) return;
+    try {
+      await api.delete(`/buildings/devices/${deviceId}`);
+      onDeviceAdded();
+    } catch { toast.error('Error'); }
+  };
+
+  const handleDeleteRestroom = async () => {
+    if (!window.confirm(`${t('common.delete')} ${room.name}?`)) return;
+    try {
+      await api.delete(`/buildings/restrooms/${room.id}`);
+      onDeleted();
+    } catch { toast.error('Error'); }
+  };
+
   return (
     <div className="flex items-center justify-between py-2 px-3 rounded-xl" style={{ background: 'rgba(0,0,0,0.2)' }}>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 min-w-0">
         <span>{genderIcon}</span>
         <span className="text-sm text-white">{room.name}</span>
-        <div className="flex items-center gap-1 ml-2">
+        <div className="flex items-center gap-1 ms-2">
           {(room.devices ?? []).map((d: any) => (
             <div key={d.id} className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-mono" style={{ background: 'rgba(255,255,255,0.05)', color: '#8a9bb0' }}>
               <span className={`w-1.5 h-1.5 rounded-full ${d.isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
               {d.deviceCode}
+              <button onClick={() => handleDeleteDevice(d.id, d.deviceCode)} className="hover:text-red-400 transition-colors ms-1"><Trash2 size={10} /></button>
             </div>
           ))}
         </div>
       </div>
-      <button
-        onClick={() => setShowDeviceModal(true)}
-        className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all"
-        style={{ background: 'rgba(0,229,204,0.08)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-accent)' }}
-        title={t('admin.settings.registerDevice')}
-      >
-        <Tablet size={12} />
-        <span>{t('admin.settings.addDevice')}</span>
-      </button>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <button
+          onClick={() => setShowDeviceModal(true)}
+          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all"
+          style={{ background: 'rgba(0,229,204,0.08)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-accent)' }}
+        >
+          <Tablet size={12} />
+          <span>{t('admin.settings.addDevice')}</span>
+        </button>
+        <button onClick={handleDeleteRestroom} className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all" style={{ color: 'rgba(239,68,68,0.6)' }}>
+          <Trash2 size={13} />
+        </button>
+      </div>
       {showDeviceModal && (
         <RegisterDeviceModal
           restroomId={room.id}
@@ -212,10 +234,18 @@ function RestroomRow({ room, onDeviceAdded }: { room: any; onDeviceAdded: () => 
   );
 }
 
-function FloorRow({ floor, onRestroomAdded }: { floor: any; onRestroomAdded: () => void }) {
+function FloorRow({ floor, onRestroomAdded, onDeleted }: { floor: any; onRestroomAdded: () => void; onDeleted: () => void }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(true);
   const [showModal, setShowModal] = useState(false);
+
+  const handleDeleteFloor = async () => {
+    if (!window.confirm(`${t('common.delete')} ${floor.name}?`)) return;
+    try {
+      await api.delete(`/buildings/floors/${floor.id}`);
+      onDeleted();
+    } catch { toast.error('Error'); }
+  };
 
   return (
     <div className="flex flex-col gap-2">
@@ -224,26 +254,31 @@ function FloorRow({ floor, onRestroomAdded }: { floor: any; onRestroomAdded: () 
           {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           <Layers2 size={14} />
           {floor.name}
-          <span className="text-xs px-1.5 py-0.5 rounded-full ml-1" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
+          <span className="text-xs px-1.5 py-0.5 rounded-full ms-1" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
             {(floor.restrooms ?? []).length}
           </span>
         </button>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all"
-          style={{ background: 'rgba(0,229,204,0.08)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-accent)' }}
-        >
-          <Plus size={12} />
-          <span>{t('admin.settings.addRestroom')}</span>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all"
+            style={{ background: 'rgba(0,229,204,0.08)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-accent)' }}
+          >
+            <Plus size={12} />
+            <span>{t('admin.settings.addRestroom')}</span>
+          </button>
+          <button onClick={handleDeleteFloor} className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all" style={{ color: 'rgba(239,68,68,0.6)' }}>
+            <Trash2 size={13} />
+          </button>
+        </div>
       </div>
       {open && (
-        <div className="ml-4 flex flex-col gap-1.5">
+        <div className="ms-4 flex flex-col gap-1.5">
           {(floor.restrooms ?? []).map((room: any) => (
-            <RestroomRow key={room.id} room={room} onDeviceAdded={onRestroomAdded} />
+            <RestroomRow key={room.id} room={room} onDeviceAdded={onRestroomAdded} onDeleted={onRestroomAdded} />
           ))}
           {(floor.restrooms ?? []).length === 0 && (
-            <p className="text-xs pl-2" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.noRestrooms')}</p>
+            <p className="text-xs ps-2" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.noRestrooms')}</p>
           )}
         </div>
       )}
@@ -263,6 +298,14 @@ function BuildingCard({ building, onRefresh }: { building: any; onRefresh: () =>
   const [open, setOpen] = useState(true);
   const [showFloorModal, setShowFloorModal] = useState(false);
 
+  const handleDeleteBuilding = async () => {
+    if (!window.confirm(`${t('common.delete')} ${building.name}?`)) return;
+    try {
+      await api.delete(`/buildings/${building.id}`);
+      onRefresh();
+    } catch { toast.error('Error'); }
+  };
+
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
       {/* header */}
@@ -270,28 +313,33 @@ function BuildingCard({ building, onRefresh }: { building: any; onRefresh: () =>
         <button onClick={() => setOpen(o => !o)} className="flex items-center gap-3 min-w-0">
           {open ? <ChevronDown size={16} style={{ color: 'var(--color-accent)' }} /> : <ChevronRight size={16} style={{ color: 'var(--color-accent)' }} />}
           <Building2 size={18} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
-          <div className="min-w-0 text-left">
+          <div className="min-w-0 text-start">
             <div className="font-semibold text-white truncate">{building.name}</div>
             {building.address && (
               <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>{building.address}</div>
             )}
           </div>
         </button>
-        <button
-          onClick={() => setShowFloorModal(true)}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm transition-all flex-shrink-0"
-          style={{ background: 'rgba(0,229,204,0.1)', border: '1px solid rgba(0,229,204,0.3)', color: 'var(--color-accent)' }}
-        >
-          <Plus size={14} />
-          {t('admin.settings.addFloor')}
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => setShowFloorModal(true)}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm transition-all"
+            style={{ background: 'rgba(0,229,204,0.1)', border: '1px solid rgba(0,229,204,0.3)', color: 'var(--color-accent)' }}
+          >
+            <Plus size={14} />
+            {t('admin.settings.addFloor')}
+          </button>
+          <button onClick={handleDeleteBuilding} className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all" style={{ color: 'rgba(239,68,68,0.6)' }}>
+            <Trash2 size={15} />
+          </button>
+        </div>
       </div>
 
       {/* floors */}
       {open && (
         <div className="flex flex-col gap-3 p-5">
           {(building.floors ?? []).map((floor: any) => (
-            <FloorRow key={floor.id} floor={floor} onRestroomAdded={onRefresh} />
+            <FloorRow key={floor.id} floor={floor} onRestroomAdded={onRefresh} onDeleted={onRefresh} />
           ))}
           {(building.floors ?? []).length === 0 && (
             <p className="text-sm text-center py-2" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.noFloors')}</p>

@@ -30,7 +30,7 @@ export default function AdminLayout() {
   ];
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'var(--color-bg)' }}>
+    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--color-bg)' }}>
       {/* Sidebar */}
       <aside
         className="w-56 flex flex-col py-6 px-3 fixed h-full top-0 start-0"

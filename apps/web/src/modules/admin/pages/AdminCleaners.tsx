@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Trash2 } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -34,6 +34,17 @@ export default function AdminCleaners() {
   const handleToggle = async (id: string, isActive: boolean) => {
     await api.patch(`/users/${id}/toggle`, { isActive: !isActive });
     queryClient.invalidateQueries({ queryKey: ['users'] });
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(lang === 'he' ? `למחוק את ${name}?` : `Delete ${name}?`)) return;
+    try {
+      await api.delete(`/users/${id}`);
+      toast.success(lang === 'he' ? 'מנקה נמחק' : 'Cleaner deleted');
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? 'Error');
+    }
   };
 
   const { i18n } = useTranslation();
@@ -109,17 +120,27 @@ export default function AdminCleaners() {
                   🪪 {c.idNumber} {c.phone && `· 📞 ${c.phone}`}
                 </div>
               </div>
-              <button
-                onClick={() => handleToggle(c.id, c.isActive)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                style={{
-                  background: c.isActive ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                  color: c.isActive ? '#22c55e' : '#ef4444',
-                  border: `1px solid ${c.isActive ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                }}
-              >
-                {c.isActive ? (lang === 'he' ? '● פעיל' : '● Active') : (lang === 'he' ? '○ לא פעיל' : '○ Inactive')}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleToggle(c.id, c.isActive)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                  style={{
+                    background: c.isActive ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                    color: c.isActive ? '#22c55e' : '#ef4444',
+                    border: `1px solid ${c.isActive ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                  }}
+                >
+                  {c.isActive ? (lang === 'he' ? '● פעיל' : '● Active') : (lang === 'he' ? '○ לא פעיל' : '○ Inactive')}
+                </button>
+                <button
+                  onClick={() => handleDelete(c.id, c.name)}
+                  className="p-1.5 rounded-lg transition-all hover:bg-red-500/20"
+                  style={{ color: 'rgba(239,68,68,0.6)' }}
+                  title={lang === 'he' ? 'מחק' : 'Delete'}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           ))}
           {cleaners.length === 0 && (

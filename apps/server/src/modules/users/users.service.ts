@@ -56,4 +56,8 @@ export class UsersService {
       select: { id: true, name: true, isActive: true },
     });
   }
+
+  async deleteUser(userId: string) {
+    return this.prisma.user.delete({ where: { id: userId } });
+  }
 }

@@ -61,4 +61,53 @@ export class BuildingsService {
       orderBy: { priority: 'asc' },
     });
   }
+
+  private async deleteIncidentsForRestrooms(restroomIds: string[]) {
+    if (restroomIds.length === 0) return;
+    const incidents = await this.prisma.incident.findMany({
+      where: { restroomId: { in: restroomIds } },
+      select: { id: true },
+    });
+    const incidentIds = incidents.map((i) => i.id);
+    if (incidentIds.length > 0) {
+      await this.prisma.incidentAction.deleteMany({ where: { incidentId: { in: incidentIds } } });
+      await this.prisma.incident.deleteMany({ where: { id: { in: incidentIds } } });
+    }
+  }
+
+  async deleteBuilding(buildingId: string) {
+    const restrooms = await this.prisma.restroom.findMany({
+      where: { floor: { buildingId } },
+      select: { id: true },
+    });
+    await this.deleteIncidentsForRestrooms(restrooms.map((r) => r.id));
+    return this.prisma.building.delete({ where: { id: buildingId } });
+  }
+
+  async deleteFloor(floorId: string) {
+    const restrooms = await this.prisma.restroom.findMany({
+      where: { floorId },
+      select: { id: true },
+    });
+    await this.deleteIncidentsForRestrooms(restrooms.map((r) => r.id));
+    return this.prisma.floor.delete({ where: { id: floorId } });
+  }
+
+  async deleteRestroom(restroomId: string) {
+    await this.deleteIncidentsForRestrooms([restroomId]);
+    return this.prisma.restroom.delete({ where: { id: restroomId } });
+  }
+
+  async deleteDevice(deviceId: string) {
+    const incidents = await this.prisma.incident.findMany({
+      where: { deviceId },
+      select: { id: true },
+    });
+    const incidentIds = incidents.map((i) => i.id);
+    if (incidentIds.length > 0) {
+      await this.prisma.incidentAction.deleteMany({ where: { incidentId: { in: incidentIds } } });
+      await this.prisma.incident.deleteMany({ where: { id: { in: incidentIds } } });
+    }
+    return this.prisma.device.delete({ where: { id: deviceId } });
+  }
 }
