@@ -1,9 +1,24 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, ChevronDown, ChevronRight, Building2, Layers2, DoorOpen, Tablet, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Building2, Layers2, DoorOpen, Tablet, Trash2, Pencil, Check, X, Globe } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
+
+function LangButton({ value, current, onChange }: { value: string; current: string; onChange: (v: string) => void }) {
+  const active = value === current;
+  return (
+    <button onClick={() => onChange(value)}
+      className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
+      style={{
+        background: active ? 'rgba(0,229,204,0.15)' : 'rgba(255,255,255,0.05)',
+        border: `1px solid ${active ? 'rgba(0,229,204,0.6)' : 'rgba(255,255,255,0.1)'}`,
+        color: active ? '#00e5cc' : 'var(--color-text-secondary)',
+      }}>
+      {value === 'he' ? '🇮🇱 עברית' : '🇺🇸 English'}
+    </button>
+  );
+}
 
 function InlineEdit({ value, onSave, className }: { value: string; onSave: (v: string) => Promise<void>; className?: string }) {
   const [editing, setEditing] = useState(false);
@@ -468,10 +483,67 @@ export default function AdminSettings() {
     refetchInterval: 30_000,
   });
 
+  const { data: orgSettings } = useQuery({
+    queryKey: ['org-settings'],
+    queryFn: async () => (await api.get('/users/org-settings')).data,
+  });
+
+  const updateOrgSettings = async (patch: { kioskLang?: string; cleanerLang?: string | null }) => {
+    await api.patch('/users/org-settings', patch);
+    queryClient.invalidateQueries({ queryKey: ['org-settings'] });
+    toast.success('עודכן');
+  };
+
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['building-structure'] });
 
   return (
     <div className="flex flex-col gap-5">
+      {/* ── Language Settings ── */}
+      <div className="rounded-2xl p-5 flex flex-col gap-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+        <h2 className="font-semibold text-white flex items-center gap-2">
+          <Globe size={16} style={{ color: 'var(--color-accent)' }} />
+          הגדרות שפה
+        </h2>
+
+        {/* Kiosk language */}
+        <div className="flex flex-col gap-2">
+          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>📋 שפת קיוסק</div>
+          <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>כל הקיוסקים יוצגו בשפה זו</div>
+          <div className="flex gap-2">
+            {['he', 'en'].map(l => (
+              <LangButton key={l} value={l} current={orgSettings?.kioskLang ?? 'he'}
+                onChange={v => updateOrgSettings({ kioskLang: v })} />
+            ))}
+          </div>
+        </div>
+
+        <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+
+        {/* Cleaner language */}
+        <div className="flex flex-col gap-2">
+          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>🧹 שפת מנקים</div>
+          <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+            "לכל מנקה בנפרד" — שומר על השפה שנקבעה לכל מנקה אישית. בחירת שפה כאן דורסת את כולם.
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => updateOrgSettings({ cleanerLang: null })}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
+              style={{
+                background: !orgSettings?.cleanerLang ? 'rgba(0,229,204,0.15)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${!orgSettings?.cleanerLang ? 'rgba(0,229,204,0.6)' : 'rgba(255,255,255,0.1)'}`,
+                color: !orgSettings?.cleanerLang ? '#00e5cc' : 'var(--color-text-secondary)',
+              }}>
+              👤 לכל מנקה בנפרד
+            </button>
+            {['he', 'en'].map(l => (
+              <LangButton key={l} value={l} current={orgSettings?.cleanerLang ?? ''}
+                onChange={v => updateOrgSettings({ cleanerLang: v })} />
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* page header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">{t('admin.nav.settings')}</h1>

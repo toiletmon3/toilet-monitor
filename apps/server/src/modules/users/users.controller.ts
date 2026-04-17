@@ -56,4 +56,19 @@ export class UsersController {
   deleteUser(@Param('id') id: string) {
     return this.usersService.deleteUser(id);
   }
+
+  @Patch(':id/lang')
+  updateLang(@Param('id') id: string, @Body() dto: { preferredLang: string }) {
+    return this.usersService.updateLang(id, dto.preferredLang);
+  }
+
+  @Get('org-settings')
+  getOrgSettings(@CurrentUser() user: any) {
+    return this.usersService.getOrgSettings(user.orgId);
+  }
+
+  @Patch('org-settings')
+  updateOrgSettings(@CurrentUser() user: any, @Body() dto: { kioskLang?: string; cleanerLang?: string | null }) {
+    return this.usersService.updateOrgSettings(user.orgId, dto);
+  }
 }

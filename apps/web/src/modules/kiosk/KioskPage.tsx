@@ -68,6 +68,11 @@ export default function KioskPage() {
           if (btns?.length) setKioskButtons(btns);
         } catch { /* use defaults */ }
 
+        // Apply kiosk language from org settings
+        api.get('/auth/default-org').then(r => {
+          if (r.data?.kioskLang) import('../../i18n').then(m => m.setLanguage(r.data.kioskLang));
+        }).catch(() => {});
+
         // Fetch real kiosk stats
         api.get(`/analytics/kiosk-stats/${device.restroom.id}`)
           .then(r => setStats(r.data))

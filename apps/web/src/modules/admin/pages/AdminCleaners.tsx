@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { UserPlus, Trash2, Building2 } from 'lucide-react';
+import { UserPlus, Trash2, Building2, Globe } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -53,6 +53,17 @@ export default function AdminCleaners() {
       toast.error('Error');
     }
   };
+
+  const handleLangChange = async (id: string, preferredLang: string) => {
+    await api.patch(`/users/${id}/lang`, { preferredLang });
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+  };
+
+  const { data: orgSettings } = useQuery({
+    queryKey: ['org-settings'],
+    queryFn: async () => (await api.get('/users/org-settings')).data,
+  });
+  const globalCleanerLang: string | null = orgSettings?.cleanerLang ?? null;
 
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(lang === 'he' ? `למחוק את ${name}?` : `Delete ${name}?`)) return;
@@ -175,8 +186,8 @@ export default function AdminCleaners() {
                 </div>
               </div>
 
-              {/* Building assignment */}
-              <div className="flex items-center gap-2 ps-1">
+              {/* Building + Language row */}
+              <div className="flex items-center gap-2 ps-1 flex-wrap">
                 <Building2 size={13} style={{ color: 'var(--color-accent)', opacity: 0.7, flexShrink: 0 }} />
                 <select
                   value={c.buildingId ?? ''}
@@ -193,6 +204,31 @@ export default function AdminCleaners() {
                     <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
                 </select>
+
+                {/* Per-cleaner language — disabled when global override is set */}
+                <div className="flex items-center gap-1.5" title={globalCleanerLang ? (lang === 'he' ? 'שפה גלובלית קובעת — שנה בהגדרות' : 'Global lang override active — change in Settings') : ''}>
+                  <Globe size={13} style={{ color: globalCleanerLang ? 'rgba(255,255,255,0.2)' : 'rgba(0,229,204,0.7)', flexShrink: 0 }} />
+                  <select
+                    value={globalCleanerLang ?? c.preferredLang ?? 'he'}
+                    disabled={!!globalCleanerLang}
+                    onChange={e => handleLangChange(c.id, e.target.value)}
+                    className="px-2 py-1.5 rounded-lg text-xs outline-none"
+                    style={{
+                      background: globalCleanerLang ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)',
+                      border: `1px solid ${globalCleanerLang ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.15)'}`,
+                      color: globalCleanerLang ? 'rgba(255,255,255,0.25)' : 'var(--color-text-secondary)',
+                      opacity: globalCleanerLang ? 0.5 : 1,
+                    }}
+                  >
+                    <option value="he">🇮🇱 עברית</option>
+                    <option value="en">🇺🇸 English</option>
+                  </select>
+                  {globalCleanerLang && (
+                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                      {lang === 'he' ? '(גלובלי)' : '(global)'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))}

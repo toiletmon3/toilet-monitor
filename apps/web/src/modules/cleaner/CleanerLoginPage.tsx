@@ -23,6 +23,8 @@ export default function CleanerLoginPage() {
       localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('orgId', data.user.orgId);
+      // Apply effective language (org override > user preference)
+      if (data.effectiveLang) setLanguage(data.effectiveLang);
       navigate('/cleaner');
     } catch {
       setError(t('cleaner.login.error'));

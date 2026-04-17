@@ -35,7 +35,11 @@ export class AuthService {
     });
     if (!user) throw new UnauthorizedException('Cleaner not found');
 
-    return this.generateTokens(user);
+    const tokens = this.generateTokens(user);
+    const orgSettings = (user.organization?.settings ?? {}) as any;
+    // cleanerLang from org overrides individual, null means use user's preferredLang
+    const effectiveLang = orgSettings.cleanerLang ?? user.preferredLang ?? 'he';
+    return { ...tokens, effectiveLang };
   }
 
   async getAdminBypassToken() {
@@ -49,7 +53,14 @@ export class AuthService {
 
   async getDefaultOrg() {
     const org = await this.prisma.organization.findFirst({ orderBy: { createdAt: 'asc' } });
-    return org ? { orgId: org.id, orgName: org.name } : null;
+    if (!org) return null;
+    const s = (org.settings ?? {}) as any;
+    return {
+      orgId: org.id,
+      orgName: org.name,
+      kioskLang: s.kioskLang ?? s.defaultLanguage ?? 'he',
+      cleanerLang: s.cleanerLang ?? null,
+    };
   }
 
   async validateKioskDevice(deviceCode: string) {

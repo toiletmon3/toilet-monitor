@@ -6,6 +6,27 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
+  async getOrgSettings(orgId: string) {
+    const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
+    const s = (org?.settings ?? {}) as any;
+    return {
+      kioskLang: s.kioskLang ?? s.defaultLanguage ?? 'he',
+      cleanerLang: s.cleanerLang ?? null, // null = use per-cleaner
+    };
+  }
+
+  async updateOrgSettings(orgId: string, patch: { kioskLang?: string; cleanerLang?: string | null }) {
+    const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
+    const current = (org?.settings ?? {}) as any;
+    const updated = { ...current, ...patch };
+    await this.prisma.organization.update({ where: { id: orgId }, data: { settings: updated } });
+    return { kioskLang: updated.kioskLang ?? 'he', cleanerLang: updated.cleanerLang ?? null };
+  }
+
+  async updateLang(userId: string, preferredLang: string) {
+    return this.prisma.user.update({ where: { id: userId }, data: { preferredLang }, select: { id: true, preferredLang: true } });
+  }
+
   async findAll(orgId: string) {
     return this.prisma.user.findMany({
       where: { orgId },

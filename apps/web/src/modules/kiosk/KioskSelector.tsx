@@ -19,6 +19,10 @@ export default function KioskSelector() {
       try {
         const { data: org } = await api.get('/auth/default-org');
         if (!org) { setError(lang === 'he' ? 'לא נמצאה ארגון' : 'No organization found'); return; }
+        // Apply kiosk language from org settings
+        if (org.kioskLang && org.kioskLang !== i18n.language) {
+          import('../../i18n').then(m => m.setLanguage(org.kioskLang));
+        }
         const { data } = await api.get(`/buildings/public-structure/${org.orgId}`);
         setBuildings(data);
         // Auto-select if only one building
