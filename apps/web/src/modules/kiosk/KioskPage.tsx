@@ -154,7 +154,7 @@ export default function KioskPage() {
         if (err.response?.status === 409) {
           // Already reported recently — show duplicate screen
           setDuplicate(true);
-          setTimeout(() => setDuplicate(false), 3500);
+          setTimeout(() => setDuplicate(false), 5000);
           return;
         }
         // Network error — fallback to offline queue
@@ -179,7 +179,7 @@ export default function KioskPage() {
     }
 
     setConfirmed(issueCode);
-    setTimeout(() => setConfirmed(null), 3500);
+    setTimeout(() => setConfirmed(null), 5000);
   }, [deviceInfo, issueTypes]);
 
   const handleCornerTap = useCallback(() => {
