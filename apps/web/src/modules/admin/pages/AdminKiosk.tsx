@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Pencil, Check, X, LayoutTemplate } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
@@ -123,6 +123,7 @@ function TemplateCard({ template, buildings, onRefresh }: { template: any; build
 }
 
 export default function AdminKiosk() {
+  const qc = useQueryClient();
   const [newName, setNewName] = useState('');
   const [showNew, setShowNew] = useState(false);
 
