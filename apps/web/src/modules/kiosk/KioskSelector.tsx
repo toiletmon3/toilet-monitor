@@ -21,6 +21,8 @@ export default function KioskSelector() {
         if (!org) { setError(lang === 'he' ? 'לא נמצאה ארגון' : 'No organization found'); return; }
         const { data } = await api.get(`/buildings/public-structure/${org.orgId}`);
         setBuildings(data);
+        // Auto-select if only one building
+        if (data?.length === 1) setSelectedBuilding(data[0]);
       } catch {
         setError(lang === 'he' ? 'שגיאה בטעינה' : 'Loading error');
       } finally {
@@ -69,8 +71,7 @@ export default function KioskSelector() {
               </div>
             )}
 
-            {/* Auto-select if only one building */}
-            {buildings.length === 1 && !selectedBuilding && (() => { setSelectedBuilding(buildings[0]); return null; })()}
+            {/* Auto-select handled in useEffect */}
 
             {/* Floor selector */}
             {selectedBuilding && !selectedFloor && (
