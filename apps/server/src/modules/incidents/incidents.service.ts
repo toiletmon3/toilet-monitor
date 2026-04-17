@@ -274,6 +274,27 @@ export class IncidentsService {
     return incident;
   }
 
+  async deleteBulk(orgId: string, scope: 'resolved' | 'older' | 'all', olderThanDays?: number) {
+    const baseWhere: any = { restroom: { floor: { building: { orgId } } } };
+
+    let where: any;
+    if (scope === 'resolved') {
+      where = { ...baseWhere, status: 'RESOLVED' };
+    } else if (scope === 'older') {
+      const cutoff = new Date(Date.now() - (olderThanDays ?? 30) * 24 * 60 * 60 * 1000);
+      where = { ...baseWhere, reportedAt: { lte: cutoff } };
+    } else {
+      where = baseWhere;
+    }
+
+    // Delete actions first (FK constraint)
+    const incidents = await this.prisma.incident.findMany({ where, select: { id: true } });
+    const ids = incidents.map(i => i.id);
+    await this.prisma.incidentAction.deleteMany({ where: { incidentId: { in: ids } } });
+    const { count } = await this.prisma.incident.deleteMany({ where });
+    return { deleted: count };
+  }
+
   async resolve(incidentId: string, cleanerIdNumber: string, notes?: string) {
     const cleaner = await this.prisma.user.findFirst({
       where: { idNumber: cleanerIdNumber, isActive: true },

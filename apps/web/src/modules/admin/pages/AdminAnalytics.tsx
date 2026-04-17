@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   RadialBarChart, RadialBar, PolarAngleAxis,
 } from 'recharts';
 import api from '../../../lib/api';
+import toast from 'react-hot-toast';
+import ConfirmDialog from '../../../components/ConfirmDialog';
+import { Trash2 } from 'lucide-react';
 
 const CYAN = '#00e5cc';
 const AMBER = '#f59e0b';
@@ -44,9 +47,27 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
+type DeleteDialog = { scope: 'resolved' | 'older' | 'all'; olderThanDays?: number } | null;
+
 export default function AdminAnalytics() {
   const [days, setDays] = useState(30);
   const [slaTarget, setSlaTarget] = useState(15);
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialog>(null);
+  const qc = useQueryClient();
+
+  const handleDelete = async () => {
+    if (!deleteDialog) return;
+    const params = new URLSearchParams({ scope: deleteDialog.scope });
+    if (deleteDialog.olderThanDays) params.set('olderThanDays', String(deleteDialog.olderThanDays));
+    const { data } = await api.delete(`/incidents/bulk?${params}`);
+    toast.success(`נמחקו ${data.deleted} דיווחים`);
+    qc.invalidateQueries({ queryKey: ['incidents'] });
+    qc.invalidateQueries({ queryKey: ['freq'] });
+    qc.invalidateQueries({ queryKey: ['sla'] });
+    qc.invalidateQueries({ queryKey: ['dow'] });
+    qc.invalidateQueries({ queryKey: ['patterns'] });
+    qc.invalidateQueries({ queryKey: ['cleaners'] });
+  };
 
   const q = (key: string, url: string) => useQuery({
     queryKey: [key, days],
@@ -65,9 +86,9 @@ export default function AdminAnalytics() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>סטטיסטיקות</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap items-center">
           {[7, 30, 90].map((d) => (
             <button key={d} onClick={() => setDays(d)}
               className="px-3 py-1.5 rounded-lg text-sm transition-all"
@@ -79,8 +100,47 @@ export default function AdminAnalytics() {
               {d} יום
             </button>
           ))}
+
+          {/* Reset menu */}
+          <div className="w-px h-5 mx-1" style={{ background: 'rgba(255,255,255,0.1)' }} />
+          <div className="flex gap-1">
+            <button onClick={() => setDeleteDialog({ scope: 'resolved' })}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
+              <Trash2 size={12} /> מחק טופלו
+            </button>
+            <button onClick={() => setDeleteDialog({ scope: 'older', olderThanDays: 30 })}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
+              <Trash2 size={12} /> ישנים מ-30 יום
+            </button>
+            <button onClick={() => setDeleteDialog({ scope: 'all' })}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all"
+              style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444' }}>
+              <Trash2 size={12} /> מחק הכל
+            </button>
+          </div>
         </div>
       </div>
+
+      {deleteDialog && (
+        <ConfirmDialog
+          title={
+            deleteDialog.scope === 'resolved' ? 'מחיקת דיווחים שטופלו' :
+            deleteDialog.scope === 'older' ? `מחיקת דיווחים ישנים מ-30 יום` :
+            '⚠️ מחיקת כל הדיווחים'
+          }
+          description={
+            deleteDialog.scope === 'resolved' ? 'כל הדיווחים עם סטטוס "טופל" יימחקו לצמיתות.' :
+            deleteDialog.scope === 'older' ? 'כל הדיווחים שדווחו לפני יותר מ-30 יום יימחקו לצמיתות.' :
+            'כל הדיווחים במערכת יימחקו לצמיתות. פעולה זו לא ניתנת לביטול.'
+          }
+          confirmLabel="מחק"
+          requireType={deleteDialog.scope === 'all' ? 'מחק הכל' : undefined}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteDialog(null)}
+        />
+      )}
 
       {/* ── Row 1: SLA ── */}
       <Card title="⏱ עמידה ב-SLA — זמן תגובה">

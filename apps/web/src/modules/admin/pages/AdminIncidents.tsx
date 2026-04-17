@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, UserCheck, CheckCircle, RefreshCw, Clock, Wrench, CheckSquare } from 'lucide-react';
+import { ChevronDown, ChevronRight, UserCheck, CheckCircle, RefreshCw, Clock, Wrench, CheckSquare, Trash2 } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
+import ConfirmDialog from '../../../components/ConfirmDialog';
+
+type DeleteDialog = { scope: 'resolved' | 'older' | 'all'; olderThanDays?: number } | null;
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   OPEN:        { bg: 'rgba(239,68,68,0.15)',  text: '#ef4444' },
@@ -192,6 +195,17 @@ function Section({
 
 export default function AdminIncidents() {
   const [showResolved, setShowResolved] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialog>(null);
+  const qc = useQueryClient();
+
+  const handleDelete = async () => {
+    if (!deleteDialog) return;
+    const params = new URLSearchParams({ scope: deleteDialog.scope });
+    if (deleteDialog.olderThanDays) params.set('olderThanDays', String(deleteDialog.olderThanDays));
+    const { data } = await api.delete(`/incidents/bulk?${params}`);
+    toast.success(`נמחקו ${data.deleted} דיווחים`);
+    qc.invalidateQueries({ queryKey: ['incidents'] });
+  };
 
   const { data: activeData, isLoading: loadingActive } = useQuery({
     queryKey: ['incidents', 'active'],
@@ -219,12 +233,48 @@ export default function AdminIncidents() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>תקלות</h1>
-        <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          <span>{inProgress.length + open.length} פעילות</span>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>תקלות</h1>
+          <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{inProgress.length + open.length} פעילות</span>
+        </div>
+        <div className="flex gap-1">
+          <button onClick={() => setDeleteDialog({ scope: 'resolved' })}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
+            <Trash2 size={12} /> מחק טופלו
+          </button>
+          <button onClick={() => setDeleteDialog({ scope: 'older', olderThanDays: 30 })}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
+            <Trash2 size={12} /> ישנים מ-30 יום
+          </button>
+          <button onClick={() => setDeleteDialog({ scope: 'all' })}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+            style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444' }}>
+            <Trash2 size={12} /> מחק הכל
+          </button>
         </div>
       </div>
+
+      {deleteDialog && (
+        <ConfirmDialog
+          title={
+            deleteDialog.scope === 'resolved' ? 'מחיקת דיווחים שטופלו' :
+            deleteDialog.scope === 'older' ? 'מחיקת דיווחים ישנים מ-30 יום' :
+            '⚠️ מחיקת כל הדיווחים'
+          }
+          description={
+            deleteDialog.scope === 'resolved' ? 'כל הדיווחים עם סטטוס "טופל" יימחקו לצמיתות.' :
+            deleteDialog.scope === 'older' ? 'כל הדיווחים שדווחו לפני יותר מ-30 יום יימחקו לצמיתות.' :
+            'כל הדיווחים במערכת יימחקו לצמיתות. פעולה זו לא ניתנת לביטול.'
+          }
+          confirmLabel="מחק"
+          requireType={deleteDialog.scope === 'all' ? 'מחק הכל' : undefined}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteDialog(null)}
+        />
+      )}
 
       {loadingActive ? (
         <div className="p-12 text-center" style={{ color: 'var(--color-text-secondary)' }}>טוען...</div>

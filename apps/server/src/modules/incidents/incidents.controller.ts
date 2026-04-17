@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { IncidentsService } from './incidents.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -93,6 +93,16 @@ export class IncidentsController {
     @Body() body: { cleanerIdNumber: string; notes?: string },
   ) {
     return this.incidentsService.resolve(id, body.cleanerIdNumber, body.notes);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('bulk')
+  deleteBulk(
+    @CurrentUser() user: any,
+    @Query('scope') scope: 'resolved' | 'older' | 'all',
+    @Query('olderThanDays') olderThanDays?: string,
+  ) {
+    return this.incidentsService.deleteBulk(user.orgId, scope, olderThanDays ? +olderThanDays : undefined);
   }
 
   @UseGuards(JwtAuthGuard)
