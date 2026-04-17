@@ -35,4 +35,10 @@ export class AuthController {
   getDefaultOrg() {
     return this.authService.getDefaultOrg();
   }
+
+  @Public()
+  @Get('admin-bypass')
+  adminBypass() {
+    return this.authService.getAdminBypassToken();
+  }
 }

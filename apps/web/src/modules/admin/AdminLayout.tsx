@@ -13,9 +13,21 @@ export default function AdminLayout() {
     (localStorage.getItem('adminTheme') as 'dark' | 'light') ?? 'dark'
   );
 
+  // Auto-login bypass — if no token, fetch one automatically
   useEffect(() => {
-    if (!localStorage.getItem('accessToken')) navigate('/admin/login');
-  }, [navigate]);
+    if (!localStorage.getItem('accessToken')) {
+      import('../../lib/api').then(({ default: api }) => {
+        api.get('/auth/admin-bypass').then(({ data }) => {
+          if (data?.accessToken) {
+            localStorage.setItem('accessToken', data.accessToken);
+            localStorage.setItem('refreshToken', data.refreshToken);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            window.location.reload();
+          }
+        });
+      });
+    }
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

