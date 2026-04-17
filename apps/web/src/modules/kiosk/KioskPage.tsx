@@ -287,6 +287,15 @@ export default function KioskPage() {
 
       {/* Footer */}
       <div className="flex items-center justify-between px-5 py-2 text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
+        {/* Staff entry button — left side, part of the flow (no overlap) */}
+        <div onPointerDown={handleCornerTap}>
+          <span className="text-xs px-3 py-1.5 rounded-xl select-none"
+            style={{ background: 'rgba(0,229,204,0.08)', color: 'rgba(0,229,204,0.45)', border: '1px solid rgba(0,229,204,0.15)', fontSize: 11, cursor: 'default' }}>
+            🧹 צוות
+          </span>
+        </div>
+
+        {/* Connection status */}
         <div className="flex items-center gap-1.5">
           <div className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'online' ? 'bg-green-400' : connectionStatus === 'syncing' ? 'bg-yellow-400 animate-pulse-slow' : 'bg-red-400 animate-pulse-slow'}`} />
           <span>
@@ -295,6 +304,8 @@ export default function KioskPage() {
             {connectionStatus === 'offline' && `${t('kiosk.offline')}${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
           </span>
         </div>
+
+        {/* Language switcher */}
         <div className="flex gap-2">
           {(['he', 'en'] as const).map((l) => (
             <button key={l} onClick={() => setLanguage(l)}
@@ -303,14 +314,6 @@ export default function KioskPage() {
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Staff entry — always visible small button, bottom-left */}
-      <div className="absolute bottom-8 start-4" onPointerDown={handleCornerTap}>
-        <span className="text-xs px-3 py-1.5 rounded-xl select-none"
-          style={{ background: 'rgba(0,229,204,0.08)', color: 'rgba(0,229,204,0.45)', border: '1px solid rgba(0,229,204,0.15)', fontSize: 11, cursor: 'default' }}>
-          🧹 צוות
-        </span>
       </div>
     </div>
   );
