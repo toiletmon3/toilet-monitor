@@ -292,8 +292,14 @@ export default function KioskPage() {
         </div>
       </div>
 
-      {/* Hidden tap zone — cleaner mode */}
-      <div className="absolute top-0 right-0 w-16 h-16 opacity-0" onPointerDown={handleCornerTap} />
+      {/* Staff entry zone — top-right corner, 3 taps to enter */}
+      <div className="absolute top-0 end-0 w-20 h-20 flex items-start justify-end p-2 opacity-0 hover:opacity-100 transition-opacity"
+        onPointerDown={handleCornerTap}
+        style={{ cursor: 'default' }}>
+        <span className="text-xs px-2 py-1 rounded-lg" style={{ background: 'rgba(0,229,204,0.15)', color: 'rgba(0,229,204,0.7)', border: '1px solid rgba(0,229,204,0.2)', fontSize: 10 }}>
+          צוות
+        </span>
+      </div>
     </div>
   );
 }

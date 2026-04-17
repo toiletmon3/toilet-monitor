@@ -51,6 +51,34 @@ export class UsersService {
     });
   }
 
+  async checkin(dto: { cleanerIdNumber: string; restroomId?: string; buildingId?: string; note?: string }) {
+    const cleaner = await this.prisma.user.findFirst({
+      where: { idNumber: dto.cleanerIdNumber, isActive: true, role: 'CLEANER' },
+    });
+    if (!cleaner) throw new Error('Cleaner not found');
+
+    const arrival = await this.prisma.cleanerArrival.create({
+      data: {
+        userId: cleaner.id,
+        restroomId: dto.restroomId ?? null,
+        buildingId: dto.buildingId ?? cleaner.buildingId ?? null,
+        note: dto.note ?? null,
+      },
+    });
+    return { cleaner: { id: cleaner.id, name: cleaner.name }, arrivedAt: arrival.arrivedAt };
+  }
+
+  async getArrivals(orgId: string, from?: string) {
+    const where: any = { user: { orgId } };
+    if (from) where.arrivedAt = { gte: new Date(from) };
+    return this.prisma.cleanerArrival.findMany({
+      where,
+      include: { user: { select: { id: true, name: true, idNumber: true } } },
+      orderBy: { arrivedAt: 'desc' },
+      take: 100,
+    });
+  }
+
   async assignBuilding(userId: string, buildingId: string | null) {
     return this.prisma.user.update({
       where: { id: userId },

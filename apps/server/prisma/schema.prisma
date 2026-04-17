@@ -111,6 +111,19 @@ model Device {
 // USERS
 // =============================================
 
+model CleanerArrival {
+  id         String   @id @default(uuid())
+  userId     String
+  restroomId String?
+  buildingId String?
+  arrivedAt  DateTime @default(now())
+  note       String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("cleaner_arrivals")
+}
+
 model User {
   id            String   @id @default(uuid())
   orgId         String
@@ -130,6 +143,7 @@ model User {
   building          Building?        @relation(fields: [buildingId], references: [id])
   incidentActions   IncidentAction[]
   assignedIncidents Incident[]       @relation("AssignedCleaner")
+  arrivals          CleanerArrival[]
 
   @@unique([orgId, idNumber])
   @@map("users")

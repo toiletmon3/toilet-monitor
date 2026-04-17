@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -37,6 +38,18 @@ export class UsersController {
   @Patch(':id/building')
   assignBuilding(@Param('id') id: string, @Body() dto: { buildingId: string | null }) {
     return this.usersService.assignBuilding(id, dto.buildingId);
+  }
+
+  @Public()
+  @Post('checkin')
+  checkin(@Body() dto: { cleanerIdNumber: string; restroomId?: string; buildingId?: string; note?: string }) {
+    return this.usersService.checkin(dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('arrivals')
+  getArrivals(@CurrentUser() user: any, @Query('from') from?: string) {
+    return this.usersService.getArrivals(user.orgId, from);
   }
 
   @Delete(':id')
