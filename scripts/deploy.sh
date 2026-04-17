@@ -4,6 +4,11 @@ set -e
 echo "🚀 Deploying toilet-monitor..."
 cd /opt/toilet-monitor
 
+# Load environment variables
+if [ -f .env.production ]; then
+  export $(grep -v '^#' .env.production | xargs)
+fi
+
 # Pull latest code
 echo "📥 Pulling latest code..."
 git pull
