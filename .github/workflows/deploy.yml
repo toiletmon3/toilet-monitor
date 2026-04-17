@@ -22,6 +22,6 @@ jobs:
             pm2 restart toilet-server
             pm2 save
             pnpm --filter=@toilet/web build
-            docker cp apps/web/dist/. toilet_nginx:/usr/share/nginx/html/
-            docker exec toilet_nginx nginx -s reload
+            cp -r apps/web/dist/. /usr/share/nginx/html/
+            nginx -s reload || systemctl reload nginx
             echo "Deploy complete"
