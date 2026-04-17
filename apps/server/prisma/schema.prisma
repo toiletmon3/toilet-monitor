@@ -56,6 +56,7 @@ model Building {
   organization  Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
   kioskTemplate KioskTemplate? @relation(fields: [kioskTemplateId], references: [id])
   floors        Floor[]
+  cleaners      User[]
 
   @@map("buildings")
 }
@@ -111,21 +112,23 @@ model Device {
 // =============================================
 
 model User {
-  id           String   @id @default(uuid())
-  orgId        String
-  idNumber     String
-  name         String
-  email        String?
-  phone        String?
-  role         UserRole @default(CLEANER)
-  passwordHash String?
-  preferredLang String  @default("he")
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(uuid())
+  orgId         String
+  buildingId    String?
+  idNumber      String
+  name          String
+  email         String?
+  phone         String?
+  role          UserRole @default(CLEANER)
+  passwordHash  String?
+  preferredLang String   @default("he")
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  organization     Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  incidentActions  IncidentAction[]
+  organization      Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  building          Building?        @relation(fields: [buildingId], references: [id])
+  incidentActions   IncidentAction[]
   assignedIncidents Incident[]       @relation("AssignedCleaner")
 
   @@unique([orgId, idNumber])

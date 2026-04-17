@@ -34,6 +34,11 @@ export class UsersController {
     return this.usersService.toggleActive(id, dto.isActive);
   }
 
+  @Patch(':id/building')
+  assignBuilding(@Param('id') id: string, @Body() dto: { buildingId: string | null }) {
+    return this.usersService.assignBuilding(id, dto.buildingId);
+  }
+
   @Delete(':id')
   deleteUser(@Param('id') id: string) {
     return this.usersService.deleteUser(id);

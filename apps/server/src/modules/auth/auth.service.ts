@@ -31,7 +31,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findFirst({
       where,
-      include: { organization: true },
+      include: { organization: true, building: true },
     });
     if (!user) throw new UnauthorizedException('Cleaner not found');
 
@@ -83,7 +83,7 @@ export class AuthService {
   }
 
   private generateTokens(user: any) {
-    const payload = { sub: user.id, orgId: user.orgId, role: user.role };
+    const payload = { sub: user.id, orgId: user.orgId, role: user.role, buildingId: user.buildingId ?? null };
     const accessToken = this.jwt.sign(payload);
     const refreshToken = this.jwt.sign(payload, {
       secret: this.config.get('JWT_REFRESH_SECRET'),
@@ -100,6 +100,8 @@ export class AuthService {
         role: user.role,
         preferredLang: user.preferredLang,
         orgId: user.orgId,
+        buildingId: user.buildingId ?? null,
+        buildingName: user.building?.name ?? null,
       },
     };
   }

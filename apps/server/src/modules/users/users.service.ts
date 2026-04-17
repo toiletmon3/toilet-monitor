@@ -12,6 +12,8 @@ export class UsersService {
       select: {
         id: true, name: true, email: true, idNumber: true,
         role: true, phone: true, preferredLang: true, isActive: true, createdAt: true,
+        buildingId: true,
+        building: { select: { id: true, name: true } },
       },
       orderBy: { name: 'asc' },
     });
@@ -46,6 +48,14 @@ export class UsersService {
         role: (dto.role as any) ?? 'MANAGER',
       },
       select: { id: true, name: true, email: true, role: true },
+    });
+  }
+
+  async assignBuilding(userId: string, buildingId: string | null) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { buildingId },
+      select: { id: true, name: true, buildingId: true, building: { select: { id: true, name: true } } },
     });
   }
 

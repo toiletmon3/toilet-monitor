@@ -43,9 +43,14 @@ export class IncidentsController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
+    // Cleaners are automatically scoped to their assigned building
+    const effectiveBuildingId = user.role === 'CLEANER' && user.buildingId
+      ? user.buildingId
+      : buildingId;
+
     return this.incidentsService.findAll(user.orgId, {
       status,
-      buildingId,
+      buildingId: effectiveBuildingId,
       floorId,
       restroomId,
       from,
