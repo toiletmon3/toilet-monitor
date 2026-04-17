@@ -49,7 +49,7 @@ export default function KioskPage() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('online');
   const [pendingCount, setPendingCount] = useState(0);
   const [showCleanerMode, setShowCleanerMode] = useState(false);
-  const [stats] = useState({ weeklyUsers: 287, avgMinutes: 13 });
+  const [stats, setStats] = useState<{ weeklyReports: number; avgResponseMinutes: number | null } | null>(null);
   const lang = i18n.language as 'he' | 'en';
 
   // Load device info and issue types
@@ -67,6 +67,11 @@ export default function KioskPage() {
           const { data: btns } = await api.get(`/buildings/kiosk-buttons/${deviceCode}`);
           if (btns?.length) setKioskButtons(btns);
         } catch { /* use defaults */ }
+
+        // Fetch real kiosk stats
+        api.get(`/analytics/kiosk-stats/${device.restroom.id}`)
+          .then(r => setStats(r.data))
+          .catch(() => {});
 
         // Join WebSocket room for this restroom
         joinRestroom(device.restroom.id);
@@ -232,16 +237,20 @@ export default function KioskPage() {
         >
           {t('kiosk.title')}
         </h1>
-        <div className="flex gap-4 text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
-          <div className="flex items-center gap-1">
-            <span style={{ color: 'rgba(0,229,204,0.6)' }}>✦</span>
-            <span>{stats.weeklyUsers} {t('kiosk.weeklyUsers')}</span>
+        {stats && (
+          <div className="flex gap-4 text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            <div className="flex items-center gap-1">
+              <span style={{ color: 'rgba(0,229,204,0.6)' }}>✦</span>
+              <span>{stats.weeklyReports} {t('kiosk.weeklyUsers')}</span>
+            </div>
+            {stats.avgResponseMinutes !== null && (
+              <div className="flex items-center gap-1">
+                <span style={{ color: 'rgba(0,229,204,0.6)' }}>◷</span>
+                <span>{stats.avgResponseMinutes} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-1">
-            <span style={{ color: 'rgba(0,229,204,0.6)' }}>◷</span>
-            <span>{stats.avgMinutes} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Positive feedback — full width */}

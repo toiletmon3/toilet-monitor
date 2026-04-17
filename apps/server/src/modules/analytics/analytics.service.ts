@@ -111,6 +111,36 @@ export class AnalyticsService {
     });
   }
 
+  async getKioskStats(restroomId: string) {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [weeklyCount, resolvedWithTimes] = await Promise.all([
+      this.prisma.incident.count({
+        where: { restroomId, reportedAt: { gte: weekAgo } },
+      }),
+      this.prisma.incident.findMany({
+        where: {
+          restroomId,
+          status: 'RESOLVED',
+          acknowledgedAt: { not: null },
+          reportedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        },
+        select: { reportedAt: true, acknowledgedAt: true },
+      }),
+    ]);
+
+    const avgResponseMinutes = resolvedWithTimes.length > 0
+      ? resolvedWithTimes.reduce((sum, i) => {
+          return sum + (i.acknowledgedAt!.getTime() - i.reportedAt.getTime()) / 60000;
+        }, 0) / resolvedWithTimes.length
+      : null;
+
+    return {
+      weeklyReports: weeklyCount,
+      avgResponseMinutes: avgResponseMinutes !== null ? Math.round(avgResponseMinutes) : null,
+    };
+  }
+
   async getCleanerPerformance(orgId: string, days = 30) {
     const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const cleaners = await this.prisma.user.findMany({
