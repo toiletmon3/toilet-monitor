@@ -41,6 +41,7 @@ export class BuildingsController {
     return this.buildingsService.registerDevice(restroomId, dto.deviceCode);
   }
 
+
   @Public()
   @Patch('devices/:deviceCode/heartbeat')
   heartbeat(@Param('deviceCode') deviceCode: string) {

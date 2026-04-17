@@ -1,96 +1,461 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Plus, ChevronDown, ChevronRight, Building2, Layers2, DoorOpen, Tablet } from 'lucide-react';
 import api from '../../../lib/api';
 
-export default function AdminSettings() {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.language;
+// ─── tiny modal ────────────────────────────────────────────────────────────────
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+      <div className="w-full max-w-md rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.3)' }}>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-white">{title}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none">×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
-  const { data: structure } = useQuery({
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const inputCls = "w-full rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-cyan-400";
+const inputStyle = { background: '#0a0e1a', border: '1px solid rgba(255,255,255,0.1)' };
+const btnPrimary = "px-4 py-2 rounded-xl text-sm font-medium transition-all";
+const btnSecondary = "px-4 py-2 rounded-xl text-sm font-medium transition-all";
+
+// ─── modals ────────────────────────────────────────────────────────────────────
+function AddBuildingModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const { t } = useTranslation();
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const mut = useMutation({
+    mutationFn: () => api.post('/buildings', { name, address }),
+    onSuccess: onDone,
+  });
+  return (
+    <Modal title={t('admin.settings.addBuilding')} onClose={onClose}>
+      <Field label={t('admin.settings.buildingName')}>
+        <input className={inputCls} style={inputStyle} value={name} onChange={e => setName(e.target.value)} />
+      </Field>
+      <Field label={t('admin.settings.address')}>
+        <input className={inputCls} style={inputStyle} value={address} onChange={e => setAddress(e.target.value)} />
+      </Field>
+      <div className="flex gap-2 justify-end">
+        <button onClick={onClose} className={btnSecondary} style={{ background: 'rgba(255,255,255,0.05)', color: '#8a9bb0' }}>{t('common.cancel')}</button>
+        <button
+          onClick={() => mut.mutate()}
+          disabled={!name || mut.isPending}
+          className={btnPrimary}
+          style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
+        >
+          {mut.isPending ? '...' : t('common.save')}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function AddFloorModal({ buildingId, onClose, onDone }: { buildingId: string; onClose: () => void; onDone: () => void }) {
+  const { t } = useTranslation();
+  const [floorNumber, setFloorNumber] = useState('');
+  const [name, setName] = useState('');
+  const mut = useMutation({
+    mutationFn: () => api.post(`/buildings/${buildingId}/floors`, { floorNumber: Number(floorNumber), name }),
+    onSuccess: onDone,
+  });
+  return (
+    <Modal title={t('admin.settings.addFloor')} onClose={onClose}>
+      <Field label={t('admin.settings.floorNumber')}>
+        <input type="number" className={inputCls} style={inputStyle} value={floorNumber} onChange={e => setFloorNumber(e.target.value)} />
+      </Field>
+      <Field label={t('admin.settings.floorName')}>
+        <input className={inputCls} style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder={t('admin.settings.floorNamePlaceholder')} />
+      </Field>
+      <div className="flex gap-2 justify-end">
+        <button onClick={onClose} className={btnSecondary} style={{ background: 'rgba(255,255,255,0.05)', color: '#8a9bb0' }}>{t('common.cancel')}</button>
+        <button
+          onClick={() => mut.mutate()}
+          disabled={!floorNumber || !name || mut.isPending}
+          className={btnPrimary}
+          style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
+        >
+          {mut.isPending ? '...' : t('common.save')}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function AddRestroomModal({ floorId, onClose, onDone }: { floorId: string; onClose: () => void; onDone: () => void }) {
+  const { t } = useTranslation();
+  const [name, setName] = useState('');
+  const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'UNISEX'>('UNISEX');
+  const mut = useMutation({
+    mutationFn: () => api.post(`/buildings/floors/${floorId}/restrooms`, { name, gender }),
+    onSuccess: onDone,
+  });
+  return (
+    <Modal title={t('admin.settings.addRestroom')} onClose={onClose}>
+      <Field label={t('admin.settings.restroomName')}>
+        <input className={inputCls} style={inputStyle} value={name} onChange={e => setName(e.target.value)} />
+      </Field>
+      <Field label={t('admin.settings.gender')}>
+        <select
+          className={inputCls}
+          style={inputStyle}
+          value={gender}
+          onChange={e => setGender(e.target.value as any)}
+        >
+          <option value="MALE">🚹 {t('admin.settings.male')}</option>
+          <option value="FEMALE">🚺 {t('admin.settings.female')}</option>
+          <option value="UNISEX">🚻 {t('admin.settings.unisex')}</option>
+        </select>
+      </Field>
+      <div className="flex gap-2 justify-end">
+        <button onClick={onClose} className={btnSecondary} style={{ background: 'rgba(255,255,255,0.05)', color: '#8a9bb0' }}>{t('common.cancel')}</button>
+        <button
+          onClick={() => mut.mutate()}
+          disabled={!name || mut.isPending}
+          className={btnPrimary}
+          style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
+        >
+          {mut.isPending ? '...' : t('common.save')}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function RegisterDeviceModal({ restroomId, onClose, onDone }: { restroomId: string; onClose: () => void; onDone: () => void }) {
+  const { t } = useTranslation();
+  const [deviceCode, setDeviceCode] = useState('');
+  const mut = useMutation({
+    mutationFn: () => api.post(`/buildings/restrooms/${restroomId}/devices`, { deviceCode }),
+    onSuccess: onDone,
+  });
+  return (
+    <Modal title={t('admin.settings.registerDevice')} onClose={onClose}>
+      <Field label={t('admin.settings.deviceCode')}>
+        <input
+          className={inputCls}
+          style={inputStyle}
+          value={deviceCode}
+          onChange={e => setDeviceCode(e.target.value.toUpperCase())}
+          placeholder="KIOSK-F1-M"
+        />
+      </Field>
+      <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+        {t('admin.settings.deviceCodeHint')}
+      </p>
+      <div className="flex gap-2 justify-end">
+        <button onClick={onClose} className={btnSecondary} style={{ background: 'rgba(255,255,255,0.05)', color: '#8a9bb0' }}>{t('common.cancel')}</button>
+        <button
+          onClick={() => mut.mutate()}
+          disabled={!deviceCode || mut.isPending}
+          className={btnPrimary}
+          style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
+        >
+          {mut.isPending ? '...' : t('common.save')}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── tree nodes ────────────────────────────────────────────────────────────────
+function RestroomRow({ room, onDeviceAdded }: { room: any; onDeviceAdded: () => void }) {
+  const { t } = useTranslation();
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
+  const genderIcon = room.gender === 'MALE' ? '🚹' : room.gender === 'FEMALE' ? '🚺' : '🚻';
+
+  return (
+    <div className="flex items-center justify-between py-2 px-3 rounded-xl" style={{ background: 'rgba(0,0,0,0.2)' }}>
+      <div className="flex items-center gap-2">
+        <span>{genderIcon}</span>
+        <span className="text-sm text-white">{room.name}</span>
+        <div className="flex items-center gap-1 ml-2">
+          {(room.devices ?? []).map((d: any) => (
+            <div key={d.id} className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-mono" style={{ background: 'rgba(255,255,255,0.05)', color: '#8a9bb0' }}>
+              <span className={`w-1.5 h-1.5 rounded-full ${d.isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
+              {d.deviceCode}
+            </div>
+          ))}
+        </div>
+      </div>
+      <button
+        onClick={() => setShowDeviceModal(true)}
+        className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all"
+        style={{ background: 'rgba(0,229,204,0.08)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-accent)' }}
+        title={t('admin.settings.registerDevice')}
+      >
+        <Tablet size={12} />
+        <span>{t('admin.settings.addDevice')}</span>
+      </button>
+      {showDeviceModal && (
+        <RegisterDeviceModal
+          restroomId={room.id}
+          onClose={() => setShowDeviceModal(false)}
+          onDone={() => { setShowDeviceModal(false); onDeviceAdded(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function FloorRow({ floor, onRestroomAdded }: { floor: any; onRestroomAdded: () => void }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <button onClick={() => setOpen(o => !o)} className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
+          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          <Layers2 size={14} />
+          {floor.name}
+          <span className="text-xs px-1.5 py-0.5 rounded-full ml-1" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
+            {(floor.restrooms ?? []).length}
+          </span>
+        </button>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all"
+          style={{ background: 'rgba(0,229,204,0.08)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-accent)' }}
+        >
+          <Plus size={12} />
+          <span>{t('admin.settings.addRestroom')}</span>
+        </button>
+      </div>
+      {open && (
+        <div className="ml-4 flex flex-col gap-1.5">
+          {(floor.restrooms ?? []).map((room: any) => (
+            <RestroomRow key={room.id} room={room} onDeviceAdded={onRestroomAdded} />
+          ))}
+          {(floor.restrooms ?? []).length === 0 && (
+            <p className="text-xs pl-2" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.noRestrooms')}</p>
+          )}
+        </div>
+      )}
+      {showModal && (
+        <AddRestroomModal
+          floorId={floor.id}
+          onClose={() => setShowModal(false)}
+          onDone={() => { setShowModal(false); onRestroomAdded(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function BuildingCard({ building, onRefresh }: { building: any; onRefresh: () => void }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(true);
+  const [showFloorModal, setShowFloorModal] = useState(false);
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+      {/* header */}
+      <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(0,229,204,0.1)' }}>
+        <button onClick={() => setOpen(o => !o)} className="flex items-center gap-3 min-w-0">
+          {open ? <ChevronDown size={16} style={{ color: 'var(--color-accent)' }} /> : <ChevronRight size={16} style={{ color: 'var(--color-accent)' }} />}
+          <Building2 size={18} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
+          <div className="min-w-0 text-left">
+            <div className="font-semibold text-white truncate">{building.name}</div>
+            {building.address && (
+              <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>{building.address}</div>
+            )}
+          </div>
+        </button>
+        <button
+          onClick={() => setShowFloorModal(true)}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm transition-all flex-shrink-0"
+          style={{ background: 'rgba(0,229,204,0.1)', border: '1px solid rgba(0,229,204,0.3)', color: 'var(--color-accent)' }}
+        >
+          <Plus size={14} />
+          {t('admin.settings.addFloor')}
+        </button>
+      </div>
+
+      {/* floors */}
+      {open && (
+        <div className="flex flex-col gap-3 p-5">
+          {(building.floors ?? []).map((floor: any) => (
+            <FloorRow key={floor.id} floor={floor} onRestroomAdded={onRefresh} />
+          ))}
+          {(building.floors ?? []).length === 0 && (
+            <p className="text-sm text-center py-2" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.noFloors')}</p>
+          )}
+        </div>
+      )}
+
+      {showFloorModal && (
+        <AddFloorModal
+          buildingId={building.id}
+          onClose={() => setShowFloorModal(false)}
+          onDone={() => { setShowFloorModal(false); onRefresh(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── devices panel ─────────────────────────────────────────────────────────────
+function DevicesPanel({ structure }: { structure: any[] }) {
+  const { t } = useTranslation();
+  const devices = structure.flatMap((b: any) =>
+    (b.floors ?? []).flatMap((f: any) =>
+      (f.restrooms ?? []).flatMap((r: any) =>
+        (r.devices ?? []).map((d: any) => ({
+          ...d,
+          restroomName: r.name,
+          floorName: f.name,
+          buildingName: b.name,
+        }))
+      )
+    )
+  );
+
+  if (devices.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+      <div className="px-5 py-4 font-semibold text-white" style={{ borderBottom: '1px solid rgba(0,229,204,0.1)' }}>
+        <div className="flex items-center gap-2">
+          <Tablet size={16} style={{ color: 'var(--color-accent)' }} />
+          {t('admin.devices.title')}
+        </div>
+      </div>
+      <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+        {devices.map((d: any) => (
+          <div key={d.id} className="flex items-center justify-between px-5 py-3">
+            <div>
+              <div className="text-sm font-medium text-white font-mono">{d.deviceCode}</div>
+              <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                {d.buildingName} › {d.floorName} › {d.restroomName}
+              </div>
+              {d.lastHeartbeat && (
+                <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+                  {t('admin.devices.lastSeen')}: {new Date(d.lastHeartbeat).toLocaleString()}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${d.isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
+              <span className="text-sm" style={{ color: d.isOnline ? '#22c55e' : '#ef4444' }}>
+                {d.isOnline ? t('admin.devices.online') : t('admin.devices.offline')}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── main page ─────────────────────────────────────────────────────────────────
+export default function AdminSettings() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [showBuildingModal, setShowBuildingModal] = useState(false);
+
+  const { data: structure = [], isLoading } = useQuery({
     queryKey: ['building-structure'],
     queryFn: async () => (await api.get('/buildings/structure')).data,
+    refetchInterval: 30_000,
   });
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['building-structure'] });
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-2xl font-bold text-white">{t('admin.nav.settings')}</h1>
-
-      {/* Building structure */}
-      <div className="rounded-2xl p-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-        <h2 className="font-semibold text-white mb-4">{lang === 'he' ? 'מבנה' : 'Building Structure'}</h2>
-        <div className="flex flex-col gap-3">
-          {(structure ?? []).map((building: any) => (
-            <div key={building.id}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">🏢</span>
-                <span className="font-medium text-white">{building.name}</span>
-                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{building.address}</span>
-              </div>
-              <div className="ml-6 flex flex-col gap-2">
-                {(building.floors ?? []).map((floor: any) => (
-                  <div key={floor.id} className="rounded-xl p-3" style={{ background: '#0a0e1a', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div className="text-sm font-medium mb-2" style={{ color: 'var(--color-accent)' }}>{floor.name}</div>
-                    <div className="flex flex-wrap gap-2">
-                      {(floor.restrooms ?? []).map((room: any) => (
-                        <div
-                          key={room.id}
-                          className="text-xs px-3 py-1.5 rounded-lg flex items-center gap-2"
-                          style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}
-                        >
-                          <span>{room.gender === 'MALE' ? '🚹' : room.gender === 'FEMALE' ? '🚺' : '🚻'}</span>
-                          <span className="text-white">{room.name}</span>
-                          <div className="flex items-center gap-1">
-                            {(room.devices ?? []).map((d: any) => (
-                              <span
-                                key={d.id}
-                                className="w-2 h-2 rounded-full"
-                                style={{ background: d.isOnline ? '#22c55e' : '#ef4444' }}
-                                title={d.deviceCode}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-          {(!structure || structure.length === 0) && (
-            <div className="text-center py-4" style={{ color: 'var(--color-text-secondary)' }}>
-              {lang === 'he' ? 'אין מבנים' : 'No buildings configured'}
-            </div>
-          )}
-        </div>
+      {/* page header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-white">{t('admin.nav.settings')}</h1>
+        <button
+          onClick={() => setShowBuildingModal(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
+          style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
+        >
+          <Plus size={16} />
+          {t('admin.settings.addBuilding')}
+        </button>
       </div>
 
-      {/* Device info */}
+      {/* buildings */}
+      {isLoading ? (
+        <div className="text-center py-12" style={{ color: 'var(--color-text-secondary)' }}>{t('common.loading')}</div>
+      ) : structure.length === 0 ? (
+        <div
+          className="rounded-2xl flex flex-col items-center justify-center py-16 gap-4"
+          style={{ background: 'var(--color-card)', border: '2px dashed rgba(0,229,204,0.2)' }}
+        >
+          <Building2 size={48} style={{ color: 'rgba(0,229,204,0.3)' }} />
+          <div className="text-center">
+            <div className="font-medium text-white mb-1">{t('admin.settings.noBuildings')}</div>
+            <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.addFirstBuilding')}</div>
+          </div>
+          <button
+            onClick={() => setShowBuildingModal(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
+            style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
+          >
+            <Plus size={16} />
+            {t('admin.settings.addBuilding')}
+          </button>
+        </div>
+      ) : (
+        structure.map((b: any) => (
+          <BuildingCard key={b.id} building={b} onRefresh={refresh} />
+        ))
+      )}
+
+      {/* devices overview */}
+      {structure.length > 0 && <DevicesPanel structure={structure} />}
+
+      {/* kiosk URL guide */}
       <div className="rounded-2xl p-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-        <h2 className="font-semibold text-white mb-3">{t('admin.devices.title')}</h2>
+        <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
+          <DoorOpen size={16} style={{ color: 'var(--color-accent)' }} />
+          {t('admin.settings.kioskUrls')}
+        </h2>
         <div className="flex flex-col gap-2">
-          {(structure ?? []).flatMap((b: any) =>
+          {structure.flatMap((b: any) =>
             (b.floors ?? []).flatMap((f: any) =>
               (f.restrooms ?? []).flatMap((r: any) =>
                 (r.devices ?? []).map((d: any) => (
-                  <div key={d.id} className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                    <div>
-                      <div className="text-sm font-medium text-white font-mono">{d.deviceCode}</div>
-                      <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{r.name}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${d.isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
-                      <span className="text-xs" style={{ color: d.isOnline ? '#22c55e' : '#ef4444' }}>
-                        {d.isOnline ? t('admin.devices.online') : t('admin.devices.offline')}
-                      </span>
-                    </div>
+                  <div key={d.id} className="flex items-center justify-between py-2 px-3 rounded-xl text-sm" style={{ background: '#0a0e1a' }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>{b.name} › {f.name} › {r.name}</span>
+                    <code className="font-mono text-xs px-2 py-1 rounded-lg" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
+                      /kiosk/{d.deviceCode}
+                    </code>
                   </div>
                 ))
               )
             )
           )}
+          {structure.flatMap((b: any) => (b.floors ?? []).flatMap((f: any) => (f.restrooms ?? []).flatMap((r: any) => r.devices ?? []))).length === 0 && (
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.noDevicesYet')}</p>
+          )}
         </div>
       </div>
+
+      {showBuildingModal && (
+        <AddBuildingModal
+          onClose={() => setShowBuildingModal(false)}
+          onDone={() => { setShowBuildingModal(false); refresh(); }}
+        />
+      )}
     </div>
   );
 }

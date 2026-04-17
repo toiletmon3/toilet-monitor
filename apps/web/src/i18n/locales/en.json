@@ -104,6 +104,31 @@
       "online": "Online",
       "offline": "Offline",
       "lastSeen": "Last Seen"
+    },
+    "settings": {
+      "addBuilding": "Add Building",
+      "buildingName": "Building Name",
+      "address": "Address",
+      "addFloor": "Add Floor",
+      "floorNumber": "Floor Number",
+      "floorName": "Floor Name",
+      "floorNamePlaceholder": "Floor 1",
+      "addRestroom": "Add Restroom",
+      "restroomName": "Name",
+      "gender": "Type",
+      "male": "Male",
+      "female": "Female",
+      "unisex": "Unisex",
+      "registerDevice": "Register Tablet",
+      "addDevice": "Tablet",
+      "deviceCode": "Device Code",
+      "deviceCodeHint": "This is the code used in the kiosk URL",
+      "noBuildings": "No buildings yet",
+      "addFirstBuilding": "Add your first building to get started",
+      "noFloors": "No floors. Add a floor to get started.",
+      "noRestrooms": "No restrooms on this floor",
+      "kioskUrls": "Kiosk URLs",
+      "noDevicesYet": "No devices registered yet"
     }
   },
   "common": {

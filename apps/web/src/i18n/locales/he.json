@@ -104,6 +104,31 @@
       "online": "מחובר",
       "offline": "מנותק",
       "lastSeen": "נראה לאחרונה"
+    },
+    "settings": {
+      "addBuilding": "הוסף בניין",
+      "buildingName": "שם הבניין",
+      "address": "כתובת",
+      "addFloor": "הוסף קומה",
+      "floorNumber": "מספר קומה",
+      "floorName": "שם הקומה",
+      "floorNamePlaceholder": "קומה 1",
+      "addRestroom": "הוסף שירותים",
+      "restroomName": "שם",
+      "gender": "סוג",
+      "male": "גברים",
+      "female": "נשים",
+      "unisex": "מעורב",
+      "registerDevice": "רשום טאבלט",
+      "addDevice": "טאבלט",
+      "deviceCode": "קוד מכשיר",
+      "deviceCodeHint": "זהו הקוד שמוזן בכתובת URL של הקיוסק",
+      "noBuildings": "אין בניינים",
+      "addFirstBuilding": "הוסף את הבניין הראשון כדי להתחיל",
+      "noFloors": "אין קומות. הוסף קומה כדי להתחיל.",
+      "noRestrooms": "אין שירותים בקומה זו",
+      "kioskUrls": "כתובות URL לקיוסק",
+      "noDevicesYet": "אין מכשירים רשומים עדיין"
     }
   },
   "common": {
