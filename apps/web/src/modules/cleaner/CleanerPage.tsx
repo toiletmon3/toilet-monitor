@@ -56,11 +56,16 @@ export default function CleanerPage() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['cleaner-incidents', filterFloorId, filterRestroomId],
     queryFn: async () => {
-      const params: any = { status: 'OPEN', limit: 50 };
-      if (filterFloorId) params.floorId = filterFloorId;
-      if (filterRestroomId) params.restroomId = filterRestroomId;
-      const { data } = await api.get('/incidents', { params });
-      return data;
+      // fetch OPEN + IN_PROGRESS so accepted tasks stay visible
+      const [open, inProgress] = await Promise.all([
+        api.get('/incidents', { params: { status: 'OPEN',        limit: 50, ...(filterFloorId && { floorId: filterFloorId }), ...(filterRestroomId && { restroomId: filterRestroomId }) } }),
+        api.get('/incidents', { params: { status: 'IN_PROGRESS', limit: 50, ...(filterFloorId && { floorId: filterFloorId }), ...(filterRestroomId && { restroomId: filterRestroomId }) } }),
+      ]);
+      const items = [
+        ...(inProgress.data.items ?? []),  // IN_PROGRESS first (I already accepted them)
+        ...(open.data.items ?? []),
+      ];
+      return { items, total: items.length };
     },
     refetchInterval: 30_000,
   });
@@ -246,12 +251,16 @@ export default function CleanerPage() {
             inc.restroom?.floor?.name,
             inc.restroom?.name,
           ].filter(Boolean).join(' › ');
+          const inProgress = inc.status === 'IN_PROGRESS';
 
           return (
             <div
               key={inc.id}
               className="rounded-2xl p-4 flex flex-col gap-3"
-              style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.2)' }}
+              style={{
+                background: inProgress ? 'rgba(245,158,11,0.06)' : 'var(--color-card)',
+                border: `1px solid ${inProgress ? 'rgba(245,158,11,0.35)' : 'rgba(0,229,204,0.2)'}`,
+              }}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -266,16 +275,17 @@ export default function CleanerPage() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full font-medium"
-                    style={{
-                      background: `${STATUS_COLORS[inc.status]}22`,
-                      color: STATUS_COLORS[inc.status],
-                      border: `1px solid ${STATUS_COLORS[inc.status]}44`,
-                    }}
-                  >
-                    {t(`cleaner.status.${inc.status}`)}
-                  </span>
+                  {inProgress ? (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold animate-pulse"
+                      style={{ background: 'rgba(245,158,11,0.2)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.5)' }}>
+                      {lang === 'he' ? '⚙ בטיפולי' : '⚙ In progress'}
+                    </span>
+                  ) : (
+                    <span className="text-xs px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
+                      {lang === 'he' ? '● חדש' : '● New'}
+                    </span>
+                  )}
                   <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                     {timeAgo(inc.reportedAt, lang)}
                   </span>
@@ -289,18 +299,16 @@ export default function CleanerPage() {
                     className="flex-1 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
                     style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}
                   >
-                    {t('cleaner.actions.accept')}
+                    {lang === 'he' ? '👋 קיבלתי — בדרך' : '👋 On my way'}
                   </button>
                 )}
-                {(inc.status === 'OPEN' || inc.status === 'IN_PROGRESS') && (
-                  <button
-                    onClick={() => handleResolve(inc.id)}
-                    className="flex-1 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
-                    style={{ background: 'rgba(0,229,204,0.15)', color: 'var(--color-accent)', border: '1px solid rgba(0,229,204,0.4)' }}
-                  >
-                    ✓ {t('cleaner.actions.resolve')}
-                  </button>
-                )}
+                <button
+                  onClick={() => handleResolve(inc.id)}
+                  className="flex-1 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
+                  style={{ background: 'rgba(0,229,204,0.15)', color: 'var(--color-accent)', border: '1px solid rgba(0,229,204,0.4)' }}
+                >
+                  {lang === 'he' ? '✓ סיימתי לטפל' : '✓ Done'}
+                </button>
               </div>
             </div>
           );
