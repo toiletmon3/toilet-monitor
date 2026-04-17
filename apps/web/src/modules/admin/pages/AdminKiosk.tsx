@@ -46,7 +46,6 @@ function ButtonEditor({ btn, onChange }: { btn: any; onChange: (b: any) => void 
 }
 
 function TemplateCard({ template, buildings, onRefresh }: { template: any; buildings: any[]; onRefresh: () => void }) {
-  const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(template.name);
   const [buttons, setButtons] = useState<any[]>(template.buttons ?? []);
