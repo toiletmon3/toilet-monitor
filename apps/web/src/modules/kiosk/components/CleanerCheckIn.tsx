@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../../../lib/api';
 import { ArrowRight } from 'lucide-react';
+
+const AUTO_CLOSE_SEC = 20;
 
 interface Props {
   restroomId: string;
@@ -16,6 +18,22 @@ export default function CleanerCheckIn({ restroomId, onBack }: Props) {
   const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [countdown, setCountdown] = useState(AUTO_CLOSE_SEC);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Reset countdown on any user interaction
+  const resetCountdown = () => setCountdown(AUTO_CLOSE_SEC);
+
+  // Countdown timer — auto-close after AUTO_CLOSE_SEC seconds of inactivity
+  useEffect(() => {
+    timerRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) { onBack(); return AUTO_CLOSE_SEC; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerRef.current!);
+  }, [onBack]);
 
   const NUMPAD = ['1','2','3','4','5','6','7','8','9','←','0','✓'];
 
@@ -65,6 +83,7 @@ export default function CleanerCheckIn({ restroomId, onBack }: Props) {
   };
 
   const handleNumpad = (key: string) => {
+    resetCountdown();
     if (key === '←') setIdNumber(v => v.slice(0, -1));
     else if (key === '✓') handleLogin();
     else if (idNumber.length < 9) setIdNumber(v => v + key);
@@ -76,7 +95,12 @@ export default function CleanerCheckIn({ restroomId, onBack }: Props) {
 
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-5 pb-3">
-        <button onClick={step === 'action' || step === 'arrived' ? () => { setStep('login'); setIdNumber(''); setError(''); } : onBack}
+        <button
+          onClick={() => {
+            resetCountdown();
+            if (step === 'action' || step === 'arrived') { setStep('login'); setIdNumber(''); setError(''); }
+            else onBack();
+          }}
           className="flex items-center gap-2 text-sm px-3 py-2 rounded-xl"
           style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)' }}>
           <ArrowRight size={15} />
@@ -84,6 +108,16 @@ export default function CleanerCheckIn({ restroomId, onBack }: Props) {
         </button>
         <div className="text-sm font-semibold" style={{ color: 'var(--color-accent)' }}>
           🧹 כניסת צוות
+        </div>
+        {/* Countdown badge */}
+        <div className="text-xs px-2.5 py-1 rounded-full tabular-nums"
+          style={{
+            background: countdown <= 5 ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)',
+            color: countdown <= 5 ? '#f87171' : 'rgba(255,255,255,0.35)',
+            border: `1px solid ${countdown <= 5 ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.1)'}`,
+            transition: 'all 0.3s',
+          }}>
+          {countdown}s
         </div>
       </div>
 
