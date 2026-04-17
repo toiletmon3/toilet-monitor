@@ -33,8 +33,8 @@ export default function AdminLayout() {
     <div className="min-h-screen flex" style={{ background: 'var(--color-bg)' }}>
       {/* Sidebar */}
       <aside
-        className="w-56 flex flex-col py-6 px-3 fixed h-full"
-        style={{ background: 'var(--color-surface)', borderRight: '1px solid rgba(0,229,204,0.1)' }}
+        className="w-56 flex flex-col py-6 px-3 fixed h-full top-0 start-0"
+        style={{ background: 'var(--color-surface)', borderInlineEnd: '1px solid rgba(0,229,204,0.1)' }}
       >
         {/* Brand */}
         <div className="px-3 mb-8">
@@ -90,7 +90,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main content */}
-      <main className="ml-56 flex-1 p-6 overflow-auto">
+      <main className="ms-56 flex-1 p-6 overflow-auto">
         <Outlet />
       </main>
     </div>
