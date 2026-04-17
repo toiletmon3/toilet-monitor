@@ -56,7 +56,6 @@ export class AnalyticsService {
         restroom: { floor: { building: { orgId } } },
         reportedAt: { gte: from },
       },
-      include: { issueType: true },
       select: { issueTypeId: true, issueType: true, reportedAt: true, resolvedAt: true },
     });
 
