@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { setLanguage } from '../../i18n';
@@ -49,8 +49,6 @@ export default function KioskPage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [showCleanerMode, setShowCleanerMode] = useState(false);
   const [stats] = useState({ weeklyUsers: 287, avgMinutes: 13 });
-  const cornerTapCount = useRef(0);
-  const cornerTapTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lang = i18n.language as 'he' | 'en';
 
   // Load device info and issue types
