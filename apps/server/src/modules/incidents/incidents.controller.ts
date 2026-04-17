@@ -69,6 +69,15 @@ export class IncidentsController {
   }
 
   @Public()
+  @Patch(':id/return')
+  returnToQueue(
+    @Param('id') id: string,
+    @Body() body: { cleanerIdNumber: string },
+  ) {
+    return this.incidentsService.returnToQueue(id, body.cleanerIdNumber);
+  }
+
+  @Public()
   @Patch(':id/acknowledge')
   acknowledge(
     @Param('id') id: string,

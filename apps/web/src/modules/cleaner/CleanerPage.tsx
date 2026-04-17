@@ -7,6 +7,65 @@ import api from '../../lib/api';
 import { getSocket, joinOrg } from '../../lib/socket';
 import toast from 'react-hot-toast';
 
+function IncidentCard({ inc, lang, onAccept, onResolve, onReturn }: {
+  inc: any; lang: string;
+  onAccept?: () => void;
+  onResolve: () => void;
+  onReturn?: () => void;
+}) {
+  const location = [
+    inc.restroom?.floor?.building?.name,
+    inc.restroom?.floor?.name,
+    inc.restroom?.name,
+  ].filter(Boolean).join(' › ');
+  const isInProgress = inc.status === 'IN_PROGRESS';
+
+  return (
+    <div className="rounded-2xl p-4 flex flex-col gap-3"
+      style={{
+        background: isInProgress ? 'rgba(245,158,11,0.06)' : 'var(--color-card)',
+        border: `1px solid ${isInProgress ? 'rgba(245,158,11,0.3)' : 'rgba(0,229,204,0.18)'}`,
+      }}>
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">{inc.issueType?.icon ?? '📋'}</span>
+          <div>
+            <div className="font-semibold" style={{ color: 'var(--color-text)' }}>
+              {inc.issueType?.nameI18n?.[lang] ?? inc.issueType?.nameI18n?.he}
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>📍 {location}</div>
+          </div>
+        </div>
+        <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+          {timeAgo(inc.reportedAt, lang)}
+        </span>
+      </div>
+
+      <div className="flex gap-2">
+        {onAccept && (
+          <button onClick={onAccept}
+            className="flex-1 py-2.5 rounded-xl text-sm font-medium active:scale-95 transition-all"
+            style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}>
+            👋 {lang === 'he' ? 'לוקח — בדרך' : 'On my way'}
+          </button>
+        )}
+        {onReturn && (
+          <button onClick={onReturn}
+            className="py-2.5 px-3 rounded-xl text-sm active:scale-95 transition-all"
+            style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}>
+            {lang === 'he' ? '↩ החזר' : '↩ Return'}
+          </button>
+        )}
+        <button onClick={onResolve}
+          className="flex-1 py-2.5 rounded-xl text-sm font-medium active:scale-95 transition-all"
+          style={{ background: 'rgba(0,229,204,0.15)', color: 'var(--color-accent)', border: '1px solid rgba(0,229,204,0.4)' }}>
+          ✓ {lang === 'he' ? 'סיימתי' : 'Done'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function timeAgo(date: string, lang: string) {
   const diff = Math.floor((Date.now() - new Date(date).getTime()) / 60000);
   if (diff < 1) return lang === 'he' ? 'עכשיו' : 'just now';
@@ -66,16 +125,19 @@ export default function CleanerPage() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['cleaner-incidents', filterFloorId, filterRestroomId],
     queryFn: async () => {
-      // fetch OPEN + IN_PROGRESS so accepted tasks stay visible
+      const params = {
+        ...(filterFloorId && { floorId: filterFloorId }),
+        ...(filterRestroomId && { restroomId: filterRestroomId }),
+        limit: 50,
+      };
       const [open, inProgress] = await Promise.all([
-        api.get('/incidents', { params: { status: 'OPEN',        limit: 50, ...(filterFloorId && { floorId: filterFloorId }), ...(filterRestroomId && { restroomId: filterRestroomId }) } }),
-        api.get('/incidents', { params: { status: 'IN_PROGRESS', limit: 50, ...(filterFloorId && { floorId: filterFloorId }), ...(filterRestroomId && { restroomId: filterRestroomId }) } }),
+        api.get('/incidents', { params: { ...params, status: 'OPEN' } }),
+        api.get('/incidents', { params: { ...params, status: 'IN_PROGRESS' } }),
       ]);
-      const items = [
-        ...(inProgress.data.items ?? []),  // IN_PROGRESS first (I already accepted them)
-        ...(open.data.items ?? []),
-      ];
-      return { items, total: items.length };
+      return {
+        open: open.data.items ?? [],
+        inProgress: inProgress.data.items ?? [],
+      };
     },
     refetchInterval: 30_000,
   });
@@ -107,6 +169,12 @@ export default function CleanerPage() {
     toast.success(lang === 'he' ? 'טופל בהצלחה ✅' : 'Resolved ✅');
   };
 
+  const handleReturn = async (incidentId: string) => {
+    await api.patch(`/incidents/${incidentId}/return`, { cleanerIdNumber: user.idNumber });
+    queryClient.invalidateQueries({ queryKey: ['cleaner-incidents'] });
+    toast(lang === 'he' ? 'הוחזר לתור' : 'Returned to queue');
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
@@ -114,7 +182,8 @@ export default function CleanerPage() {
     navigate('/cleaner/login');
   };
 
-  const incidents = data?.items ?? [];
+  const openIncidents = data?.open ?? [];
+  const myIncidents = data?.inProgress ?? [];
 
   const activeFiltersLabel = useMemo(() => {
     const parts: string[] = [];
@@ -246,88 +315,53 @@ export default function CleanerPage() {
       )}
 
       {/* Task list */}
-      <div className="flex-1 px-4 py-4 flex flex-col gap-3">
+      <div className="flex-1 px-4 py-3 flex flex-col gap-4 overflow-y-auto">
         {isLoading && (
-          <div className="flex-1 flex items-center justify-center" style={{ color: 'var(--color-text-secondary)' }}>
+          <div className="flex-1 flex items-center justify-center pt-16" style={{ color: 'var(--color-text-secondary)' }}>
             {t('common.loading')}
           </div>
         )}
 
-        {!isLoading && incidents.length === 0 && (
+        {!isLoading && myIncidents.length === 0 && openIncidents.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center pt-16">
             <div className="text-5xl">✅</div>
             <p style={{ color: 'var(--color-text-secondary)' }}>{t('cleaner.noTasks')}</p>
           </div>
         )}
 
-        {incidents.map((inc: any) => {
-          const location = [
-            inc.restroom?.floor?.building?.name,
-            inc.restroom?.floor?.name,
-            inc.restroom?.name,
-          ].filter(Boolean).join(' › ');
-          const inProgress = inc.status === 'IN_PROGRESS';
-
-          return (
-            <div
-              key={inc.id}
-              className="rounded-2xl p-4 flex flex-col gap-3"
-              style={{
-                background: inProgress ? 'rgba(245,158,11,0.06)' : 'var(--color-card)',
-                border: `1px solid ${inProgress ? 'rgba(245,158,11,0.35)' : 'rgba(0,229,204,0.2)'}`,
-              }}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">{inc.issueType?.icon ?? '📋'}</span>
-                  <div>
-                    <div className="font-semibold" style={{ color: 'var(--color-text)' }}>
-                      {inc.issueType?.nameI18n?.[lang] ?? inc.issueType?.nameI18n?.he}
-                    </div>
-                    <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-                      📍 {location}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  {inProgress ? (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold animate-pulse"
-                      style={{ background: 'rgba(245,158,11,0.2)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.5)' }}>
-                      {lang === 'he' ? '⚙ בטיפולי' : '⚙ In progress'}
-                    </span>
-                  ) : (
-                    <span className="text-xs px-2 py-0.5 rounded-full"
-                      style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
-                      {lang === 'he' ? '● חדש' : '● New'}
-                    </span>
-                  )}
-                  <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                    {timeAgo(inc.reportedAt, lang)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                {inc.status === 'OPEN' && (
-                  <button
-                    onClick={() => handleAccept(inc.id)}
-                    className="flex-1 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
-                    style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}
-                  >
-                    {lang === 'he' ? '👋 קיבלתי — בדרך' : '👋 On my way'}
-                  </button>
-                )}
-                <button
-                  onClick={() => handleResolve(inc.id)}
-                  className="flex-1 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
-                  style={{ background: 'rgba(0,229,204,0.15)', color: 'var(--color-accent)', border: '1px solid rgba(0,229,204,0.4)' }}
-                >
-                  {lang === 'he' ? '✓ סיימתי לטפל' : '✓ Done'}
-                </button>
-              </div>
+        {/* ── Section: In Progress (mine) ── */}
+        {!isLoading && myIncidents.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 px-1">
+              <span className="text-xs font-bold tracking-wide" style={{ color: '#f59e0b' }}>
+                ⚙ בטיפולי ({myIncidents.length})
+              </span>
+              <div className="flex-1 h-px" style={{ background: 'rgba(245,158,11,0.25)' }} />
             </div>
-          );
-        })}
+            {myIncidents.map((inc: any) => (
+              <IncidentCard key={inc.id} inc={inc} lang={lang}
+                onResolve={() => handleResolve(inc.id)}
+                onReturn={() => handleReturn(inc.id)} />
+            ))}
+          </div>
+        )}
+
+        {/* ── Section: Open (queue) ── */}
+        {!isLoading && openIncidents.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 px-1">
+              <span className="text-xs font-bold tracking-wide" style={{ color: '#ef4444' }}>
+                📋 ממתינות לטיפול ({openIncidents.length})
+              </span>
+              <div className="flex-1 h-px" style={{ background: 'rgba(239,68,68,0.2)' }} />
+            </div>
+            {openIncidents.map((inc: any) => (
+              <IncidentCard key={inc.id} inc={inc} lang={lang}
+                onAccept={() => handleAccept(inc.id)}
+                onResolve={() => handleResolve(inc.id)} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

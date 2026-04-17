@@ -217,6 +217,34 @@ export class IncidentsService {
     return incident;
   }
 
+  async returnToQueue(incidentId: string, cleanerIdNumber: string) {
+    const cleaner = await this.prisma.user.findFirst({
+      where: { idNumber: cleanerIdNumber, isActive: true },
+    });
+
+    const incident = await this.prisma.incident.update({
+      where: { id: incidentId },
+      data: {
+        status: 'OPEN',
+        acknowledgedAt: null,
+        assignedCleanerId: null,
+        actions: {
+          create: {
+            actionType: 'ESCALATED',
+            userId: cleaner?.id,
+            notes: 'הוחזר לתור',
+            performedAt: new Date(),
+          },
+        },
+      },
+      include: INCIDENT_INCLUDE,
+    });
+
+    const orgId = incident.restroom.floor.building.orgId;
+    this.events.broadcastToOrg(orgId, 'incident:updated', incident);
+    return incident;
+  }
+
   async adminUpdate(incidentId: string, adminUserId: string, dto: { status?: string; assignedCleanerId?: string; note?: string }) {
     const data: any = {};
     if (dto.status) {
