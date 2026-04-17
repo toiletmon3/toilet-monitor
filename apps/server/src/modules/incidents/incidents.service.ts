@@ -215,6 +215,35 @@ export class IncidentsService {
     return incident;
   }
 
+  async adminUpdate(incidentId: string, adminUserId: string, dto: { status?: string; assignedCleanerId?: string; note?: string }) {
+    const data: any = {};
+    if (dto.status) {
+      data.status = dto.status;
+      if (dto.status === 'IN_PROGRESS') data.acknowledgedAt = new Date();
+      if (dto.status === 'RESOLVED') data.resolvedAt = new Date();
+    }
+    if (dto.assignedCleanerId) data.assignedCleanerId = dto.assignedCleanerId;
+
+    data.actions = {
+      create: {
+        actionType: 'ACKNOWLEDGED',
+        userId: adminUserId,
+        notes: dto.note,
+        performedAt: new Date(),
+      },
+    };
+
+    const incident = await this.prisma.incident.update({
+      where: { id: incidentId },
+      data,
+      include: INCIDENT_INCLUDE,
+    });
+
+    const orgId = incident.restroom.floor.building.orgId;
+    this.events.broadcastToOrg(orgId, 'incident:updated', incident);
+    return incident;
+  }
+
   async resolve(incidentId: string, cleanerIdNumber: string, notes?: string) {
     const cleaner = await this.prisma.user.findFirst({
       where: { idNumber: cleanerIdNumber, isActive: true },

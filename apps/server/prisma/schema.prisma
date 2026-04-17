@@ -19,9 +19,10 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  buildings  Building[]
-  users      User[]
-  issueTypes IssueType[]
+  buildings       Building[]
+  users           User[]
+  issueTypes      IssueType[]
+  kioskTemplates  KioskTemplate[]
 
   @@map("organizations")
 }
@@ -30,16 +31,31 @@ model Organization {
 // LOCATION HIERARCHY
 // =============================================
 
-model Building {
+model KioskTemplate {
   id        String  @id @default(uuid())
   orgId     String
   name      String
-  address   String  @default("")
-  latitude  Float?
-  longitude Float?
+  isDefault Boolean @default(false)
+  buttons   Json
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  floors       Floor[]
+  buildings    Building[]
+
+  @@map("kiosk_templates")
+}
+
+model Building {
+  id               String  @id @default(uuid())
+  orgId            String
+  name             String
+  address          String  @default("")
+  latitude         Float?
+  longitude        Float?
+  kioskTemplateId  String?
+
+  organization  Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  kioskTemplate KioskTemplate? @relation(fields: [kioskTemplateId], references: [id])
+  floors        Floor[]
 
   @@map("buildings")
 }

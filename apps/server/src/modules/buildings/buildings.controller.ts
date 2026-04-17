@@ -84,6 +84,50 @@ export class BuildingsController {
     return this.buildingsService.deleteDevice(deviceId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('structure')
+  getStructure(@CurrentUser() user: any) {
+    return this.buildingsService.getStructure(user.orgId);
+  }
+
+  // ── Kiosk templates ──────────────────────────────────────────────────────────
+
+  @UseGuards(JwtAuthGuard)
+  @Get('kiosk-templates')
+  getTemplates(@CurrentUser() user: any) {
+    return this.buildingsService.getTemplates(user.orgId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('kiosk-templates')
+  createTemplate(@CurrentUser() user: any, @Body() dto: { name: string }) {
+    return this.buildingsService.createTemplate(user.orgId, dto.name);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('kiosk-templates/:id')
+  updateTemplate(@Param('id') id: string, @Body() dto: { name?: string; buttons?: any[] }) {
+    return this.buildingsService.updateTemplate(id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('kiosk-templates/:id')
+  deleteTemplate(@Param('id') id: string) {
+    return this.buildingsService.deleteTemplate(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':buildingId/kiosk-template')
+  assignTemplate(@Param('buildingId') buildingId: string, @Body() dto: { templateId: string | null }) {
+    return this.buildingsService.assignTemplate(buildingId, dto.templateId);
+  }
+
+  @Public()
+  @Get('kiosk-buttons/:deviceCode')
+  getKioskButtons(@Param('deviceCode') deviceCode: string) {
+    return this.buildingsService.getKioskButtons(deviceCode);
+  }
+
   @Public()
   @Get('public-structure/:orgId')
   getPublicStructure(@Param('orgId') orgId: string) {

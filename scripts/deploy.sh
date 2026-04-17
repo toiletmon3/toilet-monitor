@@ -4,6 +4,9 @@ set -e
 cd /opt/toilet-monitor
 git pull
 
+# Apply DB schema changes
+cd apps/server && pnpm exec prisma db push --accept-data-loss && cd ../..
+
 # Build server
 pnpm --filter=@toilet/server build
 

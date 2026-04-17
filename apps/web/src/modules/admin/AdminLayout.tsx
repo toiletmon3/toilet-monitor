@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useNavigate, NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { setLanguage } from '../../i18n';
-import { LayoutDashboard, AlertCircle, BarChart2, Users, Settings, LogOut, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, AlertCircle, BarChart2, Users, Settings, LogOut, Sun, Moon, LayoutTemplate } from 'lucide-react';
 
 export default function AdminLayout() {
   const { t, i18n } = useTranslation();
@@ -35,6 +35,7 @@ export default function AdminLayout() {
     { to: '/admin/analytics', icon: BarChart2, label: t('admin.nav.analytics') },
     { to: '/admin/cleaners', icon: Users, label: t('admin.nav.cleaners') },
     { to: '/admin/settings', icon: Settings, label: t('admin.nav.settings') },
+    { to: '/admin/kiosk', icon: LayoutTemplate, label: 'קיוסק' },
   ];
 
   return (

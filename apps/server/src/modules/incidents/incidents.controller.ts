@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { IncidentsService } from './incidents.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -77,5 +77,15 @@ export class IncidentsController {
     @Body() body: { cleanerIdNumber: string; notes?: string },
   ) {
     return this.incidentsService.resolve(id, body.cleanerIdNumber, body.notes);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/admin-update')
+  adminUpdate(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body: { status?: string; assignedCleanerId?: string; note?: string },
+  ) {
+    return this.incidentsService.adminUpdate(id, user.id, body);
   }
 }

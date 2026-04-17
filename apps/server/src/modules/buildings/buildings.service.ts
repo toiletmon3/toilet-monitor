@@ -55,6 +55,65 @@ export class BuildingsService {
     });
   }
 
+  // ── Kiosk templates ──────────────────────────────────────────────────────────
+
+  private defaultButtons() {
+    return [
+      { code: 'toilet_paper',  nameHe: 'נייר טואלט',     nameEn: 'Toilet Paper',    icon: 'Scroll',    enabled: true, priority: 1 },
+      { code: 'floor_cleaning',nameHe: 'ניקוי רצפה',      nameEn: 'Floor Cleaning',  icon: 'Wind',      enabled: true, priority: 2 },
+      { code: 'toilet_cleaning',nameHe: 'ניקוי אסלה',     nameEn: 'Toilet Cleaning', icon: 'ShowerHead',enabled: true, priority: 3 },
+      { code: 'trash_empty',   nameHe: 'ריקון פח',        nameEn: 'Empty Trash',     icon: 'Trash2',    enabled: true, priority: 4 },
+      { code: 'soap_refill',   nameHe: 'מילוי סבון',      nameEn: 'Soap Refill',     icon: 'Droplets',  enabled: true, priority: 5 },
+      { code: 'fault_report',  nameHe: 'דיווח על תקלה',   nameEn: 'Fault Report',    icon: 'Wrench',    enabled: true, priority: 6 },
+      { code: 'positive_feedback', nameHe: 'עבודה טובה', nameEn: 'Positive Feedback', icon: 'SmilePlus', enabled: true, priority: 0 },
+    ];
+  }
+
+  async getTemplates(orgId: string) {
+    return this.prisma.kioskTemplate.findMany({ where: { orgId }, orderBy: { isDefault: 'desc' } });
+  }
+
+  async createTemplate(orgId: string, name: string) {
+    return this.prisma.kioskTemplate.create({
+      data: { orgId, name, buttons: this.defaultButtons() as any },
+    });
+  }
+
+  async updateTemplate(templateId: string, dto: { name?: string; buttons?: any[] }) {
+    return this.prisma.kioskTemplate.update({ where: { id: templateId }, data: dto });
+  }
+
+  async deleteTemplate(templateId: string) {
+    await this.prisma.building.updateMany({ where: { kioskTemplateId: templateId }, data: { kioskTemplateId: null } });
+    return this.prisma.kioskTemplate.delete({ where: { id: templateId } });
+  }
+
+  async assignTemplate(buildingId: string, templateId: string | null) {
+    return this.prisma.building.update({ where: { id: buildingId }, data: { kioskTemplateId: templateId } });
+  }
+
+  async getKioskButtons(deviceCode: string) {
+    const device = await this.prisma.device.findUnique({
+      where: { deviceCode },
+      include: { restroom: { include: { floor: { include: { building: { include: { kioskTemplate: true } } } } } } },
+    });
+    if (!device) return this.defaultButtons();
+    const template = device.restroom.floor.building.kioskTemplate;
+    return template ? (template.buttons as any[]) : this.defaultButtons();
+  }
+
+  async getStructure(orgId: string) {
+    return this.prisma.building.findMany({
+      where: { orgId },
+      select: { id: true, name: true, address: true, kioskTemplateId: true,
+        floors: { orderBy: { floorNumber: 'asc' },
+          select: { id: true, name: true, floorNumber: true,
+            restrooms: { select: { id: true, name: true, gender: true,
+              devices: { select: { id: true, deviceCode: true, name: true } } } } } } },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   async getPublicStructure(orgId: string) {
     return this.prisma.building.findMany({
       where: { orgId },

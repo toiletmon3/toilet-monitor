@@ -10,6 +10,7 @@ import AdminIncidents from './modules/admin/pages/AdminIncidents';
 import AdminAnalytics from './modules/admin/pages/AdminAnalytics';
 import AdminCleaners from './modules/admin/pages/AdminCleaners';
 import AdminSettings from './modules/admin/pages/AdminSettings';
+import AdminKiosk from './modules/admin/pages/AdminKiosk';
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="cleaners" element={<AdminCleaners />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="kiosk" element={<AdminKiosk />} />
         </Route>
 
         {/* Default redirect */}

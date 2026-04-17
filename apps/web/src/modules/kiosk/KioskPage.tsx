@@ -8,16 +8,21 @@ import { getSocket, joinRestroom, sendHeartbeat } from '../../lib/socket';
 import KioskButton from './components/KioskButton';
 import KioskConfirmation from './components/KioskConfirmation';
 import CleanerCheckIn from './components/CleanerCheckIn';
-import { Scroll, Wind, Trash2, ShowerHead, Wrench, Droplets, SmilePlus } from 'lucide-react';
+import { Scroll, Wind, Trash2, ShowerHead, Wrench, Droplets, SmilePlus, Star, Bell, AlertCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-const ISSUE_BUTTONS: { code: string; icon: LucideIcon }[] = [
-  { code: 'toilet_paper', icon: Scroll },
-  { code: 'floor_cleaning', icon: Wind },
-  { code: 'toilet_cleaning', icon: ShowerHead },
-  { code: 'trash_empty', icon: Trash2 },
-  { code: 'soap_refill', icon: Droplets },
-  { code: 'fault_report', icon: Wrench },
+const ICON_MAP: Record<string, LucideIcon> = {
+  Scroll, Wind, Trash2, ShowerHead, Wrench, Droplets, SmilePlus, Star, Bell, AlertCircle,
+};
+
+const DEFAULT_BUTTONS = [
+  { code: 'toilet_paper',   icon: 'Scroll',    nameHe: 'נייר טואלט',    nameEn: 'Toilet Paper',    enabled: true },
+  { code: 'floor_cleaning', icon: 'Wind',      nameHe: 'ניקוי רצפה',    nameEn: 'Floor Cleaning',  enabled: true },
+  { code: 'toilet_cleaning',icon: 'ShowerHead',nameHe: 'ניקוי אסלה',    nameEn: 'Toilet Cleaning', enabled: true },
+  { code: 'trash_empty',    icon: 'Trash2',    nameHe: 'ריקון פח',      nameEn: 'Empty Trash',     enabled: true },
+  { code: 'soap_refill',    icon: 'Droplets',  nameHe: 'מילוי סבון',    nameEn: 'Soap Refill',     enabled: true },
+  { code: 'fault_report',   icon: 'Wrench',    nameHe: 'דיווח על תקלה', nameEn: 'Fault Report',    enabled: true },
+  { code: 'positive_feedback', icon: 'SmilePlus', nameHe: 'עבודה טובה', nameEn: 'Positive Feedback', enabled: true, priority: 0 },
 ];
 
 type ConnectionStatus = 'online' | 'offline' | 'syncing';
@@ -27,6 +32,7 @@ export default function KioskPage() {
   const { t, i18n } = useTranslation();
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
   const [issueTypes, setIssueTypes] = useState<any[]>([]);
+  const [kioskButtons, setKioskButtons] = useState<any[]>(DEFAULT_BUTTONS);
   const [confirmed, setConfirmed] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('online');
   const [pendingCount, setPendingCount] = useState(0);
@@ -46,6 +52,11 @@ export default function KioskPage() {
         const orgId = device.restroom.floor.building.orgId;
         const { data: types } = await api.get(`/buildings/issue-types/${orgId}`);
         setIssueTypes(types);
+
+        try {
+          const { data: btns } = await api.get(`/buildings/kiosk-buttons/${deviceCode}`);
+          if (btns?.length) setKioskButtons(btns);
+        } catch { /* use defaults */ }
 
         // Join WebSocket room for this restroom
         joinRestroom(device.restroom.id);
@@ -206,36 +217,40 @@ export default function KioskPage() {
         </div>
       </div>
 
-      {/* Positive feedback button — full width */}
-      <div className="px-4 mb-3" style={{ height: '13%' }}>
-        <KioskButton
-          icon={SmilePlus}
-          label={t('kiosk.positiveFeedback')}
-          onPress={() => handleIssuePress('positive_feedback')}
-          fullWidth
-        />
-      </div>
+      {/* Positive feedback — full width */}
+      {(() => {
+        const posBtn = kioskButtons.find(b => b.code === 'positive_feedback' && b.enabled !== false);
+        if (!posBtn) return null;
+        const label = lang === 'he' ? posBtn.nameHe : posBtn.nameEn;
+        return (
+          <div className="px-4 mb-3" style={{ height: '13%' }}>
+            <KioskButton icon={ICON_MAP[posBtn.icon] ?? SmilePlus} label={label}
+              onPress={() => handleIssuePress('positive_feedback')} fullWidth />
+          </div>
+        );
+      })()}
 
-      {/* 2×3 grid */}
-      <div
-        className="flex-1 grid grid-cols-2 gap-3 px-4 pb-2"
-        style={{ gridTemplateRows: 'repeat(3, minmax(0, 1fr))', minHeight: 0 }}
-      >
-        {ISSUE_BUTTONS.map((btn) => {
-          const issueType = issueTypes.find((it) => it.code === btn.code);
-          const label = issueType
-            ? (issueType.nameI18n[lang] ?? issueType.nameI18n['he'])
-            : t(`kiosk.buttons.${btn.code}`);
-          return (
-            <KioskButton
-              key={btn.code}
-              icon={btn.icon}
-              label={label}
-              onPress={() => handleIssuePress(btn.code)}
-            />
-          );
-        })}
-      </div>
+      {/* 2×N grid — issue buttons */}
+      {(() => {
+        const gridBtns = kioskButtons.filter(b => b.code !== 'positive_feedback' && b.enabled !== false)
+          .sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99));
+        const rows = Math.ceil(gridBtns.length / 2);
+        return (
+          <div className="flex-1 grid grid-cols-2 gap-3 px-4 pb-2"
+            style={{ gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`, minHeight: 0 }}>
+            {gridBtns.map((btn) => {
+              const issueType = issueTypes.find(it => it.code === btn.code);
+              const label = issueType
+                ? (issueType.nameI18n[lang] ?? issueType.nameI18n['he'])
+                : (lang === 'he' ? btn.nameHe : btn.nameEn);
+              return (
+                <KioskButton key={btn.code} icon={ICON_MAP[btn.icon] ?? Wrench}
+                  label={label} onPress={() => handleIssuePress(btn.code)} />
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* Footer */}
       <div className="flex items-center justify-between px-5 py-2 text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
