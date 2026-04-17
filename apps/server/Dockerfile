@@ -1,19 +1,24 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 RUN npm install -g pnpm
-COPY package.json pnpm-lock.yaml ./
+
+# Copy monorepo root files first
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
+COPY packages/ ./packages/
+COPY apps/server/ ./apps/server/
+
 RUN pnpm install --frozen-lockfile --ignore-scripts
-COPY . .
-RUN pnpm build
+RUN pnpm --filter=@toilet/server build
 
 FROM node:22-alpine AS runner
-WORKDIR /app
+WORKDIR /app/apps/server
 RUN npm install -g pnpm
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/pnpm-lock.yaml ./
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
-RUN pnpm install --prod --frozen-lockfile --ignore-scripts
+
+COPY --from=builder /app/apps/server/dist ./dist
+COPY --from=builder /app/apps/server/package.json ./
+COPY --from=builder /app/apps/server/prisma ./prisma
+COPY --from=builder /app/apps/server/node_modules ./node_modules
+
 RUN npx prisma generate
 
 EXPOSE 3001
