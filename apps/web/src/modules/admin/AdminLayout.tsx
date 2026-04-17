@@ -1,18 +1,26 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useNavigate, NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { setLanguage } from '../../i18n';
-import { LayoutDashboard, AlertCircle, BarChart2, Users, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, AlertCircle, BarChart2, Users, Settings, LogOut, Sun, Moon } from 'lucide-react';
 
 export default function AdminLayout() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') ?? '{}');
   const lang = i18n.language as 'he' | 'en';
+  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
+    (localStorage.getItem('adminTheme') as 'dark' | 'light') ?? 'dark'
+  );
 
   useEffect(() => {
     if (!localStorage.getItem('accessToken')) navigate('/admin/login');
   }, [navigate]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('adminTheme', theme);
+  }, [theme]);
 
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
@@ -67,17 +75,27 @@ export default function AdminLayout() {
 
         {/* Bottom */}
         <div className="flex flex-col gap-2 px-1">
-          {/* Language toggle */}
-          <div className="flex gap-1 px-2">
-            {(['he', 'en'] as const).map((l) => (
-              <button
-                key={l}
-                onClick={() => setLanguage(l)}
-                className={`flex-1 py-1 rounded text-xs ${lang === l ? 'text-cyan-400 font-bold' : 'text-gray-600'}`}
-              >
-                {l.toUpperCase()}
-              </button>
-            ))}
+          {/* Language + theme toggles */}
+          <div className="flex items-center justify-between px-2 gap-1">
+            <div className="flex gap-1">
+              {(['he', 'en'] as const).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLanguage(l)}
+                  className={`px-2 py-1 rounded text-xs ${lang === l ? 'text-cyan-400 font-bold' : 'text-gray-600'}`}
+                >
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+              className="p-1.5 rounded-lg transition-all hover:bg-white/10"
+              style={{ color: 'var(--color-text-secondary)' }}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
           </div>
           <button
             onClick={handleLogout}

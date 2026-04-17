@@ -1,17 +1,19 @@
 import { useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 
 interface Props {
-  icon: string;
+  icon: LucideIcon;
   label: string;
   onPress: () => void;
+  fullWidth?: boolean;
 }
 
-export default function KioskButton({ icon, label, onPress }: Props) {
+export default function KioskButton({ icon: Icon, label, onPress, fullWidth }: Props) {
   const [pressed, setPressed] = useState(false);
 
   const handlePress = () => {
     setPressed(true);
-    setTimeout(() => setPressed(false), 200);
+    setTimeout(() => setPressed(false), 180);
     onPress();
   };
 
@@ -20,19 +22,37 @@ export default function KioskButton({ icon, label, onPress }: Props) {
       onPointerDown={handlePress}
       className="flex flex-col items-center justify-center gap-3 rounded-2xl transition-all select-none w-full h-full"
       style={{
-        background: 'var(--color-card)',
-        border: `1px solid ${pressed ? 'var(--color-accent)' : 'rgba(0,229,204,0.25)'}`,
+        background: pressed
+          ? 'rgba(0,229,204,0.12)'
+          : 'rgba(10,14,26,0.85)',
+        border: `1.5px solid ${pressed ? 'rgba(0,229,204,0.9)' : 'rgba(0,229,204,0.35)'}`,
         boxShadow: pressed
-          ? '0 0 24px rgba(0,229,204,0.5), 0 0 48px rgba(0,229,204,0.2)'
-          : '0 0 12px rgba(0,229,204,0.1)',
-        transform: pressed ? 'scale(0.94)' : 'scale(1)',
-        transition: 'all 0.12s ease',
+          ? '0 0 28px rgba(0,229,204,0.55), inset 0 0 20px rgba(0,229,204,0.08)'
+          : '0 0 10px rgba(0,229,204,0.12), inset 0 0 10px rgba(0,0,0,0.3)',
+        transform: pressed ? 'scale(0.95)' : 'scale(1)',
+        transition: 'all 0.13s ease',
+        backdropFilter: 'blur(8px)',
+        flexDirection: fullWidth ? 'row' : 'column',
+        gap: fullWidth ? '14px' : '10px',
       }}
     >
-      <span className="text-4xl">{icon}</span>
+      <div
+        style={{
+          color: pressed ? '#00e5cc' : 'rgba(255,255,255,0.88)',
+          filter: pressed ? 'drop-shadow(0 0 8px rgba(0,229,204,0.8))' : 'drop-shadow(0 0 4px rgba(0,229,204,0.3))',
+          transition: 'all 0.13s ease',
+        }}
+      >
+        <Icon size={fullWidth ? 32 : 36} strokeWidth={1.5} />
+      </div>
       <span
-        className="text-sm font-medium text-center px-2 leading-tight"
-        style={{ color: pressed ? 'var(--color-accent)' : 'var(--color-text)' }}
+        className="font-medium leading-tight text-center"
+        style={{
+          color: pressed ? '#00e5cc' : 'rgba(255,255,255,0.9)',
+          fontSize: fullWidth ? '1.1rem' : '0.82rem',
+          textShadow: pressed ? '0 0 12px rgba(0,229,204,0.6)' : 'none',
+          transition: 'all 0.13s ease',
+        }}
       >
         {label}
       </span>

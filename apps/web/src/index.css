@@ -13,6 +13,18 @@
     --color-glow: rgba(0, 229, 204, 0.3);
   }
 
+  [data-theme="light"] {
+    --color-bg: #f0f4f8;
+    --color-surface: #ffffff;
+    --color-card: #ffffff;
+    --color-border: #0099a8;
+    --color-accent: #0099a8;
+    --color-accent-dim: rgba(0, 153, 168, 0.12);
+    --color-text: #0f172a;
+    --color-text-secondary: #64748b;
+    --color-glow: rgba(0, 153, 168, 0.2);
+  }
+
   * {
     box-sizing: border-box;
   }

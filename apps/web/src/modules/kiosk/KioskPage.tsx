@@ -8,14 +8,16 @@ import { getSocket, joinRestroom, sendHeartbeat } from '../../lib/socket';
 import KioskButton from './components/KioskButton';
 import KioskConfirmation from './components/KioskConfirmation';
 import CleanerCheckIn from './components/CleanerCheckIn';
+import { Scroll, Wind, Trash2, ShowerHead, Wrench, Droplets, SmilePlus } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-const ISSUE_BUTTONS = [
-  { code: 'toilet_paper', icon: '🧻' },
-  { code: 'floor_cleaning', icon: '🧹' },
-  { code: 'toilet_cleaning', icon: '🚽' },
-  { code: 'trash_empty', icon: '🗑️' },
-  { code: 'soap_refill', icon: '🧴' },
-  { code: 'fault_report', icon: '🔧' },
+const ISSUE_BUTTONS: { code: string; icon: LucideIcon }[] = [
+  { code: 'toilet_paper', icon: Scroll },
+  { code: 'floor_cleaning', icon: Wind },
+  { code: 'toilet_cleaning', icon: ShowerHead },
+  { code: 'trash_empty', icon: Trash2 },
+  { code: 'soap_refill', icon: Droplets },
+  { code: 'fault_report', icon: Wrench },
 ];
 
 type ConnectionStatus = 'online' | 'offline' | 'syncing';
@@ -180,43 +182,45 @@ export default function KioskPage() {
   }
 
   return (
-    <div className="kiosk-root h-screen flex flex-col overflow-hidden" style={{ background: 'var(--color-bg)' }}>
+    <div
+      className="kiosk-root h-screen flex flex-col overflow-hidden"
+      style={{ background: 'radial-gradient(ellipse at top, #0d1525 0%, #060a12 100%)' }}
+    >
       {/* Header */}
-      <div className="flex flex-col items-center pt-8 pb-4 px-6">
-        <h1 className="text-3xl font-bold text-white mb-3" style={{ direction: 'rtl' }}>
+      <div className="flex flex-col items-center pt-6 pb-3 px-5">
+        <h1
+          className="text-3xl font-bold mb-2 text-center"
+          style={{ color: '#ffffff', textShadow: '0 0 20px rgba(0,229,204,0.4)', direction: 'rtl' }}
+        >
           {t('kiosk.title')}
         </h1>
-        <div className="flex gap-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          <div className="flex items-center gap-2">
-            <span>🙂</span>
+        <div className="flex gap-5 text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>
+          <div className="flex items-center gap-1.5">
+            <span style={{ color: 'rgba(0,229,204,0.7)', fontSize: 14 }}>✦</span>
             <span>{stats.weeklyUsers} {t('kiosk.weeklyUsers')}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span>🕐</span>
-            <span>{stats.avgMinutes} {t('kiosk.minutes')} - {t('kiosk.avgResponse')}</span>
+          <div className="flex items-center gap-1.5">
+            <span style={{ color: 'rgba(0,229,204,0.7)', fontSize: 14 }}>◷</span>
+            <span>{stats.avgMinutes} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
           </div>
         </div>
       </div>
 
-      {/* Positive feedback button */}
-      <div className="px-4 mb-3">
-        <button
-          onClick={() => handleIssuePress('positive_feedback')}
-          className="w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-lg font-semibold transition-all active:scale-95"
-          style={{
-            background: 'var(--color-card)',
-            border: '1px solid rgba(0,229,204,0.4)',
-            color: 'var(--color-text)',
-            boxShadow: '0 0 12px rgba(0,229,204,0.15)',
-          }}
-        >
-          <span className="text-2xl">😊</span>
-          <span>{t('kiosk.positiveFeedback')}</span>
-        </button>
+      {/* Positive feedback button — full width */}
+      <div className="px-4 mb-3" style={{ height: '13%' }}>
+        <KioskButton
+          icon={SmilePlus}
+          label={t('kiosk.positiveFeedback')}
+          onPress={() => handleIssuePress('positive_feedback')}
+          fullWidth
+        />
       </div>
 
-      {/* 2x3 grid of issue buttons */}
-      <div className="flex-1 grid grid-cols-2 gap-3 px-4 pb-4" style={{ gridTemplateRows: 'repeat(3, minmax(0, 1fr))', minHeight: 0 }}>
+      {/* 2×3 grid */}
+      <div
+        className="flex-1 grid grid-cols-2 gap-3 px-4 pb-2"
+        style={{ gridTemplateRows: 'repeat(3, minmax(0, 1fr))', minHeight: 0 }}
+      >
         {ISSUE_BUTTONS.map((btn) => {
           const issueType = issueTypes.find((it) => it.code === btn.code);
           const label = issueType
@@ -233,39 +237,28 @@ export default function KioskPage() {
         })}
       </div>
 
-      {/* Footer: language toggle + connection status */}
-      <div className="flex items-center justify-between px-4 pb-3 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-        {/* Connection indicator */}
-        <div className="flex items-center gap-1">
-          <div
-            className={`w-2 h-2 rounded-full ${connectionStatus === 'online' ? 'bg-green-400' : connectionStatus === 'syncing' ? 'bg-yellow-400 animate-pulse-slow' : 'bg-red-400 animate-pulse-slow'}`}
-          />
+      {/* Footer */}
+      <div className="flex items-center justify-between px-5 py-2 text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
+        <div className="flex items-center gap-1.5">
+          <div className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'online' ? 'bg-green-400' : connectionStatus === 'syncing' ? 'bg-yellow-400 animate-pulse-slow' : 'bg-red-400 animate-pulse-slow'}`} />
           <span>
             {connectionStatus === 'online' && t('kiosk.online')}
             {connectionStatus === 'syncing' && t('kiosk.syncing')}
             {connectionStatus === 'offline' && `${t('kiosk.offline')}${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
           </span>
         </div>
-
-        {/* Language toggle */}
-        <div className="flex gap-1">
+        <div className="flex gap-2">
           {(['he', 'en'] as const).map((l) => (
-            <button
-              key={l}
-              onClick={() => setLanguage(l)}
-              className={`px-2 py-1 rounded text-xs transition-all ${lang === l ? 'text-cyan-400 font-bold' : 'opacity-40'}`}
-            >
+            <button key={l} onClick={() => setLanguage(l)}
+              className={`px-1.5 py-0.5 rounded text-xs transition-all ${lang === l ? 'text-cyan-400 font-bold' : 'opacity-40'}`}>
               {l.toUpperCase()}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Hidden tap zone for cleaner mode (top-right corner) */}
-      <div
-        className="absolute top-0 right-0 w-16 h-16 opacity-0"
-        onPointerDown={handleCornerTap}
-      />
+      {/* Hidden tap zone — cleaner mode */}
+      <div className="absolute top-0 right-0 w-16 h-16 opacity-0" onPointerDown={handleCornerTap} />
     </div>
   );
 }
