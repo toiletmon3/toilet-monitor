@@ -8,6 +8,7 @@ export default function CleanerLoginPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [idNumber, setIdNumber] = useState('');
+  const [showId, setShowId] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const lang = i18n.language as 'he' | 'en';
@@ -63,19 +64,31 @@ export default function CleanerLoginPage() {
             <label className="text-sm mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>
               {t('cleaner.login.idLabel')}
             </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={idNumber}
-              onChange={(e) => setIdNumber(e.target.value)}
-              placeholder={t('cleaner.login.idPlaceholder')}
-              required
-              className="w-full px-4 py-3 rounded-xl outline-none text-white text-lg tracking-widest"
-              style={{
-                background: '#0a0e1a',
-                border: '1px solid rgba(0,229,204,0.3)',
-              }}
-            />
+            <div className="relative">
+              <input
+                type={showId ? 'text' : 'password'}
+                inputMode="numeric"
+                value={idNumber}
+                onChange={(e) => setIdNumber(e.target.value)}
+                placeholder={t('cleaner.login.idPlaceholder')}
+                required
+                className="w-full px-4 py-3 rounded-xl outline-none text-white text-lg tracking-widest"
+                style={{
+                  background: '#0a0e1a',
+                  border: '1px solid rgba(0,229,204,0.3)',
+                  paddingInlineEnd: '3rem',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowId(v => !v)}
+                className="absolute inset-y-0 end-3 flex items-center text-lg"
+                style={{ color: 'rgba(0,229,204,0.6)' }}
+                tabIndex={-1}
+              >
+                {showId ? '🙈' : '👁️'}
+              </button>
+            </div>
           </div>
 
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
