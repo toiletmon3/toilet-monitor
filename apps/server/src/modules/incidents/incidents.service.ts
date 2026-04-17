@@ -56,6 +56,10 @@ export class IncidentsService {
       throw new ConflictException('A recent report for this issue already exists');
     }
 
+    // Check if this is positive feedback — auto-resolve immediately (no action needed)
+    const issueType = await this.prisma.issueType.findUnique({ where: { id: dto.issueTypeId } });
+    const isPositiveFeedback = issueType?.code === 'positive_feedback';
+
     const incident = await this.prisma.incident.create({
       data: {
         clientId: dto.clientId,
@@ -63,6 +67,10 @@ export class IncidentsService {
         issueTypeId: dto.issueTypeId,
         deviceId: dto.deviceId,
         reportedAt: new Date(dto.reportedAt),
+        ...(isPositiveFeedback && {
+          status: 'RESOLVED',
+          resolvedAt: new Date(dto.reportedAt),
+        }),
         actions: {
           create: {
             actionType: 'REPORTED',
@@ -75,8 +83,11 @@ export class IncidentsService {
 
     // Get orgId from restroom hierarchy for WebSocket broadcasting
     const orgId = incident.restroom.floor.building.orgId;
-    this.events.broadcastToOrg(orgId, 'incident:created', incident);
-    this.events.broadcastToRestroom(dto.restroomId, 'incident:created', incident);
+    // Positive feedback — don't create a task, just log it (no incident:created broadcast to task lists)
+    if (!isPositiveFeedback) {
+      this.events.broadcastToOrg(orgId, 'incident:created', incident);
+      this.events.broadcastToRestroom(dto.restroomId, 'incident:created', incident);
+    }
 
     return incident;
   }

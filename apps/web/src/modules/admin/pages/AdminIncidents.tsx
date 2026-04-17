@@ -226,9 +226,10 @@ export default function AdminIncidents() {
   const cleaners = (users ?? []).filter((u: any) => u.role === 'CLEANER' && u.isActive);
 
   const allActive: any[] = activeData?.items ?? [];
-  const inProgress = allActive.filter(i => i.status === 'IN_PROGRESS');
-  const open = allActive.filter(i => i.status === 'OPEN');
-  const resolved: any[] = resolvedData?.items ?? [];
+  const inProgress = allActive.filter(i => i.status === 'IN_PROGRESS' && i.issueType?.code !== 'positive_feedback');
+  const open = allActive.filter(i => i.status === 'OPEN' && i.issueType?.code !== 'positive_feedback');
+  const resolved: any[] = (resolvedData?.items ?? []).filter((i: any) => i.issueType?.code !== 'positive_feedback');
+  const positiveFeedback: any[] = (resolvedData?.items ?? []).filter((i: any) => i.issueType?.code === 'positive_feedback');
 
   return (
     <div className="flex flex-col gap-6">
@@ -310,7 +311,7 @@ export default function AdminIncidents() {
               <span className="font-bold text-base" style={{ color: 'var(--color-text)' }}>טופלו</span>
               {resolvedData && (
                 <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(34,197,94,0.13)', color: '#22c55e' }}>
-                  {resolvedData.total}
+                  {resolved.length}
                 </span>
               )}
               <span className="ms-auto text-xs" style={{ color: 'var(--color-text-secondary)' }}>
@@ -328,6 +329,43 @@ export default function AdminIncidents() {
                     </div>
             )}
           </div>
+
+          {/* POSITIVE FEEDBACK — read-only log */}
+          {showResolved && positiveFeedback.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3 px-1 py-1">
+                <span>😊</span>
+                <span className="font-bold text-base" style={{ color: 'var(--color-text)' }}>משובים חיוביים</span>
+                <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(250,204,21,0.13)', color: '#facc15' }}>
+                  {positiveFeedback.length}
+                </span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {positiveFeedback.map((inc: any) => {
+                  const location = [inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › ');
+                  const timeAgo = (() => {
+                    const diff = Date.now() - new Date(inc.reportedAt).getTime();
+                    const m = Math.floor(diff / 60000);
+                    if (m < 60) return `לפני ${m} דק'`;
+                    const h = Math.floor(m / 60);
+                    if (h < 24) return `לפני ${h} שע'`;
+                    return `לפני ${Math.floor(h / 24)} ימים`;
+                  })();
+                  return (
+                    <div key={inc.id} className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                      style={{ background: 'var(--color-bg)', border: '1px solid rgba(250,204,21,0.15)' }}>
+                      <span className="text-2xl">😊</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>עבודה טובה / משוב חיובי</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-secondary)' }}>📍 {location}</div>
+                      </div>
+                      <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{timeAgo}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
