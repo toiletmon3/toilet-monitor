@@ -24,7 +24,7 @@ module.exports = {
   apps: [
     {
       name: 'toilet-server',
-      script: './apps/server/dist/main.js',
+      script: './apps/server/dist/src/main.js',
       cwd: '/opt/toilet-monitor',
       instances: 1,
       autorestart: true,
