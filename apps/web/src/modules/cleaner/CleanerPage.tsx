@@ -48,6 +48,21 @@ export default function CleanerPage() {
   const activeFloor = floors.find(f => f.id === filterFloorId);
   const restrooms: any[] = activeFloor?.restrooms ?? [];
 
+  // Today's completed count for this cleaner
+  const { data: todayData } = useQuery({
+    queryKey: ['cleaner-today', user.id],
+    queryFn: async () => {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const { data } = await api.get('/incidents', {
+        params: { status: 'RESOLVED', assignedCleanerId: user.id, from: todayStart.toISOString(), limit: 0 },
+      });
+      return data.total ?? 0;
+    },
+    refetchInterval: 60_000,
+  });
+  const completedToday = todayData ?? 0;
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['cleaner-incidents', filterFloorId, filterRestroomId],
     queryFn: async () => {
@@ -88,6 +103,7 @@ export default function CleanerPage() {
   const handleResolve = async (incidentId: string) => {
     await api.patch(`/incidents/${incidentId}/resolve`, { cleanerIdNumber: user.idNumber });
     queryClient.invalidateQueries({ queryKey: ['cleaner-incidents'] });
+    queryClient.invalidateQueries({ queryKey: ['cleaner-today'] });
     toast.success(lang === 'he' ? 'טופל בהצלחה ✅' : 'Resolved ✅');
   };
 
@@ -122,13 +138,17 @@ export default function CleanerPage() {
       >
         <div>
           <h1 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>{t('cleaner.title')}</h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-            {user.name}
+          <p className="text-xs flex items-center gap-2 flex-wrap" style={{ color: 'var(--color-text-secondary)' }}>
+            <span>{user.name}</span>
             {user.buildingName && (
-              <span className="ms-2 px-1.5 py-0.5 rounded text-xs" style={{ background: 'rgba(0,229,204,0.12)', color: 'var(--color-accent)' }}>
+              <span className="px-1.5 py-0.5 rounded text-xs" style={{ background: 'rgba(0,229,204,0.12)', color: 'var(--color-accent)' }}>
                 🏢 {user.buildingName}
               </span>
             )}
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+              style={{ background: completedToday > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.07)', color: completedToday > 0 ? '#22c55e' : 'var(--color-text-secondary)', border: `1px solid ${completedToday > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
+              ✅ {completedToday} {lang === 'he' ? 'משימות היום' : 'done today'}
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-3">

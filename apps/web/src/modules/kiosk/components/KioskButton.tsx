@@ -2,56 +2,92 @@ import { useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 interface Props {
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  emoji?: string;
   label: string;
   onPress: () => void;
   fullWidth?: boolean;
+  color?: string; // hex accent color
 }
 
-export default function KioskButton({ icon: Icon, label, onPress, fullWidth }: Props) {
+export default function KioskButton({ icon: Icon, emoji, label, onPress, fullWidth, color = '#00e5cc' }: Props) {
   const [pressed, setPressed] = useState(false);
 
   const handlePress = () => {
     setPressed(true);
-    setTimeout(() => setPressed(false), 180);
+    setTimeout(() => setPressed(false), 200);
     onPress();
   };
+
+  // Parse hex color to rgba
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const rgba = (a: number) => `rgba(${r},${g},${b},${a})`;
 
   return (
     <button
       onPointerDown={handlePress}
-      className="flex flex-col items-center justify-center gap-3 rounded-2xl transition-all select-none w-full h-full"
+      className="flex items-center justify-center rounded-2xl transition-all select-none w-full h-full"
       style={{
-        background: pressed
-          ? 'rgba(0,229,204,0.12)'
-          : 'rgba(10,14,26,0.85)',
-        border: `1.5px solid ${pressed ? 'rgba(0,229,204,0.9)' : 'rgba(0,229,204,0.35)'}`,
-        boxShadow: pressed
-          ? '0 0 28px rgba(0,229,204,0.55), inset 0 0 20px rgba(0,229,204,0.08)'
-          : '0 0 10px rgba(0,229,204,0.12), inset 0 0 10px rgba(0,0,0,0.3)',
-        transform: pressed ? 'scale(0.95)' : 'scale(1)',
-        transition: 'all 0.13s ease',
-        backdropFilter: 'blur(8px)',
         flexDirection: fullWidth ? 'row' : 'column',
-        gap: fullWidth ? '14px' : '10px',
+        gap: fullWidth ? '16px' : '8px',
+        background: pressed
+          ? `rgba(10,14,26,0.95)`
+          : 'rgba(8,12,24,0.82)',
+        border: `1.5px solid ${pressed ? rgba(0.9) : rgba(0.3)}`,
+        boxShadow: pressed
+          ? `0 0 32px ${rgba(0.6)}, inset 0 0 24px ${rgba(0.1)}, 0 2px 20px rgba(0,0,0,0.6)`
+          : `0 0 12px ${rgba(0.15)}, inset 0 0 12px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.4)`,
+        transform: pressed ? 'scale(0.93)' : 'scale(1)',
+        transition: 'all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        backdropFilter: 'blur(12px)',
+        padding: fullWidth ? '0 20px' : '0',
       }}
     >
+      {/* Icon area */}
       <div
         style={{
-          color: pressed ? '#00e5cc' : 'rgba(255,255,255,0.88)',
-          filter: pressed ? 'drop-shadow(0 0 8px rgba(0,229,204,0.8))' : 'drop-shadow(0 0 4px rgba(0,229,204,0.3))',
-          transition: 'all 0.13s ease',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: fullWidth ? 56 : 68,
+          height: fullWidth ? 56 : 68,
+          borderRadius: '50%',
+          background: pressed ? rgba(0.18) : rgba(0.1),
+          border: `1px solid ${rgba(0.25)}`,
+          boxShadow: pressed ? `0 0 20px ${rgba(0.5)}` : `0 0 8px ${rgba(0.2)}`,
+          transition: 'all 0.15s ease',
+          flexShrink: 0,
         }}
       >
-        <Icon size={fullWidth ? 32 : 36} strokeWidth={1.5} />
+        {emoji ? (
+          <span style={{ fontSize: fullWidth ? '2rem' : '2.4rem', lineHeight: 1, filter: pressed ? `drop-shadow(0 0 8px ${rgba(0.8)})` : 'none' }}>
+            {emoji}
+          </span>
+        ) : Icon ? (
+          <Icon
+            size={fullWidth ? 28 : 32}
+            strokeWidth={1.5}
+            style={{
+              color: pressed ? color : rgba(0.9),
+              filter: pressed ? `drop-shadow(0 0 8px ${rgba(0.9)})` : `drop-shadow(0 0 3px ${rgba(0.4)})`,
+              transition: 'all 0.15s ease',
+            }}
+          />
+        ) : null}
       </div>
+
+      {/* Label */}
       <span
-        className="font-medium leading-tight text-center"
+        className="font-semibold leading-tight text-center"
         style={{
-          color: pressed ? '#00e5cc' : 'rgba(255,255,255,0.9)',
-          fontSize: fullWidth ? '1.1rem' : '0.82rem',
-          textShadow: pressed ? '0 0 12px rgba(0,229,204,0.6)' : 'none',
-          transition: 'all 0.13s ease',
+          color: pressed ? color : 'rgba(255,255,255,0.92)',
+          fontSize: fullWidth ? '1.1rem' : '0.8rem',
+          textShadow: pressed ? `0 0 16px ${rgba(0.7)}` : 'none',
+          transition: 'all 0.15s ease',
+          direction: 'rtl',
         }}
       >
         {label}

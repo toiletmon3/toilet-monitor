@@ -147,6 +147,7 @@ export class IncidentsService {
     buildingId?: string;
     floorId?: string;
     restroomId?: string;
+    assignedCleanerId?: string;
     from?: string;
     to?: string;
     limit?: number;
@@ -157,6 +158,7 @@ export class IncidentsService {
     };
     if (filters.status) where.status = filters.status;
     if (filters.restroomId) where.restroomId = filters.restroomId;
+    if (filters.assignedCleanerId) where.assignedCleanerId = filters.assignedCleanerId;
     if (filters.floorId) where.restroom = { ...where.restroom, floorId: filters.floorId };
     if (filters.buildingId) where.restroom = { ...where.restroom, floor: { buildingId: filters.buildingId } };
     if (filters.from || filters.to) {

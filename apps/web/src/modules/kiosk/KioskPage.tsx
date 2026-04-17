@@ -15,14 +15,25 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Scroll, Wind, Trash2, ShowerHead, Wrench, Droplets, SmilePlus, Star, Bell, AlertCircle,
 };
 
+// Emoji + color per button code
+const BUTTON_META: Record<string, { emoji: string; color: string }> = {
+  toilet_paper:      { emoji: '🧻', color: '#60a5fa' },
+  floor_cleaning:    { emoji: '🧹', color: '#34d399' },
+  toilet_cleaning:   { emoji: '🚽', color: '#a78bfa' },
+  trash_empty:       { emoji: '🗑️', color: '#f87171' },
+  soap_refill:       { emoji: '🧴', color: '#fbbf24' },
+  fault_report:      { emoji: '🔧', color: '#fb923c' },
+  positive_feedback: { emoji: '😊', color: '#00e5cc' },
+};
+
 const DEFAULT_BUTTONS = [
-  { code: 'toilet_paper',   icon: 'Scroll',    nameHe: 'נייר טואלט',    nameEn: 'Toilet Paper',    enabled: true },
-  { code: 'floor_cleaning', icon: 'Wind',      nameHe: 'ניקוי רצפה',    nameEn: 'Floor Cleaning',  enabled: true },
-  { code: 'toilet_cleaning',icon: 'ShowerHead',nameHe: 'ניקוי אסלה',    nameEn: 'Toilet Cleaning', enabled: true },
-  { code: 'trash_empty',    icon: 'Trash2',    nameHe: 'ריקון פח',      nameEn: 'Empty Trash',     enabled: true },
-  { code: 'soap_refill',    icon: 'Droplets',  nameHe: 'מילוי סבון',    nameEn: 'Soap Refill',     enabled: true },
-  { code: 'fault_report',   icon: 'Wrench',    nameHe: 'דיווח על תקלה', nameEn: 'Fault Report',    enabled: true },
-  { code: 'positive_feedback', icon: 'SmilePlus', nameHe: 'עבודה טובה', nameEn: 'Positive Feedback', enabled: true, priority: 0 },
+  { code: 'toilet_paper',   icon: 'Scroll',    nameHe: 'החלפת נייר טואלט', nameEn: 'Toilet Paper',    enabled: true, priority: 1 },
+  { code: 'floor_cleaning', icon: 'Wind',      nameHe: 'ניקוי רצפה',       nameEn: 'Floor Cleaning',  enabled: true, priority: 2 },
+  { code: 'toilet_cleaning',icon: 'ShowerHead',nameHe: 'ניקוי אסלה',       nameEn: 'Toilet Cleaning', enabled: true, priority: 3 },
+  { code: 'trash_empty',    icon: 'Trash2',    nameHe: 'ריקון פח',         nameEn: 'Empty Trash',     enabled: true, priority: 4 },
+  { code: 'soap_refill',    icon: 'Droplets',  nameHe: 'מילוי סבון',       nameEn: 'Soap Refill',     enabled: true, priority: 5 },
+  { code: 'fault_report',   icon: 'Wrench',    nameHe: 'דיווח על תקלה',   nameEn: 'Fault Report',    enabled: true, priority: 6 },
+  { code: 'positive_feedback', icon: 'SmilePlus', nameHe: 'עבודה טובה / משוב חיובי', nameEn: 'Positive Feedback', enabled: true, priority: 0 },
 ];
 
 type ConnectionStatus = 'online' | 'offline' | 'syncing';
@@ -195,23 +206,26 @@ export default function KioskPage() {
   return (
     <div
       className="kiosk-root h-screen flex flex-col overflow-hidden"
-      style={{ background: 'radial-gradient(ellipse at top, #0d1525 0%, #060a12 100%)' }}
+      style={{ background: 'radial-gradient(ellipse 120% 60% at 50% 0%, #0a1628 0%, #060a12 60%, #02050d 100%)' }}
     >
+      {/* Decorative top glow */}
+      <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '70%', height: 2, background: 'linear-gradient(90deg, transparent, rgba(0,229,204,0.6), transparent)', pointerEvents: 'none' }} />
+
       {/* Header */}
-      <div className="flex flex-col items-center pt-6 pb-3 px-5">
+      <div className="flex flex-col items-center pt-5 pb-2 px-5">
         <h1
           className="text-3xl font-bold mb-2 text-center"
-          style={{ color: '#ffffff', textShadow: '0 0 20px rgba(0,229,204,0.4)', direction: 'rtl' }}
+          style={{ color: '#ffffff', textShadow: '0 0 30px rgba(0,229,204,0.5), 0 2px 4px rgba(0,0,0,0.5)', direction: 'rtl', letterSpacing: '-0.02em' }}
         >
           {t('kiosk.title')}
         </h1>
-        <div className="flex gap-5 text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>
-          <div className="flex items-center gap-1.5">
-            <span style={{ color: 'rgba(0,229,204,0.7)', fontSize: 14 }}>✦</span>
+        <div className="flex gap-4 text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          <div className="flex items-center gap-1">
+            <span style={{ color: 'rgba(0,229,204,0.6)' }}>✦</span>
             <span>{stats.weeklyUsers} {t('kiosk.weeklyUsers')}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span style={{ color: 'rgba(0,229,204,0.7)', fontSize: 14 }}>◷</span>
+          <div className="flex items-center gap-1">
+            <span style={{ color: 'rgba(0,229,204,0.6)' }}>◷</span>
             <span>{stats.avgMinutes} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
           </div>
         </div>
@@ -222,9 +236,10 @@ export default function KioskPage() {
         const posBtn = kioskButtons.find(b => b.code === 'positive_feedback' && b.enabled !== false);
         if (!posBtn) return null;
         const label = lang === 'he' ? posBtn.nameHe : posBtn.nameEn;
+        const meta = BUTTON_META['positive_feedback'];
         return (
-          <div className="px-4 mb-3" style={{ height: '13%' }}>
-            <KioskButton icon={ICON_MAP[posBtn.icon] ?? SmilePlus} label={label}
+          <div className="px-4 mb-3" style={{ height: '14%' }}>
+            <KioskButton emoji={meta.emoji} color={meta.color} label={label}
               onPress={() => handleIssuePress('positive_feedback')} fullWidth />
           </div>
         );
@@ -243,9 +258,14 @@ export default function KioskPage() {
               const label = issueType
                 ? (issueType.nameI18n[lang] ?? issueType.nameI18n['he'])
                 : (lang === 'he' ? btn.nameHe : btn.nameEn);
+              const meta = BUTTON_META[btn.code];
               return (
-                <KioskButton key={btn.code} icon={ICON_MAP[btn.icon] ?? Wrench}
-                  label={label} onPress={() => handleIssuePress(btn.code)} />
+                <KioskButton key={btn.code}
+                  emoji={meta?.emoji}
+                  icon={meta ? undefined : (ICON_MAP[btn.icon] ?? Wrench)}
+                  color={meta?.color ?? '#00e5cc'}
+                  label={label}
+                  onPress={() => handleIssuePress(btn.code)} />
               );
             })}
           </div>
