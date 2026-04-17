@@ -4,21 +4,30 @@ set -e
 cd /opt/toilet-monitor
 git pull
 
-# Load environment variables for Prisma
-ENV_FILE="/opt/toilet-monitor/apps/server/.env"
+# Load production environment variables (source of DATABASE_URL etc.)
+ENV_FILE="/opt/toilet-monitor/.env.production"
 if [ -f "$ENV_FILE" ]; then
   set -a
   source "$ENV_FILE"
   set +a
+  echo "Loaded env from $ENV_FILE"
+else
+  echo "WARNING: $ENV_FILE not found, trying fallback locations..."
+  for f in /opt/toilet-monitor/apps/server/.env /opt/toilet-monitor/.env; do
+    if [ -f "$f" ]; then
+      set -a; source "$f"; set +a
+      echo "Loaded env from $f"
+      break
+    fi
+  done
 fi
 
 # Apply DB schema changes + regenerate Prisma client
-cd apps/server
+cd /opt/toilet-monitor/apps/server
 pnpm exec prisma db push --accept-data-loss
-pnpm exec prisma generate
 cd /opt/toilet-monitor
 
-# Build server
+# Build server (prisma generate runs automatically after db push)
 pnpm --filter=@toilet/server build
 
 # Restart backend
