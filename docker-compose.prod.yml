@@ -27,6 +27,11 @@ services:
       - redis_data:/data
     networks:
       - internal
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   server:
     build:
