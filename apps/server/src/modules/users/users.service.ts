@@ -89,6 +89,45 @@ export class UsersService {
     return { cleaner: { id: cleaner.id, name: cleaner.name }, arrivedAt: arrival.arrivedAt };
   }
 
+  async checkout(cleanerIdNumber: string) {
+    const cleaner = await this.prisma.user.findFirst({
+      where: { idNumber: cleanerIdNumber, isActive: true, role: 'CLEANER' },
+    });
+    if (!cleaner) throw new Error('Cleaner not found');
+
+    // Find the latest open arrival (no leftAt) today
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const arrival = await this.prisma.cleanerArrival.findFirst({
+      where: { userId: cleaner.id, arrivedAt: { gte: todayStart }, leftAt: null },
+      orderBy: { arrivedAt: 'desc' },
+    });
+
+    if (!arrival) {
+      // No open shift — create a checkout-only record
+      const rec = await this.prisma.cleanerArrival.create({
+        data: { userId: cleaner.id, buildingId: cleaner.buildingId, arrivedAt: new Date(), leftAt: new Date() },
+      });
+      return { cleaner: { name: cleaner.name }, leftAt: rec.leftAt };
+    }
+
+    const updated = await this.prisma.cleanerArrival.update({
+      where: { id: arrival.id },
+      data: { leftAt: new Date() },
+    });
+    return { cleaner: { name: cleaner.name }, arrivedAt: updated.arrivedAt, leftAt: updated.leftAt };
+  }
+
+  async getActiveCleaners(orgId: string) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return this.prisma.cleanerArrival.findMany({
+      where: { user: { orgId }, arrivedAt: { gte: todayStart }, leftAt: null },
+      include: { user: { select: { id: true, name: true, buildingId: true, building: { select: { name: true } } } } },
+      orderBy: { arrivedAt: 'asc' },
+    });
+  }
+
   async getArrivals(orgId: string, from?: string) {
     const where: any = { user: { orgId } };
     if (from) where.arrivedAt = { gte: new Date(from) };

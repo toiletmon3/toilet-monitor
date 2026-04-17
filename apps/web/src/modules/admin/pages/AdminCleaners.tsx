@@ -65,6 +65,12 @@ export default function AdminCleaners() {
   });
   const globalCleanerLang: string | null = orgSettings?.cleanerLang ?? null;
 
+  const { data: activeCleaners = [] } = useQuery({
+    queryKey: ['active-cleaners'],
+    queryFn: async () => (await api.get('/users/active-cleaners')).data,
+    refetchInterval: 30_000,
+  });
+
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(lang === 'he' ? `למחוק את ${name}?` : `Delete ${name}?`)) return;
     try {
@@ -76,8 +82,58 @@ export default function AdminCleaners() {
     }
   };
 
+  const shiftDuration = (arrivedAt: string) => {
+    const mins = Math.floor((Date.now() - new Date(arrivedAt).getTime()) / 60000);
+    if (mins < 60) return `${mins} דק'`;
+    return `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')} שע'`;
+  };
+
   return (
     <div className="flex flex-col gap-5">
+
+      {/* ── Active cleaners now ── */}
+      <div className="rounded-2xl p-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-white flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#22c55e' }} />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: '#22c55e' }} />
+            </span>
+            {lang === 'he' ? 'כרגע בעבודה' : 'Currently on shift'}
+          </h2>
+          <span className="text-xs px-2 py-1 rounded-full font-semibold"
+            style={{ background: activeCleaners.length > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)', color: activeCleaners.length > 0 ? '#22c55e' : 'var(--color-text-secondary)' }}>
+            {activeCleaners.length} {lang === 'he' ? 'מנקים' : 'cleaners'}
+          </span>
+        </div>
+
+        {activeCleaners.length === 0 ? (
+          <p className="text-sm text-center py-4" style={{ color: 'var(--color-text-secondary)' }}>
+            {lang === 'he' ? 'אין מנקים בעבודה כרגע' : 'No cleaners on shift right now'}
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {activeCleaners.map((a: any) => (
+              <div key={a.id} className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.25)' }}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold"
+                  style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>
+                  {a.user.name.charAt(0)}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{a.user.name}</div>
+                  <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                    {a.user.building?.name && <span>🏢 {a.user.building.name} · </span>}
+                    🕐 {new Date(a.arrivedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                    {' '}({shiftDuration(a.arrivedAt)})
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

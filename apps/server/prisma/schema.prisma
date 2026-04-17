@@ -112,11 +112,12 @@ model Device {
 // =============================================
 
 model CleanerArrival {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   userId     String
   restroomId String?
   buildingId String?
-  arrivedAt  DateTime @default(now())
+  arrivedAt  DateTime  @default(now())
+  leftAt     DateTime?
   note       String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

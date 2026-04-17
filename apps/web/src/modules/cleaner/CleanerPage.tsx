@@ -186,6 +186,16 @@ export default function CleanerPage() {
     toast(lang === 'he' ? 'הוחזר לתור' : 'Returned to queue');
   };
 
+  const handleCheckout = async () => {
+    if (!window.confirm(lang === 'he' ? 'לדווח על יציאה מהעבודה?' : 'Report end of shift?')) return;
+    try {
+      await api.post('/users/checkout', { cleanerIdNumber: user.idNumber });
+      toast.success(lang === 'he' ? 'יציאה נרשמה בהצלחה ✅' : 'Checkout recorded ✅');
+    } catch {
+      toast.error(lang === 'he' ? 'שגיאה בדיווח יציאה' : 'Checkout failed');
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
@@ -241,6 +251,14 @@ export default function CleanerPage() {
         <div className="flex items-center gap-3">
           <button onClick={() => refetch()} style={{ color: 'var(--color-text-secondary)' }}>
             <RefreshCw size={18} />
+          </button>
+          <button
+            onClick={handleCheckout}
+            title={lang === 'he' ? 'דווח על יציאה מעבודה' : 'Report end of shift'}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
+            style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', color: '#f59e0b' }}
+          >
+            🏁 {lang === 'he' ? 'יציאה' : 'Check out'}
           </button>
           <button onClick={handleLogout} style={{ color: 'var(--color-text-secondary)' }}>
             <LogOut size={18} />

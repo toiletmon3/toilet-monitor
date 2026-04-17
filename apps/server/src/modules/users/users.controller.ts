@@ -46,6 +46,18 @@ export class UsersController {
     return this.usersService.checkin(dto);
   }
 
+  @Public()
+  @Post('checkout')
+  checkout(@Body() dto: { cleanerIdNumber: string }) {
+    return this.usersService.checkout(dto.cleanerIdNumber);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('active-cleaners')
+  getActiveCleaners(@CurrentUser() user: any) {
+    return this.usersService.getActiveCleaners(user.orgId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('arrivals')
   getArrivals(@CurrentUser() user: any, @Query('from') from?: string) {
