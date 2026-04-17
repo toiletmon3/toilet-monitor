@@ -179,15 +179,8 @@ export default function KioskPage() {
     setTimeout(() => setConfirmed(null), 3500);
   }, [deviceInfo, issueTypes]);
 
-  // Hidden corner 3-tap to enter cleaner mode
   const handleCornerTap = useCallback(() => {
-    cornerTapCount.current++;
-    clearTimeout(cornerTapTimer.current);
-    cornerTapTimer.current = setTimeout(() => { cornerTapCount.current = 0; }, 1500);
-    if (cornerTapCount.current >= 3) {
-      cornerTapCount.current = 0;
-      setShowCleanerMode(true);
-    }
+    setShowCleanerMode(true);
   }, []);
 
   if (confirmed) {
@@ -292,12 +285,11 @@ export default function KioskPage() {
         </div>
       </div>
 
-      {/* Staff entry zone — top-right corner, 3 taps to enter */}
-      <div className="absolute top-0 end-0 w-20 h-20 flex items-start justify-end p-2 opacity-0 hover:opacity-100 transition-opacity"
-        onPointerDown={handleCornerTap}
-        style={{ cursor: 'default' }}>
-        <span className="text-xs px-2 py-1 rounded-lg" style={{ background: 'rgba(0,229,204,0.15)', color: 'rgba(0,229,204,0.7)', border: '1px solid rgba(0,229,204,0.2)', fontSize: 10 }}>
-          צוות
+      {/* Staff entry — always visible small button, bottom-left */}
+      <div className="absolute bottom-8 start-4" onPointerDown={handleCornerTap}>
+        <span className="text-xs px-3 py-1.5 rounded-xl select-none"
+          style={{ background: 'rgba(0,229,204,0.08)', color: 'rgba(0,229,204,0.45)', border: '1px solid rgba(0,229,204,0.15)', fontSize: 11, cursor: 'default' }}>
+          🧹 צוות
         </span>
       </div>
     </div>
