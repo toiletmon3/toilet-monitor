@@ -8,32 +8,33 @@ import { getSocket, joinRestroom, sendHeartbeat } from '../../lib/socket';
 import KioskButton from './components/KioskButton';
 import KioskConfirmation from './components/KioskConfirmation';
 import CleanerCheckIn from './components/CleanerCheckIn';
-import { Scroll, Wind, Trash2, ShowerHead, Wrench, Droplets, SmilePlus, Star, Bell, AlertCircle } from 'lucide-react';
+import { Scroll, Sparkles, Trash2, Droplets, Wrench, Hand, Smile, Clock, Timer, Star, Bell, AlertCircle, Wind, ShowerHead, SmilePlus } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const ICON_MAP: Record<string, LucideIcon> = {
-  Scroll, Wind, Trash2, ShowerHead, Wrench, Droplets, SmilePlus, Star, Bell, AlertCircle,
+  Scroll, Sparkles, Trash2, Droplets, Wrench, Hand, Smile, SmilePlus, Star, Bell, AlertCircle, Wind, ShowerHead,
 };
 
-// Emoji + color per button code
-const BUTTON_META: Record<string, { emoji: string; color: string }> = {
-  toilet_paper:      { emoji: '🧻', color: '#60a5fa' },
-  floor_cleaning:    { emoji: '🧹', color: '#34d399' },
-  toilet_cleaning:   { emoji: '🚽', color: '#a78bfa' },
-  trash_empty:       { emoji: '🗑️', color: '#f87171' },
-  soap_refill:       { emoji: '🧴', color: '#fbbf24' },
-  fault_report:      { emoji: '🔧', color: '#fb923c' },
-  positive_feedback: { emoji: '😊', color: '#00e5cc' },
+// Lucide icon + neon color per button code (matches Figma design — all cyan by default)
+const NEON_CYAN = '#00E5FF';
+const BUTTON_META: Record<string, { icon: LucideIcon; color: string }> = {
+  toilet_paper:      { icon: Scroll,    color: NEON_CYAN },
+  floor_cleaning:    { icon: Sparkles,  color: NEON_CYAN },
+  toilet_cleaning:   { icon: Droplets,  color: NEON_CYAN },
+  trash_empty:       { icon: Trash2,    color: NEON_CYAN },
+  soap_refill:       { icon: Hand,      color: NEON_CYAN },
+  fault_report:      { icon: Wrench,    color: NEON_CYAN },
+  positive_feedback: { icon: Smile,     color: NEON_CYAN },
 };
 
 const DEFAULT_BUTTONS = [
   { code: 'toilet_paper',   icon: 'Scroll',    nameHe: 'החלפת נייר טואלט', nameEn: 'Toilet Paper',    enabled: true, priority: 1 },
-  { code: 'floor_cleaning', icon: 'Wind',      nameHe: 'ניקוי רצפה',       nameEn: 'Floor Cleaning',  enabled: true, priority: 2 },
-  { code: 'toilet_cleaning',icon: 'ShowerHead',nameHe: 'ניקוי אסלה',       nameEn: 'Toilet Cleaning', enabled: true, priority: 3 },
+  { code: 'floor_cleaning', icon: 'Sparkles',  nameHe: 'ניקוי רצפה',       nameEn: 'Floor Cleaning',  enabled: true, priority: 2 },
+  { code: 'toilet_cleaning',icon: 'Droplets',  nameHe: 'ניקוי אסלה',       nameEn: 'Toilet Cleaning', enabled: true, priority: 3 },
   { code: 'trash_empty',    icon: 'Trash2',    nameHe: 'ריקון פח',         nameEn: 'Empty Trash',     enabled: true, priority: 4 },
-  { code: 'soap_refill',    icon: 'Droplets',  nameHe: 'מילוי סבון',       nameEn: 'Soap Refill',     enabled: true, priority: 5 },
+  { code: 'soap_refill',    icon: 'Hand',      nameHe: 'מילוי סבון',       nameEn: 'Soap Refill',     enabled: true, priority: 5 },
   { code: 'fault_report',   icon: 'Wrench',    nameHe: 'דיווח על תקלה',   nameEn: 'Fault Report',    enabled: true, priority: 6 },
-  { code: 'positive_feedback', icon: 'SmilePlus', nameHe: 'עבודה טובה / משוב חיובי', nameEn: 'Positive Feedback', enabled: true, priority: 0 },
+  { code: 'positive_feedback', icon: 'Smile', nameHe: 'עבודה טובה / משוב חיובי', nameEn: 'Positive Feedback', enabled: true, priority: 0 },
 ];
 
 type ConnectionStatus = 'online' | 'offline' | 'syncing';
@@ -199,7 +200,7 @@ export default function KioskPage() {
   if (duplicate) {
     return (
       <div className="h-screen flex flex-col items-center justify-center gap-6 text-center px-8"
-        style={{ background: 'radial-gradient(ellipse 120% 60% at 50% 0%, #0a1628 0%, #060a12 60%, #02050d 100%)' }}>
+        style={{ background: '#000000' }}>
         <div className="text-7xl">⏳</div>
         <div>
           <div className="text-2xl font-bold text-white mb-2">
@@ -226,20 +227,20 @@ export default function KioskPage() {
     );
   }
 
+  const gridBtns = kioskButtons.filter(b => b.code !== 'positive_feedback' && b.enabled !== false)
+    .sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99));
+  const posBtn = kioskButtons.find(b => b.code === 'positive_feedback' && b.enabled !== false);
+
   return (
     <div
       className="kiosk-root flex flex-col overflow-hidden"
-      style={{ height: '100dvh', minHeight: '-webkit-fill-available', background: 'radial-gradient(ellipse 120% 60% at 50% 0%, #0a1628 0%, #060a12 60%, #02050d 100%)' }}
+      style={{ height: '100dvh', minHeight: '-webkit-fill-available', background: '#000000' }}
+      dir="rtl"
     >
-      {/* Decorative top glow */}
-      <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '70%', height: 2, background: 'linear-gradient(90deg, transparent, rgba(0,229,204,0.6), transparent)', pointerEvents: 'none' }} />
-
-      {/* Header */}
-      <div className="flex flex-col items-center pt-4 pb-2 px-5 gap-3">
-
-        {/* Language switcher — prominent, top center */}
-        <div className="flex rounded-2xl overflow-hidden flex-shrink-0"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', padding: 3, gap: 3 }}>
+      {/* Top bar: language switcher (small, left) + staff button (left) */}
+      <div className="flex items-center justify-between px-6 pt-4 pb-1 flex-shrink-0">
+        <div className="flex rounded-xl overflow-hidden"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(0,229,255,0.25)', padding: 2, gap: 2 }}>
           {([
             { code: 'he', flag: '🇮🇱', label: 'עברית' },
             { code: 'en', flag: '🇺🇸', label: 'English' },
@@ -247,12 +248,11 @@ export default function KioskPage() {
             <button
               key={code}
               onClick={() => setLanguage(code)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all font-medium text-sm"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm"
               style={{
-                background: lang === code ? 'rgba(0,229,204,0.18)' : 'transparent',
-                border: lang === code ? '1px solid rgba(0,229,204,0.45)' : '1px solid transparent',
-                color: lang === code ? '#00e5cc' : 'rgba(255,255,255,0.45)',
-                boxShadow: lang === code ? '0 0 12px rgba(0,229,204,0.15)' : 'none',
+                background: lang === code ? 'rgba(0,229,255,0.15)' : 'transparent',
+                color: lang === code ? '#00E5FF' : 'rgba(255,255,255,0.5)',
+                textShadow: lang === code ? '0 0 8px rgba(0,229,255,0.5)' : 'none',
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
@@ -262,90 +262,87 @@ export default function KioskPage() {
           ))}
         </div>
 
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <div className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'online' ? 'bg-green-400' : connectionStatus === 'syncing' ? 'bg-yellow-400 animate-pulse-slow' : 'bg-red-400 animate-pulse-slow'}`} />
+            <span>
+              {connectionStatus === 'online' && t('kiosk.online')}
+              {connectionStatus === 'syncing' && t('kiosk.syncing')}
+              {connectionStatus === 'offline' && `${t('kiosk.offline')}${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
+            </span>
+          </div>
+          <button
+            type="button"
+            onPointerDown={handleCornerTap}
+            onClick={handleCornerTap}
+            className="px-3 py-1.5 rounded-lg select-none text-xs"
+            style={{ background: 'transparent', color: 'rgba(0,229,255,0.55)', border: '1px solid rgba(0,229,255,0.25)', WebkitTapHighlightColor: 'transparent', cursor: 'pointer' }}>
+            🧹 צוות
+          </button>
+        </div>
+      </div>
+
+      {/* Header — title + stats */}
+      <div className="px-6 pt-3 pb-3 flex-shrink-0">
         <h1
-          className="text-3xl font-bold text-center"
-          style={{ color: '#ffffff', textShadow: '0 0 30px rgba(0,229,204,0.5), 0 2px 4px rgba(0,0,0,0.5)', direction: 'rtl', letterSpacing: '-0.02em' }}
+          className="text-white mb-3"
+          style={{ fontSize: 'clamp(2rem, 4vw, 3.25rem)', fontWeight: 600, textShadow: '0 0 24px rgba(0,229,255,0.35)' }}
         >
           {t('kiosk.title')}
         </h1>
+
         {stats && (
-          <div className="flex gap-4 text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            <div className="flex items-center gap-1">
-              <span style={{ color: 'rgba(0,229,204,0.6)' }}>✦</span>
-              <span>{stats.weeklyReports} {t('kiosk.weeklyUsers')}</span>
+          <div className="flex gap-8 flex-wrap">
+            <div className="flex items-center gap-3">
+              <Clock className="w-6 h-6" strokeWidth={2.5} style={{ color: '#00E5FF', filter: 'drop-shadow(0 0 6px rgba(0,229,255,0.6))' }} />
+              <span className="text-white text-lg">
+                {stats.weeklyReports} {t('kiosk.weeklyUsers')}
+              </span>
             </div>
             {stats.avgResponseMinutes !== null && (
-              <div className="flex items-center gap-1">
-                <span style={{ color: 'rgba(0,229,204,0.6)' }}>◷</span>
-                <span>{stats.avgResponseMinutes} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
+              <div className="flex items-center gap-3">
+                <Timer className="w-6 h-6" strokeWidth={2.5} style={{ color: '#00E5FF', filter: 'drop-shadow(0 0 6px rgba(0,229,255,0.6))' }} />
+                <span className="text-white text-lg">
+                  {stats.avgResponseMinutes} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}
+                </span>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Positive feedback — full width */}
-      {(() => {
-        const posBtn = kioskButtons.find(b => b.code === 'positive_feedback' && b.enabled !== false);
-        if (!posBtn) return null;
-        const label = lang === 'he' ? posBtn.nameHe : posBtn.nameEn;
-        const meta = BUTTON_META['positive_feedback'];
-        return (
-          <div className="px-4 mb-3" style={{ height: '14%' }}>
-            <KioskButton emoji={meta.emoji} color={meta.color} label={label}
-              onPress={() => handleIssuePress('positive_feedback')} fullWidth />
-          </div>
-        );
-      })()}
+      {/* Content grid: positive feedback full-width + 2×N grid */}
+      <div className="flex-1 flex flex-col gap-4 px-6 pb-4" style={{ minHeight: 0, paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+        {posBtn && (() => {
+          const label = lang === 'he' ? posBtn.nameHe : posBtn.nameEn;
+          const meta = BUTTON_META['positive_feedback'];
+          return (
+            <div style={{ flex: '0 0 14%', minHeight: 90 }}>
+              <KioskButton icon={meta.icon} color={meta.color} label={label}
+                onPress={() => handleIssuePress('positive_feedback')} fullWidth />
+            </div>
+          );
+        })()}
 
-      {/* 2×N grid — issue buttons */}
-      {(() => {
-        const gridBtns = kioskButtons.filter(b => b.code !== 'positive_feedback' && b.enabled !== false)
-          .sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99));
-        const rows = Math.ceil(gridBtns.length / 2);
-        return (
-          <div className="flex-1 grid grid-cols-2 gap-3 px-4 pb-2"
-            style={{ gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`, minHeight: 0 }}>
-            {gridBtns.map((btn) => {
-              const issueType = issueTypes.find(it => it.code === btn.code);
-              const label = issueType
-                ? (issueType.nameI18n[lang] ?? issueType.nameI18n['he'])
-                : (lang === 'he' ? btn.nameHe : btn.nameEn);
-              const meta = BUTTON_META[btn.code];
-              return (
-                <KioskButton key={btn.code}
-                  emoji={meta?.emoji}
-                  icon={meta ? undefined : (ICON_MAP[btn.icon] ?? Wrench)}
-                  color={meta?.color ?? '#00e5cc'}
-                  label={label}
-                  onPress={() => handleIssuePress(btn.code)} />
-              );
-            })}
-          </div>
-        );
-      })()}
-
-      {/* Footer */}
-      <div className="flex items-center justify-between px-5 py-2 text-xs flex-shrink-0"
-        style={{ color: 'rgba(255,255,255,0.3)', paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
-        {/* Staff entry button */}
-        <button
-          type="button"
-          onPointerDown={handleCornerTap}
-          onClick={handleCornerTap}
-          className="px-3 py-1.5 rounded-xl select-none"
-          style={{ background: 'rgba(0,229,204,0.08)', color: 'rgba(0,229,204,0.55)', border: '1px solid rgba(0,229,204,0.2)', fontSize: 12, WebkitTapHighlightColor: 'transparent', cursor: 'pointer' }}>
-          🧹 צוות
-        </button>
-
-        {/* Connection status */}
-        <div className="flex items-center gap-1.5">
-          <div className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'online' ? 'bg-green-400' : connectionStatus === 'syncing' ? 'bg-yellow-400 animate-pulse-slow' : 'bg-red-400 animate-pulse-slow'}`} />
-          <span>
-            {connectionStatus === 'online' && t('kiosk.online')}
-            {connectionStatus === 'syncing' && t('kiosk.syncing')}
-            {connectionStatus === 'offline' && `${t('kiosk.offline')}${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
-          </span>
+        <div
+          className="flex-1 grid grid-cols-2 gap-4"
+          style={{ gridTemplateRows: `repeat(${Math.ceil(gridBtns.length / 2)}, minmax(0, 1fr))`, minHeight: 0 }}
+        >
+          {gridBtns.map((btn) => {
+            const issueType = issueTypes.find(it => it.code === btn.code);
+            const label = issueType
+              ? (issueType.nameI18n[lang] ?? issueType.nameI18n['he'])
+              : (lang === 'he' ? btn.nameHe : btn.nameEn);
+            const meta = BUTTON_META[btn.code];
+            const FallbackIcon = ICON_MAP[btn.icon] ?? Wrench;
+            return (
+              <KioskButton key={btn.code}
+                icon={meta?.icon ?? FallbackIcon}
+                color={meta?.color ?? NEON_CYAN}
+                label={label}
+                onPress={() => handleIssuePress(btn.code)} />
+            );
+          })}
         </div>
       </div>
     </div>
