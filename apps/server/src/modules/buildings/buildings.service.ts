@@ -70,7 +70,39 @@ export class BuildingsService {
     ];
   }
 
+  /**
+   * Built-in templates that every org should see in the Admin UI out of the box.
+   * They're created lazily on first access so existing orgs get them automatically.
+   */
+  private readonly BUILTIN_TEMPLATES: { name: string; theme: string; isDefault?: boolean }[] = [
+    { name: 'קלאסי', theme: 'default', isDefault: true },
+    { name: 'ניאון',  theme: 'neon' },
+  ];
+
+  private async ensureBuiltinTemplates(orgId: string) {
+    const existing = await this.prisma.kioskTemplate.findMany({
+      where: { orgId },
+      select: { name: true, theme: true },
+    });
+    const buttons = this.defaultButtons() as any;
+    for (const tpl of this.BUILTIN_TEMPLATES) {
+      const already = existing.some(e => e.name === tpl.name || e.theme === tpl.theme);
+      if (!already) {
+        await this.prisma.kioskTemplate.create({
+          data: {
+            orgId,
+            name: tpl.name,
+            theme: tpl.theme,
+            isDefault: tpl.isDefault ?? false,
+            buttons,
+          },
+        });
+      }
+    }
+  }
+
   async getTemplates(orgId: string) {
+    await this.ensureBuiltinTemplates(orgId);
     return this.prisma.kioskTemplate.findMany({ where: { orgId }, orderBy: { isDefault: 'desc' } });
   }
 
