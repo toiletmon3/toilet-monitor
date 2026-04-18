@@ -228,7 +228,8 @@ export default function KioskPage() {
 
   return (
     <div
-      className="kiosk-root h-screen flex flex-col overflow-hidden"
+      className="kiosk-root flex flex-col overflow-hidden"
+      style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}
       style={{ background: 'radial-gradient(ellipse 120% 60% at 50% 0%, #0a1628 0%, #060a12 60%, #02050d 100%)' }}
     >
       {/* Decorative top glow */}
@@ -300,14 +301,17 @@ export default function KioskPage() {
       })()}
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-5 py-2 text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
-        {/* Staff entry button — left side, part of the flow (no overlap) */}
-        <div onPointerDown={handleCornerTap}>
-          <span className="text-xs px-3 py-1.5 rounded-xl select-none"
-            style={{ background: 'rgba(0,229,204,0.08)', color: 'rgba(0,229,204,0.45)', border: '1px solid rgba(0,229,204,0.15)', fontSize: 11, cursor: 'default' }}>
-            🧹 צוות
-          </span>
-        </div>
+      <div className="flex items-center justify-between px-5 py-2 text-xs flex-shrink-0"
+        style={{ color: 'rgba(255,255,255,0.3)', paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+        {/* Staff entry button */}
+        <button
+          type="button"
+          onPointerDown={handleCornerTap}
+          onClick={handleCornerTap}
+          className="px-3 py-1.5 rounded-xl select-none"
+          style={{ background: 'rgba(0,229,204,0.08)', color: 'rgba(0,229,204,0.55)', border: '1px solid rgba(0,229,204,0.2)', fontSize: 12, WebkitTapHighlightColor: 'transparent', cursor: 'pointer' }}>
+          🧹 צוות
+        </button>
 
         {/* Connection status */}
         <div className="flex items-center gap-1.5">

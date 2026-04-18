@@ -90,8 +90,8 @@ export default function CleanerCheckIn({ restroomId, onBack }: Props) {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden"
-      style={{ background: 'radial-gradient(ellipse 120% 60% at 50% 0%, #0a1628 0%, #060a12 100%)' }}>
+    <div className="flex flex-col overflow-hidden"
+      style={{ height: '100dvh', minHeight: '-webkit-fill-available', background: 'radial-gradient(ellipse 120% 60% at 50% 0%, #0a1628 0%, #060a12 100%)' }}>
 
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-5 pb-3">
@@ -126,9 +126,12 @@ export default function CleanerCheckIn({ restroomId, onBack }: Props) {
         <div className="flex-1 flex flex-col items-center justify-center px-6 gap-5">
           <h2 className="text-2xl font-bold text-white text-center">הכנס תעודת זהות</h2>
 
-          <div className="w-full py-4 rounded-2xl text-center text-3xl font-mono tracking-widest"
-            style={{ background: 'rgba(0,0,0,0.4)', border: '1.5px solid rgba(0,229,204,0.4)', color: '#00e5cc', letterSpacing: '0.3em' }}>
-            {idNumber ? idNumber.split('').map(() => '•').join(' ') : <span style={{ opacity: 0.3 }}>• • • • • • • • •</span>}
+          <div className="w-full py-4 rounded-2xl text-center text-3xl font-mono"
+            style={{ background: 'rgba(0,0,0,0.4)', border: '1.5px solid rgba(0,229,204,0.4)', color: '#00e5cc', letterSpacing: '0.25em', minHeight: 72, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {idNumber
+              ? <span>{idNumber}</span>
+              : <span style={{ opacity: 0.2, letterSpacing: '0.3em' }}>_ _ _ _ _ _ _ _ _</span>
+            }
           </div>
 
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
