@@ -46,6 +46,12 @@ export class UsersController {
   }
 
   @Public()
+  @Post('verify-cleaner')
+  verifyCleaner(@Body() dto: { idNumber: string }) {
+    return this.usersService.verifyCleaner(dto.idNumber);
+  }
+
+  @Public()
   @Post('checkin')
   checkin(@Body() dto: { cleanerIdNumber: string; restroomId?: string; buildingId?: string; note?: string }) {
     return this.usersService.checkin(dto);

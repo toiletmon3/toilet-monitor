@@ -72,6 +72,16 @@ export class UsersService {
     });
   }
 
+  async verifyCleaner(idNumber: string) {
+    const cleaner = await this.prisma.user.findFirst({
+      where: { idNumber, role: 'CLEANER' },
+      select: { id: true, name: true, isActive: true },
+    });
+    if (!cleaner) return { found: false };
+    if (!cleaner.isActive) return { found: false, inactive: true };
+    return { found: true, name: cleaner.name };
+  }
+
   async checkin(dto: { cleanerIdNumber: string; restroomId?: string; buildingId?: string; note?: string }) {
     const cleaner = await this.prisma.user.findFirst({
       where: { idNumber: dto.cleanerIdNumber, isActive: true, role: 'CLEANER' },

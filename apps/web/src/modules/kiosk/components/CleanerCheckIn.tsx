@@ -42,14 +42,23 @@ export default function CleanerCheckIn({ restroomId, onBack }: Props) {
     setLoading(true);
     setError('');
     try {
-      // Verify cleaner exists by trying to check in (dry-run: just fetch incidents)
-      const { data } = await api.get(`/incidents/restroom/${restroomId}`);
-      // Also fetch cleaner info via check-in ping
-      setIncidents(data);
-      setCleaner({ idNumber, name: '' });
+      // Step 1 — verify cleaner identity
+      const { data: verify } = await api.post('/users/verify-cleaner', { idNumber });
+      if (!verify.found) {
+        setError(verify.inactive
+          ? 'החשבון מושבת — פנה למנהל'
+          : 'תעודת זהות לא נמצאה במערכת');
+        setIdNumber('');
+        setLoading(false);
+        return;
+      }
+      // Step 2 — load restroom incidents for this cleaner
+      const { data: incs } = await api.get(`/incidents/restroom/${restroomId}`);
+      setIncidents(incs);
+      setCleaner({ idNumber, name: verify.name });
       setStep('action');
     } catch {
-      setError('תעודת הזהות לא נמצאה במערכת');
+      setError('שגיאה בהתחברות — נסה שוב');
     } finally {
       setLoading(false);
     }
@@ -158,7 +167,9 @@ export default function CleanerCheckIn({ restroomId, onBack }: Props) {
         <div className="flex-1 flex flex-col items-center justify-center px-6 gap-5">
           <div className="text-center mb-2">
             <div className="text-4xl mb-2">👋</div>
-            <h2 className="text-2xl font-bold text-white">שלום!</h2>
+            <h2 className="text-2xl font-bold text-white">
+              שלום{cleaner?.name ? ` ${cleaner.name}` : ''}!
+            </h2>
             <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>בחר פעולה</p>
           </div>
 
