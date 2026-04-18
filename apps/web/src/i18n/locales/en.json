@@ -105,7 +105,17 @@
       "title": "Devices",
       "online": "Online",
       "offline": "Offline",
-      "lastSeen": "Last Seen"
+      "lastSeen": "Last Seen",
+      "never": "Never",
+      "justNow": "Just now",
+      "ago": "ago"
+    },
+    "dashboard": {
+      "allBuildings": "All Buildings",
+      "filteredBy": "Filtered by",
+      "clearFilter": "Clear filter",
+      "offlineDevices": "Offline Tablets",
+      "lastSeen": "Last seen"
     },
     "settings": {
       "addBuilding": "Add Building",
@@ -139,6 +149,8 @@
     "retry": "Retry",
     "save": "Save",
     "cancel": "Cancel",
-    "minutes": "min"
+    "minutes": "min",
+    "hours": "hours",
+    "days": "days"
   }
 }

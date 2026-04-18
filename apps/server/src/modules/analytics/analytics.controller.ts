@@ -10,8 +10,8 @@ export class AnalyticsController {
   constructor(private analyticsService: AnalyticsService) {}
 
   @Get('summary')
-  getSummary(@CurrentUser() user: any) {
-    return this.analyticsService.getSummary(user.orgId);
+  getSummary(@CurrentUser() user: any, @Query('buildingId') buildingId?: string) {
+    return this.analyticsService.getSummary(user.orgId, buildingId);
   }
 
   @Get('issue-frequency')

@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, Clock, Users, Tablet } from 'lucide-react';
+import { AlertCircle, Clock, Users, Tablet, WifiOff, Building2 } from 'lucide-react';
 import api from '../../../lib/api';
 import { getSocket, joinOrg } from '../../../lib/socket';
 
@@ -25,19 +25,41 @@ function StatCard({ icon: Icon, label, value, color }: { icon: any; label: strin
   );
 }
 
+function formatRelative(date: string | null, t: (k: string) => string) {
+  if (!date) return t('admin.devices.never');
+  const diff = Date.now() - new Date(date).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return t('admin.devices.justNow');
+  if (min < 60) return `${t('admin.devices.ago')} ${min} ${t('common.minutes')}`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${t('admin.devices.ago')} ${hr} ${t('common.hours')}`;
+  const day = Math.floor(hr / 24);
+  return `${t('admin.devices.ago')} ${day} ${t('common.days')}`;
+}
+
 export default function AdminDashboard() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [buildingId, setBuildingId] = useState<string>(''); // '' = all
+
+  const { data: buildings = [] } = useQuery({
+    queryKey: ['building-structure'],
+    queryFn: async () => (await api.get('/buildings/structure')).data,
+  });
 
   const { data: summary } = useQuery({
-    queryKey: ['analytics-summary'],
-    queryFn: async () => (await api.get('/analytics/summary')).data,
+    queryKey: ['analytics-summary', buildingId],
+    queryFn: async () => (
+      await api.get('/analytics/summary', { params: buildingId ? { buildingId } : {} })
+    ).data,
     refetchInterval: 30_000,
   });
 
   const { data: incidentsData } = useQuery({
-    queryKey: ['recent-incidents'],
-    queryFn: async () => (await api.get('/incidents', { params: { limit: 10 } })).data,
+    queryKey: ['recent-incidents', buildingId],
+    queryFn: async () => (
+      await api.get('/incidents', { params: { limit: 10, ...(buildingId ? { buildingId } : {}) } })
+    ).data,
     refetchInterval: 15_000,
   });
 
@@ -56,6 +78,7 @@ export default function AdminDashboard() {
   }, [queryClient]);
 
   const incidents = incidentsData?.items ?? [];
+  const offlineDevices: any[] = summary?.offlineDevices ?? [];
 
   const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
     OPEN: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444', label: t('admin.incidents.open') },
@@ -63,9 +86,43 @@ export default function AdminDashboard() {
     RESOLVED: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e', label: t('admin.incidents.resolved') },
   };
 
+  const selectedBuildingName = buildings.find((b: any) => b.id === buildingId)?.name;
+
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold text-white">{t('admin.title')}</h1>
+      {/* Header with building filter */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-2xl font-bold text-white">{t('admin.title')}</h1>
+        <div
+          className="flex items-center gap-2 rounded-xl px-3 py-2"
+          style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}
+        >
+          <Building2 size={15} style={{ color: 'var(--color-accent)' }} />
+          <select
+            value={buildingId}
+            onChange={e => setBuildingId(e.target.value)}
+            className="bg-transparent text-sm outline-none"
+            style={{ color: 'var(--color-text)', minWidth: 160 }}
+          >
+            <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allBuildings')}</option>
+            {buildings.map((b: any) => (
+              <option key={b.id} value={b.id} style={{ background: '#0a0e1a' }}>{b.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {buildingId && (
+        <div
+          className="text-xs flex items-center gap-2 px-3 py-2 rounded-xl"
+          style={{ background: 'rgba(0,229,204,0.06)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-accent)' }}
+        >
+          {t('admin.dashboard.filteredBy')}: <span className="font-semibold">{selectedBuildingName}</span>
+          <button onClick={() => setBuildingId('')} className="ms-auto underline hover:text-white">
+            {t('admin.dashboard.clearFilter')}
+          </button>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -74,6 +131,40 @@ export default function AdminDashboard() {
         <StatCard icon={Users} label={t('admin.summary.activeCleaners')} value={summary?.activeCleaners ?? 0} color="#00e5cc" />
         <StatCard icon={Tablet} label={t('admin.summary.onlineDevices')} value={summary?.onlineDevices ?? 0} color="#8b5cf6" />
       </div>
+
+      {/* Offline tablets */}
+      {offlineDevices.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(239,68,68,0.25)' }}>
+          <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(239,68,68,0.15)' }}>
+            <WifiOff size={16} style={{ color: '#ef4444' }} />
+            <h2 className="font-semibold text-white">{t('admin.dashboard.offlineDevices')}</h2>
+            <span
+              className="text-xs px-2 py-0.5 rounded-full font-bold"
+              style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444' }}
+            >
+              {offlineDevices.length}
+            </span>
+          </div>
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+            {offlineDevices.map(d => (
+              <div key={d.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#ef4444' }} />
+                  <div className="min-w-0">
+                    <div className="text-sm font-mono font-medium text-white truncate">{d.deviceCode}</div>
+                    <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
+                      {d.buildingName} › {d.floorName} › {d.restroomName}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-xs flex-shrink-0" style={{ color: 'var(--color-text-secondary)' }}>
+                  {t('admin.dashboard.lastSeen')}: {formatRelative(d.lastHeartbeat, t)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent incidents */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>

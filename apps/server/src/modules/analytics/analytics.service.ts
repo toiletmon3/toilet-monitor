@@ -5,17 +5,22 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
-  async getSummary(orgId: string) {
+  async getSummary(orgId: string, buildingId?: string) {
+    const buildingFilter = buildingId
+      ? { floor: { buildingId } }
+      : { floor: { building: { orgId } } };
+    const incidentWhere = { restroom: buildingFilter };
+
     const [total, resolved, open, inProgress] = await Promise.all([
-      this.prisma.incident.count({ where: { restroom: { floor: { building: { orgId } } } } }),
-      this.prisma.incident.count({ where: { restroom: { floor: { building: { orgId } } }, status: 'RESOLVED' } }),
-      this.prisma.incident.count({ where: { restroom: { floor: { building: { orgId } } }, status: 'OPEN' } }),
-      this.prisma.incident.count({ where: { restroom: { floor: { building: { orgId } } }, status: 'IN_PROGRESS' } }),
+      this.prisma.incident.count({ where: incidentWhere }),
+      this.prisma.incident.count({ where: { ...incidentWhere, status: 'RESOLVED' } }),
+      this.prisma.incident.count({ where: { ...incidentWhere, status: 'OPEN' } }),
+      this.prisma.incident.count({ where: { ...incidentWhere, status: 'IN_PROGRESS' } }),
     ]);
 
     const resolved30d = await this.prisma.incident.findMany({
       where: {
-        restroom: { floor: { building: { orgId } } },
+        ...incidentWhere,
         status: 'RESOLVED',
         resolvedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
       },
@@ -32,19 +37,47 @@ export class AnalyticsService {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const [activeCleaners, onlineDevices] = await Promise.all([
+    const [activeCleaners, onlineDevices, offlineDevicesList] = await Promise.all([
       // Count cleaners currently on shift (checked in today, not yet checked out)
       this.prisma.cleanerArrival.count({
         where: {
           user: { orgId },
           arrivedAt: { gte: todayStart },
           leftAt: null,
+          ...(buildingId ? { buildingId } : {}),
         },
       }),
       this.prisma.device.count({
-        where: { restroom: { floor: { building: { orgId } } }, isOnline: true },
+        where: { restroom: buildingFilter, isOnline: true },
+      }),
+      this.prisma.device.findMany({
+        where: { restroom: buildingFilter, isOnline: false },
+        select: {
+          id: true,
+          deviceCode: true,
+          lastHeartbeat: true,
+          restroom: {
+            select: {
+              name: true,
+              floor: {
+                select: { name: true, building: { select: { id: true, name: true } } },
+              },
+            },
+          },
+        },
+        orderBy: { lastHeartbeat: 'desc' },
       }),
     ]);
+
+    const offlineDevices = offlineDevicesList.map(d => ({
+      id: d.id,
+      deviceCode: d.deviceCode,
+      lastHeartbeat: d.lastHeartbeat,
+      buildingId: d.restroom.floor.building.id,
+      buildingName: d.restroom.floor.building.name,
+      floorName: d.restroom.floor.name,
+      restroomName: d.restroom.name,
+    }));
 
     return {
       totalIncidents: total,
@@ -54,6 +87,8 @@ export class AnalyticsService {
       avgResolutionMinutes: Math.round(avgMinutes),
       activeCleaners,
       onlineDevices,
+      offlineDevicesCount: offlineDevices.length,
+      offlineDevices,
     };
   }
 

@@ -105,7 +105,17 @@
       "title": "מכשירים",
       "online": "מחובר",
       "offline": "מנותק",
-      "lastSeen": "נראה לאחרונה"
+      "lastSeen": "נראה לאחרונה",
+      "never": "מעולם לא",
+      "justNow": "הרגע",
+      "ago": "לפני"
+    },
+    "dashboard": {
+      "allBuildings": "כל הבניינים",
+      "filteredBy": "מסונן לפי",
+      "clearFilter": "נקה סינון",
+      "offlineDevices": "טאבלטים לא מחוברים",
+      "lastSeen": "חיבור אחרון"
     },
     "settings": {
       "addBuilding": "הוסף בניין",
@@ -139,6 +149,8 @@
     "retry": "נסה שוב",
     "save": "שמור",
     "cancel": "ביטול",
-    "minutes": "דק'"
+    "minutes": "דק'",
+    "hours": "שעות",
+    "days": "ימים"
   }
 }
