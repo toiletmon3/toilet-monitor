@@ -229,16 +229,41 @@ export default function KioskPage() {
   return (
     <div
       className="kiosk-root flex flex-col overflow-hidden"
-      style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}
-      style={{ background: 'radial-gradient(ellipse 120% 60% at 50% 0%, #0a1628 0%, #060a12 60%, #02050d 100%)' }}
+      style={{ height: '100dvh', minHeight: '-webkit-fill-available', background: 'radial-gradient(ellipse 120% 60% at 50% 0%, #0a1628 0%, #060a12 60%, #02050d 100%)' }}
     >
       {/* Decorative top glow */}
       <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '70%', height: 2, background: 'linear-gradient(90deg, transparent, rgba(0,229,204,0.6), transparent)', pointerEvents: 'none' }} />
 
       {/* Header */}
-      <div className="flex flex-col items-center pt-5 pb-2 px-5">
+      <div className="flex flex-col items-center pt-4 pb-2 px-5 gap-3">
+
+        {/* Language switcher — prominent, top center */}
+        <div className="flex rounded-2xl overflow-hidden flex-shrink-0"
+          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', padding: 3, gap: 3 }}>
+          {([
+            { code: 'he', flag: '🇮🇱', label: 'עברית' },
+            { code: 'en', flag: '🇺🇸', label: 'English' },
+          ] as const).map(({ code, flag, label }) => (
+            <button
+              key={code}
+              onClick={() => setLanguage(code)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all font-medium text-sm"
+              style={{
+                background: lang === code ? 'rgba(0,229,204,0.18)' : 'transparent',
+                border: lang === code ? '1px solid rgba(0,229,204,0.45)' : '1px solid transparent',
+                color: lang === code ? '#00e5cc' : 'rgba(255,255,255,0.45)',
+                boxShadow: lang === code ? '0 0 12px rgba(0,229,204,0.15)' : 'none',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              <span className="text-lg">{flag}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+
         <h1
-          className="text-3xl font-bold mb-2 text-center"
+          className="text-3xl font-bold text-center"
           style={{ color: '#ffffff', textShadow: '0 0 30px rgba(0,229,204,0.5), 0 2px 4px rgba(0,0,0,0.5)', direction: 'rtl', letterSpacing: '-0.02em' }}
         >
           {t('kiosk.title')}
@@ -321,16 +346,6 @@ export default function KioskPage() {
             {connectionStatus === 'syncing' && t('kiosk.syncing')}
             {connectionStatus === 'offline' && `${t('kiosk.offline')}${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
           </span>
-        </div>
-
-        {/* Language switcher */}
-        <div className="flex gap-2">
-          {(['he', 'en'] as const).map((l) => (
-            <button key={l} onClick={() => setLanguage(l)}
-              className={`px-1.5 py-0.5 rounded text-xs transition-all ${lang === l ? 'text-cyan-400 font-bold' : 'opacity-40'}`}>
-              {l.toUpperCase()}
-            </button>
-          ))}
         </div>
       </div>
     </div>
