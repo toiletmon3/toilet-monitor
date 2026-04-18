@@ -1,7 +1,9 @@
 # 🚾 ToiletMon — Smart Restroom Monitoring System
 
-מערכת ניטור שירותים חכמה עם 3 ממשקים: **קיוסק טאבלט**, **אפליקציית מנקה**, ו**לוח בקרה למנהל**.  
+מערכת ניטור שירותים חכמה עם 3 ממשקים: **קיוסק טאבלט**, **אפליקציית עובד**, ו**לוח בקרה למנהל**.
 בנויה עם NestJS + React PWA + PostgreSQL, עם deploy אוטומטי לענן.
+
+**גרסה נוכחית:** [`v1.0.0`](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.0) — First stable production release
 
 ---
 
@@ -12,7 +14,7 @@
 |------|-------|
 | 🖥️ **Admin** | [https://toiletcleanpro.duckdns.org/admin](https://toiletcleanpro.duckdns.org/admin) |
 | 📋 **Kiosk** | [https://toiletcleanpro.duckdns.org/kiosk](https://toiletcleanpro.duckdns.org/kiosk) |
-| 🧹 **Cleaner** | [https://toiletcleanpro.duckdns.org/cleaner](https://toiletcleanpro.duckdns.org/cleaner) |
+| 👷 **Worker** | [https://toiletcleanpro.duckdns.org/cleaner](https://toiletcleanpro.duckdns.org/cleaner) |
 | 🔌 **API** | [https://toiletcleanpro.duckdns.org/api](https://toiletcleanpro.duckdns.org/api) |
 
 ### IP ישיר (DigitalOcean)
@@ -20,11 +22,11 @@
 |------|-------|
 | 🖥️ **Admin** | [http://188.166.163.75/admin](http://188.166.163.75/admin) |
 | 📋 **Kiosk** | [http://188.166.163.75/kiosk](http://188.166.163.75/kiosk) |
-| 🧹 **Cleaner** | [http://188.166.163.75/cleaner](http://188.166.163.75/cleaner) |
+| 👷 **Worker** | [http://188.166.163.75/cleaner](http://188.166.163.75/cleaner) |
 | 🔌 **API** | [http://188.166.163.75/api](http://188.166.163.75/api) |
 
-> **Admin** — נכנס אוטומטית ללא סיסמה (bypass לפיתוח)  
-> **Cleaner** — כניסה עם ת.ז בלבד  
+> **Admin** — נכנס אוטומטית ללא סיסמה (bypass לפיתוח)
+> **Worker** — כניסה עם ת.ז בלבד
 > **Kiosk** — בחירת בניין / קומה / שירותים → מעבר לטאבלט הספציפי
 
 ---
@@ -35,8 +37,8 @@
 |------|--------|
 | Admin (רגיל) | `admin@demo.com` / `Admin123!` |
 | Admin (bypass) | פתח [/admin](https://toiletcleanpro.duckdns.org/admin) — נכנס אוטומטית |
-| Cleaner | ת.ז: `123456789` · `234567890` · `345678901` |
-| Kiosk | [https://toiletcleanpro.duckdns.org/kiosk](https://toiletcleanpro.duckdns.org/kiosk) → בחר מיקום |
+| Worker | ת.ז: `123456789` · `234567890` · `345678901` |
+| Kiosk | [/kiosk](https://toiletcleanpro.duckdns.org/kiosk) → בחר מיקום |
 
 ---
 
@@ -46,13 +48,14 @@
 apps/
   web/      → React 18 + Vite + Tailwind CSS (PWA)
               ├── /kiosk      — טאבלט בשירותים (בחירת מיקום + דיווח תקלות)
-              ├── /cleaner    — אפליקציית מנקה (משימות + check-in)
+              ├── /cleaner    — אפליקציית עובד (משימות + check-in / check-out)
               └── /admin      — לוח בקרה מנהל (Dashboard, Analytics, Settings)
   server/   → NestJS REST API + WebSocket (Socket.io)
               ├── Auth (JWT + Refresh Tokens)
               ├── Buildings / Floors / Restrooms / Devices
-              ├── Incidents (תקלות + סטטוס + הקצאה)
-              ├── Analytics (SLA, דפוסים, עומסים)
+              ├── Incidents (תקלות + סטטוס + הקצאה + Bulk delete)
+              ├── Analytics (SLA · דפוסים · עומסים · ביצועי עובדים)
+              ├── Users (ניהול עובדים · check-in/checkout · שפות)
               └── Kiosk Templates
 packages/
   shared-types/ → TypeScript interfaces משותפות
@@ -68,31 +71,45 @@ packages/
 
 ## ✨ תכונות
 
-### Kiosk (טאבלט בשירותים)
+### 📋 Kiosk (טאבלט בשירותים)
 - בחירת בניין / קומה / שירותים
 - דיווח תקלות בלחיצה אחת — כפתורים מותאמים אישית (Kiosk Templates)
-- כניסת צוות ניקוי דרך הקיוסק (ת.ז) + סגירה אוטומטית אחרי 20 שניות
+- **בחירת שפה בולטת בראש הדף** (עברית / English עם דגלים)
+- **אייקונים וטקסט גדולים** למילוי אופטימלי של הכפתורים
+- כניסת צוות ניקוי דרך הקיוסק (ת.ז מוצגת כמספרים) + סגירה אוטומטית אחרי 20 שניות
 - משוב חיובי — נשמר בלוג ללא יצירת משימה
 - סטטיסטיקות אמיתיות: כמות דיווחים שבועית + זמן תגובה ממוצע
+- **מסך "כבר בטיפול"** לדיווחים חוזרים (rate limiting)
 - Offline mode — שמירה ב-IndexedDB, סנכרון אוטומטי
+- **תואם לגמרי ל-iPad Safari / iOS** (Dynamic Viewport Height)
 
-### Cleaner (מנקה)
+### 👷 Worker (עובד)
+- **ממשק בשם ניטרלי "עובד"** (ולא "מנקה")
 - כניסה עם ת.ז בלבד (הצג/הסתר ספרות)
 - שעון חי + תאריך בכותרת
 - 2 רשימות: **"בטיפולי"** + **"ממתינות לטיפול"**
-- "החזר משימה לתור" (un-assign)
+- **"החזר משימה לתור"** (un-assign)
+- **כפתור "יציאה מעבודה" (Check-out)** — רישום סוף משמרת
 - עדכונים בזמן אמת (WebSocket)
-- מנקים רואים רק תקלות של הבניין שלהם
+- עובדים רואים רק תקלות של הבניין שלהם
+- **הודעות שגיאה ברורות** — הבחנה בין "לא נמצא" ל"מושבת"
+- גלילה חלקה בכל הפלטפורמות (iOS / Android / Desktop)
 
-### Admin (מנהל)
+### 🖥️ Admin (מנהל)
 - שעון חי + תאריך בסרגל הצד
+- **ממשק רספונסיבי מלא** — sidebar מתקפל בדסקטופ, drawer במובייל
+- **פאנל "כרגע בעבודה"** — רואה בזמן אמת מי עשה check-in היום
+- "מנקים פעילים" בסקירה כללית = סופר על-פי check-in, לא על-פי הרשאות
 - Dashboard עם סיכום תקלות פעילות
 - תקלות מחולקות לסקציות: **בטיפול** / **ממתין** / **טופלו** / **משובים חיוביים**
 - עדכונים בזמן אמת (WebSocket) + toast לתקלה חדשה
-- Analytics מלא: SLA · תדירות · דפוסים · עומסים שעתיים · לפי יום · ביצועי מנקים
+- Analytics מלא: SLA · תדירות · דפוסים · עומסים שעתיים · לפי יום · ביצועי עובדים
+- **עריכת פרטי עובד** (שם · ת.ז · טלפון) דרך modal
+- **השבתה/הפעלה של עובד** — חוסם כניסה למערכת
 - איפוס נתונים: מחק טופלו / ישנים / הכל (עם אישור כפול)
 - ניהול בניינים / קומות / שירותים / מכשירים (inline editing)
 - Kiosk Templates — בניית סטים של כפתורים
+- **ניהול שפות מרכזי** — מנהל קובע שפת קיוסק + שפת עובדים (גלובלי או פר-עובד)
 - Dark / Light mode · עברית / אנגלית
 
 ---
@@ -131,8 +148,47 @@ pnpm dev           # מריץ server + web ביחד
 | Frontend | http://localhost:5173 |
 | Admin | http://localhost:5173/admin |
 | Kiosk | http://localhost:5173/kiosk |
-| Cleaner | http://localhost:5173/cleaner |
+| Worker | http://localhost:5173/cleaner |
 | API | http://localhost:3001 |
+
+---
+
+## 🏷️ ניהול גרסאות
+
+הפרויקט משתמש ב-**Semantic Versioning** + Git Tags + GitHub Releases.
+
+### מעבר בין גרסאות
+```bash
+# חזרה לגרסה היציבה v1.0.0 (read-only snapshot)
+git checkout v1.0.0
+
+# חזרה לפיתוח שוטף
+git checkout main
+
+# לעבור לענף היציב (תמיד שומר גרסה מוכנה)
+git checkout stable
+```
+
+### יצירת גרסה חדשה
+```bash
+git tag -a v1.1.0 -m "תיאור הגרסה"
+git push origin v1.1.0
+
+# עדכון ענף stable למצב הנוכחי
+git checkout stable
+git merge main
+git push
+```
+
+### פיתוח פיצ'רים חדשים (מומלץ)
+```bash
+git checkout -b feature/some-feature
+# עובדים עליו בנפרד, main נשאר יציב
+git push -u origin feature/some-feature
+```
+
+### גרסאות קיימות
+- **[v1.0.0](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.0)** — First stable release (core kiosk/worker/admin, real-time incidents, analytics, responsive UI)
 
 ---
 
@@ -144,7 +200,7 @@ Deploy אוטומטי דרך GitHub Actions בכל push ל-`main`:
 push → GitHub Actions → SSH לשרת → git pull → prisma db push → build → pm2 restart → nginx reload
 ```
 
-קובץ workflow: `.github/workflows/deploy.yml`  
+קובץ workflow: `.github/workflows/deploy.yml`
 קובץ deploy: `scripts/deploy.sh`
 
 ### פרטי שרת
@@ -168,6 +224,26 @@ pm2 logs           # לוגים
 
 ---
 
+## 🔒 אבטחה
+
+| שכבה | מצב |
+|------|-----|
+| **Repository** | 🔒 Private — רק `OriAha` |
+| **Collaborators** | 👤 רק הבעלים (admin) |
+| **GitHub Secrets** | 🔐 `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY` (מוצפנים) |
+| **Server access** | 🔑 SSH key בלבד (אין סיסמה) |
+| **DB credentials** | 📁 ב-`.env.production` בשרת (לא ב-git) |
+| **JWT secrets** | 📁 ב-`.env.production` בשרת (לא ב-git) |
+| **SSL/TLS** | ✅ Let's Encrypt מ-end-to-end |
+| **Rate limiting** | ✅ על דיווחים כפולים (409 Conflict) |
+
+### המלצות
+- הפעל [**2FA בחשבון GitHub**](https://github.com/settings/security) (אם לא כבר)
+- שקול **Branch Protection** (דורש GitHub Pro) למניעת push ישיר ל-main
+- סיבוב תקופתי של JWT secrets בשרת (כל כמה חודשים)
+
+---
+
 ## 📱 הגדרת טאבלט Kiosk (Android)
 
 ### שיטה מומלצת — Fully Kiosk Browser
@@ -182,6 +258,12 @@ pm2 logs           # לוגים
 3. לחץ Recent Apps → Pin
 4. שחרור: Back + Recent יחד (3 שניות)
 
+### iPad (Guided Access)
+1. הגדרות → נגישות → Guided Access → הפעל
+2. פתח Safari → נווט ל-URL הקיוסק
+3. Triple-click כפתור הבית/Power → התחל Guided Access
+4. שחרור: Triple-click + קוד סודי
+
 ---
 
 ## 💰 עלויות פיילוט
@@ -194,9 +276,57 @@ pm2 logs           # לוגים
 | מדבקה/מסגרת לכיסוי כפתור הפעלה | 50–100 ₪ |
 | כבל USB-C ומטען קבוע לקיר | 30–50 ₪ |
 
-### שרת
+### שרת (משותף לכל הארגון)
 | פריט | עלות |
 |------|------|
 | DigitalOcean Droplet (2 vCPU / 2GB RAM) | ~$12/חודש |
 | DuckDNS | חינם |
 | SSL (Let's Encrypt) | חינם |
+| GitHub Actions (2,000 minutes/month) | חינם |
+
+---
+
+## 📂 מבנה פרויקט
+
+```
+Toilet/
+├── .github/workflows/deploy.yml   — CI/CD
+├── apps/
+│   ├── server/                    — NestJS backend
+│   │   ├── src/
+│   │   │   ├── modules/
+│   │   │   │   ├── auth/          — JWT · bypass · cleaner login
+│   │   │   │   ├── users/         — עובדים · check-in/out · שפות
+│   │   │   │   ├── buildings/     — היררכיה ארגונית
+│   │   │   │   ├── incidents/     — תקלות + bulk delete
+│   │   │   │   ├── analytics/     — SLA · patterns · kiosk stats
+│   │   │   │   └── kiosk/         — templates
+│   │   │   └── main.ts
+│   │   └── prisma/schema.prisma   — schema DB
+│   └── web/                       — React frontend
+│       └── src/modules/
+│           ├── kiosk/             — /kiosk
+│           ├── cleaner/           — /cleaner (עובד)
+│           └── admin/             — /admin
+├── packages/shared-types/         — TypeScript משותפים
+├── scripts/deploy.sh              — production deploy
+└── docker-compose.yml             — PostgreSQL local
+```
+
+---
+
+## 🗺️ Roadmap
+
+- [x] **v1.0.0** — Core stable release
+- [ ] v1.1.0 — משוב חוזר והיסטוריית עובד
+- [ ] v1.2.0 — התראות push לעובדים (FCM)
+- [ ] v1.3.0 — דוחות PDF/CSV לייצוא
+- [ ] v2.0.0 — תמיכה ב-multi-tenant (כמה ארגונים)
+
+---
+
+## 📄 License
+
+Private project — לא מופץ לציבור.
+
+**Contact:** [OriAha](https://github.com/OriAha) · DigitalOcean VPS: `188.166.163.75`
