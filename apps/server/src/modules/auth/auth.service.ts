@@ -65,6 +65,7 @@ export class AuthService {
       orgName: org.name,
       kioskLang: s.kioskLang ?? s.defaultLanguage ?? 'he',
       cleanerLang: s.cleanerLang ?? null,
+      kioskTheme: s.kioskTheme ?? 'default',
     };
   }
 

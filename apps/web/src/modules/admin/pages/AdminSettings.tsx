@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, ChevronDown, ChevronRight, Building2, Layers2, DoorOpen, Tablet, Trash2, Pencil, Check, X, Globe } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Building2, Layers2, DoorOpen, Tablet, Trash2, Pencil, Check, X, Globe, Palette } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -488,16 +488,86 @@ export default function AdminSettings() {
     queryFn: async () => (await api.get('/users/org-settings')).data,
   });
 
-  const updateOrgSettings = async (patch: { kioskLang?: string; cleanerLang?: string | null }) => {
+  const updateOrgSettings = async (patch: { kioskLang?: string; cleanerLang?: string | null; kioskTheme?: string }) => {
     await api.patch('/users/org-settings', patch);
     queryClient.invalidateQueries({ queryKey: ['org-settings'] });
     toast.success('עודכן');
   };
 
+  const kioskThemes = [
+    { id: 'default', title: 'קלאסי', desc: 'עיצוב זכוכית עם צבעים שונים לכל כפתור', preview: { bg: 'linear-gradient(135deg, #0a1628 0%, #060a12 100%)', border: 'rgba(0,229,204,0.4)', glow: 'rgba(0,229,204,0.2)' } },
+    { id: 'neon',    title: 'ניאון',  desc: 'רקע שחור עם מסגרות ציאן בוהקות',       preview: { bg: '#000000',                                                 border: '#00E5FF',            glow: 'rgba(0,229,255,0.5)' } },
+  ];
+
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['building-structure'] });
+
+  const currentTheme = orgSettings?.kioskTheme ?? 'default';
 
   return (
     <div className="flex flex-col gap-5">
+      {/* ── Kiosk Theme ── */}
+      <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+        <div>
+          <h2 className="font-semibold text-white flex items-center gap-2">
+            <Palette size={16} style={{ color: 'var(--color-accent)' }} />
+            עיצוב הקיוסק
+          </h2>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+            בחר את ערכת העיצוב שתוצג על כל הקיוסקים. השינוי חל ברענון הבא של הקיוסק.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {kioskThemes.map(theme => {
+            const active = currentTheme === theme.id;
+            return (
+              <button
+                key={theme.id}
+                onClick={() => updateOrgSettings({ kioskTheme: theme.id })}
+                className="relative rounded-2xl overflow-hidden text-start transition-all"
+                style={{
+                  background: 'rgba(0,0,0,0.3)',
+                  border: `2px solid ${active ? 'var(--color-accent)' : 'rgba(255,255,255,0.08)'}`,
+                  boxShadow: active ? '0 0 24px rgba(0,229,204,0.2)' : 'none',
+                }}
+              >
+                {/* preview */}
+                <div
+                  className="relative flex flex-col gap-2 p-4"
+                  style={{ background: theme.preview.bg, minHeight: 140 }}
+                >
+                  {/* mock positive bar */}
+                  <div className="rounded-lg py-2 px-3 text-center" style={{ background: theme.id === 'neon' ? '#000' : 'rgba(8,12,24,0.82)', border: `2px solid ${theme.preview.border}`, boxShadow: `0 0 16px ${theme.preview.glow}`, color: '#fff', fontSize: 11 }}>
+                    😊 משוב חיובי
+                  </div>
+                  {/* mock 2×2 grid */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {['🧻', '🧹', '🚽', '🗑️'].map((e, i) => (
+                      <div key={i} className="rounded-lg py-2 text-center" style={{ background: theme.id === 'neon' ? '#000' : 'rgba(8,12,24,0.82)', border: `2px solid ${theme.preview.border}`, boxShadow: `0 0 10px ${theme.preview.glow}`, fontSize: 14 }}>
+                        {e}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* footer with name + active badge */}
+                <div className="flex items-center justify-between px-4 py-3" style={{ background: 'rgba(0,0,0,0.45)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div>
+                    <div className="text-sm font-semibold text-white">{theme.title}</div>
+                    <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{theme.desc}</div>
+                  </div>
+                  {active && (
+                    <span className="text-xs px-2 py-1 rounded-full flex items-center gap-1" style={{ background: 'rgba(0,229,204,0.15)', color: 'var(--color-accent)', border: '1px solid rgba(0,229,204,0.4)' }}>
+                      <Check size={12} /> פעיל
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── Language Settings ── */}
       <div className="rounded-2xl p-5 flex flex-col gap-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <h2 className="font-semibold text-white flex items-center gap-2">
