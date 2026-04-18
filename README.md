@@ -242,6 +242,9 @@ pm2 logs           # לוגים
 - שקול **Branch Protection** (דורש GitHub Pro) למניעת push ישיר ל-main
 - סיבוב תקופתי של JWT secrets בשרת (כל כמה חודשים)
 
+### 📋 גיבוי ונגישות — חובה לקרוא
+👉 **[docs/BACKUP_AND_ACCESS.md](docs/BACKUP_AND_ACCESS.md)** — רשימת כל הנכסים הקריטיים (DigitalOcean, DuckDNS, SSH keys, DB backups) ואיך לגבות אותם
+
 ---
 
 ## 📱 הגדרת טאבלט Kiosk (Android)
