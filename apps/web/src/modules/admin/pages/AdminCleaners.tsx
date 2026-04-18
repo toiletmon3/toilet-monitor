@@ -1,15 +1,19 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { UserPlus, Trash2, Building2, Globe } from 'lucide-react';
+import { UserPlus, Trash2, Building2, Globe, Pencil, X, Check } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
+
+interface EditState { id: string; name: string; idNumber: string; phone: string }
 
 export default function AdminCleaners() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', idNumber: '', phone: '', preferredLang: 'he' });
+  const [editWorker, setEditWorker] = useState<EditState | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const { i18n } = useTranslation();
   const lang = i18n.language;
@@ -30,7 +34,7 @@ export default function AdminCleaners() {
     e.preventDefault();
     try {
       await api.post('/users/cleaners', form);
-      toast.success(lang === 'he' ? 'מנקה נוסף בהצלחה' : 'Cleaner added');
+      toast.success(lang === 'he' ? 'עובד נוסף בהצלחה' : 'Worker added');
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowForm(false);
       setForm({ name: '', idNumber: '', phone: '', preferredLang: 'he' });
@@ -39,9 +43,33 @@ export default function AdminCleaners() {
     }
   };
 
+  const handleSaveEdit = async () => {
+    if (!editWorker) return;
+    setSavingEdit(true);
+    try {
+      await api.patch(`/users/${editWorker.id}`, {
+        name: editWorker.name.trim(),
+        idNumber: editWorker.idNumber.trim(),
+        phone: editWorker.phone.trim(),
+      });
+      toast.success(lang === 'he' ? 'פרטים עודכנו' : 'Details updated');
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setEditWorker(null);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? 'Error');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleToggle = async (id: string, isActive: boolean) => {
     await api.patch(`/users/${id}/toggle`, { isActive: !isActive });
     queryClient.invalidateQueries({ queryKey: ['users'] });
+    toast.success(
+      !isActive
+        ? (lang === 'he' ? 'העובד הופעל — יוכל להתחבר' : 'Worker activated')
+        : (lang === 'he' ? 'העובד הושבת — לא יוכל להתחבר' : 'Worker deactivated')
+    );
   };
 
   const handleAssignBuilding = async (id: string, buildingId: string) => {
@@ -75,7 +103,7 @@ export default function AdminCleaners() {
     if (!window.confirm(lang === 'he' ? `למחוק את ${name}?` : `Delete ${name}?`)) return;
     try {
       await api.delete(`/users/${id}`);
-      toast.success(lang === 'he' ? 'מנקה נמחק' : 'Cleaner deleted');
+      toast.success(lang === 'he' ? 'עובד נמחק' : 'Worker deleted');
       queryClient.invalidateQueries({ queryKey: ['users'] });
     } catch (err: any) {
       toast.error(err.response?.data?.message ?? 'Error');
@@ -91,7 +119,51 @@ export default function AdminCleaners() {
   return (
     <div className="flex flex-col gap-5">
 
-      {/* ── Active cleaners now ── */}
+      {/* ── Edit modal ── */}
+      {editWorker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+          <div className="w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'var(--color-surface)', border: '1px solid rgba(0,229,204,0.25)' }}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-white">{lang === 'he' ? 'עריכת עובד' : 'Edit Worker'}</h2>
+              <button onClick={() => setEditWorker(null)} style={{ color: 'var(--color-text-secondary)' }}><X size={18} /></button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {[
+                { label: lang === 'he' ? 'שם מלא' : 'Full name', field: 'name' as const },
+                { label: lang === 'he' ? 'תעודת זהות' : 'ID number', field: 'idNumber' as const },
+                { label: lang === 'he' ? 'טלפון' : 'Phone', field: 'phone' as const },
+              ].map(({ label, field }) => (
+                <div key={field}>
+                  <label className="text-xs mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>{label}</label>
+                  <input
+                    value={editWorker[field]}
+                    onChange={e => setEditWorker(prev => prev ? { ...prev, [field]: e.target.value } : prev)}
+                    className="w-full px-3 py-2.5 rounded-xl outline-none text-sm"
+                    style={{ background: '#0a0e1a', border: '1px solid rgba(0,229,204,0.25)', color: 'white' }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={handleSaveEdit}
+                disabled={savingEdit || !editWorker.name.trim() || !editWorker.idNumber.trim()}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium"
+                style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)', opacity: savingEdit ? 0.6 : 1 }}
+              >
+                <Check size={15} />{lang === 'he' ? 'שמור' : 'Save'}
+              </button>
+              <button onClick={() => setEditWorker(null)} className="px-4 py-2.5 rounded-xl text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                {lang === 'he' ? 'ביטול' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Active workers now ── */}
       <div className="rounded-2xl p-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-white flex items-center gap-2">
@@ -103,13 +175,13 @@ export default function AdminCleaners() {
           </h2>
           <span className="text-xs px-2 py-1 rounded-full font-semibold"
             style={{ background: activeCleaners.length > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)', color: activeCleaners.length > 0 ? '#22c55e' : 'var(--color-text-secondary)' }}>
-            {activeCleaners.length} {lang === 'he' ? 'מנקים' : 'cleaners'}
+            {activeCleaners.length} {lang === 'he' ? 'עובדים' : 'workers'}
           </span>
         </div>
 
         {activeCleaners.length === 0 ? (
           <p className="text-sm text-center py-4" style={{ color: 'var(--color-text-secondary)' }}>
-            {lang === 'he' ? 'אין מנקים בעבודה כרגע' : 'No cleaners on shift right now'}
+            {lang === 'he' ? 'אין עובדים בעבודה כרגע' : 'No workers on shift right now'}
           </p>
         ) : (
           <div className="flex flex-wrap gap-3">
@@ -135,13 +207,15 @@ export default function AdminCleaners() {
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{t('admin.nav.cleaners')}</h1>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
+            {lang === 'he' ? 'ניהול עובדים' : 'Workers'}
+          </h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
             {lang === 'he'
-              ? 'פעיל/לא פעיל — קובע אם המנקה יכול להתחבר למערכת. שייך כל מנקה לבניין כדי שיראה רק את הקריאות שלו.'
-              : 'Active/Inactive controls login access. Assign each cleaner to a building so they only see their calls.'}
+              ? '● פעיל = יכול להתחבר למערכת   ○ מושבת = חסום מכניסה (למשל עובד שעזב)'
+              : '● Active = can log in   ○ Disabled = blocked from login (e.g. former employee)'}
           </p>
         </div>
         <button
@@ -150,7 +224,7 @@ export default function AdminCleaners() {
           style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
         >
           <UserPlus size={16} />
-          {lang === 'he' ? 'הוסף מנקה' : 'Add Cleaner'}
+          {lang === 'he' ? 'הוסף עובד' : 'Add Worker'}
         </button>
       </div>
 
@@ -161,7 +235,7 @@ export default function AdminCleaners() {
           className="rounded-2xl p-5 flex flex-col gap-3"
           style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}
         >
-          <h2 className="font-semibold" style={{ color: 'var(--color-text)' }}>{lang === 'he' ? 'מנקה חדש' : 'New Cleaner'}</h2>
+          <h2 className="font-semibold" style={{ color: 'var(--color-text)' }}>{lang === 'he' ? 'עובד חדש' : 'New Worker'}</h2>
           <div className="grid grid-cols-2 gap-3">
             {[
               { key: 'name', placeholder: lang === 'he' ? 'שם מלא' : 'Full Name' },
@@ -201,25 +275,35 @@ export default function AdminCleaners() {
         </form>
       )}
 
-      {/* Cleaners list */}
+      {/* Workers list */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
           {cleaners.map((c: any) => (
             <div key={c.id} className="px-5 py-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
                   <div className="font-medium" style={{ color: 'var(--color-text)' }}>{c.name}</div>
                   <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    🪪 {c.idNumber} {c.phone && `· 📞 ${c.phone}`}
+                    🪪 {c.idNumber}{c.phone && ` · 📞 ${c.phone}`}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {/* Active/Inactive toggle */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Edit button */}
+                  <button
+                    onClick={() => setEditWorker({ id: c.id, name: c.name, idNumber: c.idNumber, phone: c.phone ?? '' })}
+                    className="p-1.5 rounded-lg hover:bg-white/10 transition-all"
+                    style={{ color: 'rgba(0,229,204,0.6)' }}
+                    title={lang === 'he' ? 'ערוך פרטים' : 'Edit details'}
+                  >
+                    <Pencil size={14} />
+                  </button>
+
+                  {/* Active / Disabled toggle */}
                   <button
                     onClick={() => handleToggle(c.id, c.isActive)}
                     title={lang === 'he'
-                      ? (c.isActive ? 'פעיל — לחץ להשבית (ימנע כניסה למערכת)' : 'לא פעיל — לחץ להפעיל')
-                      : (c.isActive ? 'Active — click to deactivate (blocks login)' : 'Inactive — click to activate')}
+                      ? (c.isActive ? 'פעיל — לחץ להשבית (יחסום כניסה)' : 'מושבת — לחץ להפעיל (יאפשר כניסה)')
+                      : (c.isActive ? 'Active — click to disable (blocks login)' : 'Disabled — click to activate (allows login)')}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium"
                     style={{
                       background: c.isActive ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
@@ -229,8 +313,10 @@ export default function AdminCleaners() {
                   >
                     {c.isActive
                       ? (lang === 'he' ? '● פעיל' : '● Active')
-                      : (lang === 'he' ? '○ מושבת' : '○ Inactive')}
+                      : (lang === 'he' ? '○ מושבת' : '○ Disabled')}
                   </button>
+
+                  {/* Delete */}
                   <button
                     onClick={() => handleDelete(c.id, c.name)}
                     className="p-1.5 rounded-lg transition-all hover:bg-red-500/20"
@@ -248,21 +334,21 @@ export default function AdminCleaners() {
                 <select
                   value={c.buildingId ?? ''}
                   onChange={e => handleAssignBuilding(c.id, e.target.value)}
-                  className="flex-1 px-3 py-1.5 rounded-xl text-sm outline-none"
+                  className="flex-1 min-w-0 px-3 py-1.5 rounded-xl text-sm outline-none"
                   style={{
                     background: c.buildingId ? 'rgba(0,229,204,0.08)' : 'var(--color-bg)',
                     border: `1px solid ${c.buildingId ? 'rgba(0,229,204,0.3)' : 'rgba(255,255,255,0.1)'}`,
                     color: c.buildingId ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                   }}
                 >
-                  <option value="">{lang === 'he' ? '— ללא שיוך לבניין (רואה הכל) —' : '— No building assigned (sees all) —'}</option>
+                  <option value="">{lang === 'he' ? '— ללא שיוך לבניין (רואה הכל) —' : '— No building (sees all) —'}</option>
                   {buildings.map((b: any) => (
                     <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
                 </select>
 
-                {/* Per-cleaner language — disabled when global override is set */}
-                <div className="flex items-center gap-1.5" title={globalCleanerLang ? (lang === 'he' ? 'שפה גלובלית קובעת — שנה בהגדרות' : 'Global lang override active — change in Settings') : ''}>
+                {/* Per-worker language */}
+                <div className="flex items-center gap-1.5" title={globalCleanerLang ? (lang === 'he' ? 'שפה גלובלית קובעת — שנה בהגדרות' : 'Global lang override — change in Settings') : ''}>
                   <Globe size={13} style={{ color: globalCleanerLang ? 'rgba(255,255,255,0.2)' : 'rgba(0,229,204,0.7)', flexShrink: 0 }} />
                   <select
                     value={globalCleanerLang ?? c.preferredLang ?? 'he'}
@@ -290,7 +376,7 @@ export default function AdminCleaners() {
           ))}
           {cleaners.length === 0 && (
             <div className="px-5 py-8 text-center" style={{ color: 'var(--color-text-secondary)' }}>
-              {lang === 'he' ? 'אין מנקים' : 'No cleaners yet'}
+              {lang === 'he' ? 'אין עובדים' : 'No workers yet'}
             </div>
           )}
         </div>

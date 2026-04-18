@@ -30,6 +30,11 @@ export class UsersController {
     return this.usersService.createAdmin(user.orgId, dto);
   }
 
+  @Patch(':id')
+  updateWorker(@Param('id') id: string, @Body() dto: { name?: string; idNumber?: string; phone?: string }) {
+    return this.usersService.updateWorker(id, dto);
+  }
+
   @Patch(':id/toggle')
   toggleActive(@Param('id') id: string, @Body() dto: { isActive: boolean }) {
     return this.usersService.toggleActive(id, dto.isActive);

@@ -26,14 +26,19 @@ export class AuthService {
   }
 
   async loginCleaner(orgId: string | undefined, idNumber: string) {
-    const where: any = { idNumber, isActive: true, role: 'CLEANER' };
-    if (orgId) where.orgId = orgId;
+    const baseWhere: any = { idNumber, role: 'CLEANER' };
+    if (orgId) baseWhere.orgId = orgId;
+
+    // First check if the user exists at all (to give a clear error message)
+    const anyUser = await this.prisma.user.findFirst({ where: baseWhere });
+    if (!anyUser) throw new UnauthorizedException('NOT_FOUND');
+    if (!anyUser.isActive) throw new UnauthorizedException('INACTIVE');
 
     const user = await this.prisma.user.findFirst({
-      where,
+      where: { ...baseWhere, isActive: true },
       include: { organization: true, building: true },
     });
-    if (!user) throw new UnauthorizedException('Cleaner not found');
+    if (!user) throw new UnauthorizedException('NOT_FOUND');
 
     const tokens = this.generateTokens(user);
     const orgSettings = (user.organization?.settings ?? {}) as any;

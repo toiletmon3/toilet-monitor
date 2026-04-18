@@ -26,8 +26,13 @@ export default function CleanerLoginPage() {
       // Apply effective language (org override > user preference)
       if (data.effectiveLang) setLanguage(data.effectiveLang);
       navigate('/cleaner');
-    } catch {
-      setError(t('cleaner.login.error'));
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? '';
+      if (msg === 'INACTIVE') {
+        setError(t('cleaner.login.errorInactive'));
+      } else {
+        setError(t('cleaner.login.error'));
+      }
     } finally {
       setLoading(false);
     }
@@ -57,7 +62,7 @@ export default function CleanerLoginPage() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🧹</div>
+          <div className="text-5xl mb-3">👷</div>
           <h1 className="text-2xl font-bold text-white">{t('cleaner.login.title')}</h1>
         </div>
 

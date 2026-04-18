@@ -139,6 +139,18 @@ export class UsersService {
     });
   }
 
+  async updateWorker(userId: string, patch: { name?: string; idNumber?: string; phone?: string }) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(patch.name !== undefined && { name: patch.name }),
+        ...(patch.idNumber !== undefined && { idNumber: patch.idNumber }),
+        ...(patch.phone !== undefined && { phone: patch.phone }),
+      },
+      select: { id: true, name: true, idNumber: true, phone: true },
+    });
+  }
+
   async assignBuilding(userId: string, buildingId: string | null) {
     return this.prisma.user.update({
       where: { id: userId },

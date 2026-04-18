@@ -34,11 +34,12 @@
   "cleaner": {
     "title": "My Tasks",
     "login": {
-      "title": "Cleaner Login",
+      "title": "Staff Login",
       "idLabel": "ID Number",
       "idPlaceholder": "Enter ID",
       "submit": "Login",
-      "error": "ID not found in system"
+      "error": "ID not found or account is disabled",
+      "errorInactive": "Account is disabled — contact your manager"
     },
     "noTasks": "No open tasks right now",
     "status": {
@@ -51,7 +52,8 @@
       "resolve": "Mark Resolved"
     },
     "reportedAgo": "{{time}} ago",
-    "logout": "Logout"
+    "logout": "Logout",
+    "checkout": "End Shift"
   },
   "admin": {
     "title": "Dashboard",
