@@ -245,6 +245,8 @@ export default function AdminLayout() {
         className="hidden lg:flex flex-col flex-shrink-0 transition-all duration-200"
         style={{
           width: sidebarW,
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch' as any,
           background: 'var(--color-surface)',
           borderInlineEnd: '1px solid rgba(0,229,204,0.1)',
         }}
@@ -296,7 +298,10 @@ export default function AdminLayout() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto p-4 lg:p-6">
+        <main
+          className="flex-1 p-4 lg:p-6"
+          style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch' as any }}
+        >
           <Outlet />
         </main>
       </div>

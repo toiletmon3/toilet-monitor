@@ -29,9 +29,17 @@ export class AnalyticsService {
         }, 0) / resolved30d.length
       : 0;
 
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
     const [activeCleaners, onlineDevices] = await Promise.all([
-      this.prisma.user.count({
-        where: { orgId, role: 'CLEANER', isActive: true },
+      // Count cleaners currently on shift (checked in today, not yet checked out)
+      this.prisma.cleanerArrival.count({
+        where: {
+          user: { orgId },
+          arrivedAt: { gte: todayStart },
+          leftAt: null,
+        },
       }),
       this.prisma.device.count({
         where: { restroom: { floor: { building: { orgId } } }, isOnline: true },

@@ -220,7 +220,7 @@ export default function CleanerPage() {
   }, [filterFloorId, filterRestroomId, floors, restrooms]);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--color-bg)', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-4 sticky top-0 z-10"
