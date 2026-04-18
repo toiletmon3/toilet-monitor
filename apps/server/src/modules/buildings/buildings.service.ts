@@ -14,7 +14,7 @@ export class BuildingsService {
           include: {
             restrooms: {
               include: {
-                devices: { select: { id: true, deviceCode: true, isOnline: true, lastHeartbeat: true } },
+                devices: { select: { id: true, deviceCode: true, isOnline: true, lastHeartbeat: true, kioskTemplateId: true } },
                 incidents: {
                   where: { status: { in: ['OPEN', 'IN_PROGRESS'] } },
                   select: { id: true, status: true, issueTypeId: true, reportedAt: true },
@@ -80,12 +80,13 @@ export class BuildingsService {
     });
   }
 
-  async updateTemplate(templateId: string, dto: { name?: string; buttons?: any[] }) {
+  async updateTemplate(templateId: string, dto: { name?: string; buttons?: any[]; theme?: string }) {
     return this.prisma.kioskTemplate.update({ where: { id: templateId }, data: dto });
   }
 
   async deleteTemplate(templateId: string) {
     await this.prisma.building.updateMany({ where: { kioskTemplateId: templateId }, data: { kioskTemplateId: null } });
+    await this.prisma.device.updateMany({ where: { kioskTemplateId: templateId }, data: { kioskTemplateId: null } });
     return this.prisma.kioskTemplate.delete({ where: { id: templateId } });
   }
 
@@ -93,14 +94,39 @@ export class BuildingsService {
     return this.prisma.building.update({ where: { id: buildingId }, data: { kioskTemplateId: templateId } });
   }
 
-  async getKioskButtons(deviceCode: string) {
+  async assignTemplateToDevice(deviceId: string, templateId: string | null) {
+    return this.prisma.device.update({ where: { id: deviceId }, data: { kioskTemplateId: templateId } });
+  }
+
+  /**
+   * Resolve the effective KioskTemplate for a device.
+   * Priority: device.kioskTemplate → building.kioskTemplate → null
+   */
+  private async resolveTemplate(deviceCode: string) {
     const device = await this.prisma.device.findUnique({
       where: { deviceCode },
-      include: { restroom: { include: { floor: { include: { building: { include: { kioskTemplate: true } } } } } } },
+      include: {
+        kioskTemplate: true,
+        restroom: { include: { floor: { include: { building: { include: { kioskTemplate: true } } } } } },
+      },
     });
-    if (!device) return this.defaultButtons();
-    const template = device.restroom.floor.building.kioskTemplate;
+    if (!device) return null;
+    return device.kioskTemplate ?? device.restroom.floor.building.kioskTemplate ?? null;
+  }
+
+  async getKioskButtons(deviceCode: string) {
+    const template = await this.resolveTemplate(deviceCode);
     return template ? (template.buttons as any[]) : this.defaultButtons();
+  }
+
+  async getKioskConfig(deviceCode: string) {
+    const template = await this.resolveTemplate(deviceCode);
+    return {
+      theme: template?.theme ?? 'default',
+      buttons: template ? (template.buttons as any[]) : this.defaultButtons(),
+      templateId: template?.id ?? null,
+      templateName: template?.name ?? null,
+    };
   }
 
   async getPublicStructure(orgId: string) {

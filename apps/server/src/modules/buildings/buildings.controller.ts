@@ -100,7 +100,7 @@ export class BuildingsController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('kiosk-templates/:id')
-  updateTemplate(@Param('id') id: string, @Body() dto: { name?: string; buttons?: any[] }) {
+  updateTemplate(@Param('id') id: string, @Body() dto: { name?: string; buttons?: any[]; theme?: string }) {
     return this.buildingsService.updateTemplate(id, dto);
   }
 
@@ -116,10 +116,22 @@ export class BuildingsController {
     return this.buildingsService.assignTemplate(buildingId, dto.templateId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Patch('devices/:deviceId/kiosk-template')
+  assignTemplateToDevice(@Param('deviceId') deviceId: string, @Body() dto: { templateId: string | null }) {
+    return this.buildingsService.assignTemplateToDevice(deviceId, dto.templateId);
+  }
+
   @Public()
   @Get('kiosk-buttons/:deviceCode')
   getKioskButtons(@Param('deviceCode') deviceCode: string) {
     return this.buildingsService.getKioskButtons(deviceCode);
+  }
+
+  @Public()
+  @Get('kiosk-config/:deviceCode')
+  getKioskConfig(@Param('deviceCode') deviceCode: string) {
+    return this.buildingsService.getKioskConfig(deviceCode);
   }
 
   @Public()

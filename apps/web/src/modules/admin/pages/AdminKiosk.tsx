@@ -1,10 +1,71 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Pencil, Check, X, LayoutTemplate } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X, LayoutTemplate, Palette, Tablet } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 
 const ICON_OPTIONS = ['Scroll','Wind','ShowerHead','Trash2','Droplets','Wrench','SmilePlus','Star','Bell','AlertCircle'];
+
+const THEMES = [
+  {
+    id: 'default',
+    title: 'קלאסי',
+    desc: 'זכוכית עם צבעים שונים לכל כפתור',
+    preview: { bg: 'linear-gradient(135deg, #0a1628 0%, #060a12 100%)', border: 'rgba(0,229,204,0.4)', glow: 'rgba(0,229,204,0.2)' },
+  },
+  {
+    id: 'neon',
+    title: 'ניאון',
+    desc: 'רקע שחור עם מסגרות ציאן בוהקות',
+    preview: { bg: '#000000', border: '#00E5FF', glow: 'rgba(0,229,255,0.5)' },
+  },
+];
+
+function ThemePicker({ current, onChange }: { current: string; onChange: (id: string) => void }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {THEMES.map(theme => {
+        const active = current === theme.id;
+        return (
+          <button
+            key={theme.id}
+            onClick={() => onChange(theme.id)}
+            type="button"
+            className="relative rounded-xl p-3 text-right transition-all"
+            style={{
+              background: active ? 'rgba(0,229,204,0.08)' : 'rgba(0,0,0,0.2)',
+              border: `2px solid ${active ? 'var(--color-accent)' : 'rgba(255,255,255,0.05)'}`,
+            }}
+          >
+            <div
+              className="w-full h-20 rounded-lg mb-2 flex items-center justify-center"
+              style={{
+                background: theme.preview.bg,
+                border: `2px solid ${theme.preview.border}`,
+                boxShadow: `0 0 18px ${theme.preview.glow}`,
+              }}
+            >
+              <span className="text-[11px] font-bold tracking-wide" style={{ color: theme.preview.border, textShadow: `0 0 6px ${theme.preview.glow}` }}>
+                {theme.title.toUpperCase()}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{theme.title}</span>
+                <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>{theme.desc}</span>
+              </div>
+              {active && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: 'var(--color-accent)', color: '#0a0e1a' }}>
+                  פעיל
+                </span>
+              )}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function ButtonEditor({ btn, onChange }: { btn: any; onChange: (b: any) => void }) {
   return (
@@ -45,14 +106,21 @@ function ButtonEditor({ btn, onChange }: { btn: any; onChange: (b: any) => void 
   );
 }
 
-function TemplateCard({ template, buildings, onRefresh }: { template: any; buildings: any[]; onRefresh: () => void }) {
+function TemplateCard({ template, buildings, devices, onRefresh }: { template: any; buildings: any[]; devices: any[]; onRefresh: () => void }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(template.name);
   const [buttons, setButtons] = useState<any[]>(template.buttons ?? []);
+  const [theme, setTheme] = useState<string>(template.theme ?? 'default');
 
   const saveMut = useMutation({
-    mutationFn: () => api.patch(`/buildings/kiosk-templates/${template.id}`, { name, buttons }),
+    mutationFn: () => api.patch(`/buildings/kiosk-templates/${template.id}`, { name, buttons, theme }),
     onSuccess: () => { setEditing(false); onRefresh(); toast.success('נשמר'); },
+    onError: () => toast.error('שגיאה'),
+  });
+
+  const quickThemeMut = useMutation({
+    mutationFn: (nextTheme: string) => api.patch(`/buildings/kiosk-templates/${template.id}`, { theme: nextTheme }),
+    onSuccess: () => { onRefresh(); toast.success('עיצוב עודכן'); },
     onError: () => toast.error('שגיאה'),
   });
 
@@ -62,11 +130,14 @@ function TemplateCard({ template, buildings, onRefresh }: { template: any; build
   });
 
   const assignedBuildings = buildings.filter(b => b.kioskTemplateId === template.id);
+  const assignedDevices = devices.filter(d => d.kioskTemplateId === template.id);
+  const currentTheme = editing ? theme : (template.theme ?? 'default');
+  const themeMeta = THEMES.find(t => t.id === currentTheme) ?? THEMES[0];
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-      <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: editing ? '1px solid rgba(0,229,204,0.1)' : 'none' }}>
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center justify-between px-5 py-4 gap-2 flex-wrap" style={{ borderBottom: editing ? '1px solid rgba(0,229,204,0.1)' : 'none' }}>
+        <div className="flex items-center gap-3 min-w-0 flex-wrap">
           <LayoutTemplate size={16} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
           {editing ? (
             <input value={name} onChange={e => setName(e.target.value)}
@@ -75,9 +146,25 @@ function TemplateCard({ template, buildings, onRefresh }: { template: any; build
           ) : (
             <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{template.name}</span>
           )}
+          <span
+            className="text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide"
+            style={{
+              background: themeMeta.preview.bg,
+              color: themeMeta.preview.border,
+              border: `1px solid ${themeMeta.preview.border}`,
+              boxShadow: `0 0 6px ${themeMeta.preview.glow}`,
+            }}
+          >
+            {themeMeta.title}
+          </span>
           {assignedBuildings.length > 0 && (
             <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
               {assignedBuildings.map((b: any) => b.name).join(', ')}
+            </span>
+          )}
+          {assignedDevices.length > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(168,85,247,0.1)', color: '#c084fc' }}>
+              <Tablet size={11} /> {assignedDevices.length} טאבלטים
             </span>
           )}
         </div>
@@ -88,7 +175,7 @@ function TemplateCard({ template, buildings, onRefresh }: { template: any; build
                 className="p-1.5 rounded-lg hover:bg-green-500/20 transition-all" style={{ color: '#22c55e' }}>
                 <Check size={15} />
               </button>
-              <button onClick={() => { setEditing(false); setName(template.name); setButtons(template.buttons); }}
+              <button onClick={() => { setEditing(false); setName(template.name); setButtons(template.buttons); setTheme(template.theme ?? 'default'); }}
                 className="p-1.5 rounded-lg hover:bg-white/10 transition-all" style={{ color: 'var(--color-text-secondary)' }}>
                 <X size={15} />
               </button>
@@ -108,13 +195,50 @@ function TemplateCard({ template, buildings, onRefresh }: { template: any; build
         </div>
       </div>
 
+      {!editing && (
+        <div className="px-5 py-3 flex items-center gap-2 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+          <Palette size={13} style={{ color: 'var(--color-text-secondary)' }} />
+          <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>עיצוב:</span>
+          <div className="flex gap-1">
+            {THEMES.map(t => {
+              const active = (template.theme ?? 'default') === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => { if (!active) quickThemeMut.mutate(t.id); }}
+                  disabled={quickThemeMut.isPending}
+                  className="text-[11px] px-2 py-1 rounded-md font-medium transition-all"
+                  style={{
+                    background: active ? 'var(--color-accent)' : 'rgba(0,0,0,0.25)',
+                    color: active ? '#0a0e1a' : 'var(--color-text-secondary)',
+                    border: `1px solid ${active ? 'var(--color-accent)' : 'rgba(255,255,255,0.08)'}`,
+                  }}
+                >
+                  {t.title}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {editing && (
-        <div className="p-5 flex flex-col gap-2">
-          <p className="text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>כפתורים</p>
-          {buttons.map((btn, i) => (
-            <ButtonEditor key={btn.code} btn={btn}
-              onChange={updated => setButtons(bs => bs.map((b, j) => j === i ? updated : b))} />
-          ))}
+        <div className="p-5 flex flex-col gap-4">
+          <div>
+            <p className="text-xs font-semibold mb-2 flex items-center gap-1.5" style={{ color: 'var(--color-text-secondary)' }}>
+              <Palette size={12} /> עיצוב הקיוסק
+            </p>
+            <ThemePicker current={theme} onChange={setTheme} />
+          </div>
+          <div>
+            <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>כפתורים</p>
+            <div className="flex flex-col gap-2">
+              {buttons.map((btn, i) => (
+                <ButtonEditor key={btn.code} btn={btn}
+                  onChange={updated => setButtons(bs => bs.map((b, j) => j === i ? updated : b))} />
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -142,11 +266,34 @@ export default function AdminKiosk() {
     onError: () => toast.error('שגיאה'),
   });
 
-  const assignMut = useMutation({
+  const assignBuildingMut = useMutation({
     mutationFn: ({ buildingId, templateId }: { buildingId: string; templateId: string | null }) =>
       api.patch(`/buildings/${buildingId}/kiosk-template`, { templateId }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['building-structure'] }); toast.success('עודכן'); },
   });
+
+  const assignDeviceMut = useMutation({
+    mutationFn: ({ deviceId, templateId }: { deviceId: string; templateId: string | null }) =>
+      api.patch(`/buildings/devices/${deviceId}/kiosk-template`, { templateId }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['building-structure'] }); toast.success('עודכן'); },
+  });
+
+  // Flatten all devices across the structure for per-device assignment.
+  const allDevices: any[] = [];
+  for (const b of structure as any[]) {
+    for (const f of b.floors ?? []) {
+      for (const r of f.restrooms ?? []) {
+        for (const d of r.devices ?? []) {
+          allDevices.push({
+            ...d,
+            buildingName: b.name,
+            floorName: f.name,
+            restroomName: r.name,
+          });
+        }
+      }
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -181,14 +328,18 @@ export default function AdminKiosk() {
       )}
 
       {templates.map((t: any) => (
-        <TemplateCard key={t.id} template={t} buildings={structure} onRefresh={refetch} />
+        <TemplateCard key={t.id} template={t} buildings={structure} devices={allDevices} onRefresh={refetch} />
       ))}
 
       {/* Assign templates to buildings */}
       {structure.length > 0 && templates.length > 0 && (
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-          <div className="px-5 py-4 font-semibold" style={{ borderBottom: '1px solid rgba(0,229,204,0.1)', color: 'var(--color-text)' }}>
+          <div className="px-5 py-4 font-semibold flex items-center gap-2" style={{ borderBottom: '1px solid rgba(0,229,204,0.1)', color: 'var(--color-text)' }}>
+            <LayoutTemplate size={14} style={{ color: 'var(--color-accent)' }} />
             שיוך טמפלט לבניין
+            <span className="text-[11px] font-normal mr-auto" style={{ color: 'var(--color-text-secondary)' }}>
+              ברירת מחדל לכל הטאבלטים בבניין
+            </span>
           </div>
           <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
             {structure.map((b: any) => (
@@ -196,11 +347,45 @@ export default function AdminKiosk() {
                 <span className="text-sm" style={{ color: 'var(--color-text)' }}>{b.name}</span>
                 <select
                   value={b.kioskTemplateId ?? ''}
-                  onChange={e => assignMut.mutate({ buildingId: b.id, templateId: e.target.value || null })}
+                  onChange={e => assignBuildingMut.mutate({ buildingId: b.id, templateId: e.target.value || null })}
                   className="px-3 py-1.5 rounded-xl text-sm outline-none"
                   style={{ background: 'var(--color-bg)', border: '1px solid rgba(0,229,204,0.3)', color: 'var(--color-text)', minWidth: 180 }}
                 >
                   <option value="">— ברירת מחדל —</option>
+                  {templates.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Per-device assignment */}
+      {allDevices.length > 0 && templates.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+          <div className="px-5 py-4 font-semibold flex items-center gap-2" style={{ borderBottom: '1px solid rgba(0,229,204,0.1)', color: 'var(--color-text)' }}>
+            <Tablet size={14} style={{ color: 'var(--color-accent)' }} />
+            שיוך טמפלט לטאבלט
+            <span className="text-[11px] font-normal mr-auto" style={{ color: 'var(--color-text-secondary)' }}>
+              דורס את הגדרת הבניין עבור טאבלט ספציפי
+            </span>
+          </div>
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+            {allDevices.map(d => (
+              <div key={d.id} className="flex items-center justify-between px-5 py-3 gap-3">
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm truncate" style={{ color: 'var(--color-text)' }}>{d.deviceCode}</span>
+                  <span className="text-[11px] truncate" style={{ color: 'var(--color-text-secondary)' }}>
+                    {d.buildingName} • {d.floorName} • {d.restroomName}
+                  </span>
+                </div>
+                <select
+                  value={d.kioskTemplateId ?? ''}
+                  onChange={e => assignDeviceMut.mutate({ deviceId: d.id, templateId: e.target.value || null })}
+                  className="px-3 py-1.5 rounded-xl text-sm outline-none flex-shrink-0"
+                  style={{ background: 'var(--color-bg)', border: '1px solid rgba(0,229,204,0.3)', color: 'var(--color-text)', minWidth: 180 }}
+                >
+                  <option value="">— מהבניין —</option>
                   {templates.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
