@@ -154,6 +154,26 @@ export class UsersService {
     });
   }
 
+  async changePassword(userId: string, newPassword: string) {
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+      select: { id: true, name: true, email: true },
+    });
+  }
+
+  async updateAdmin(userId: string, patch: { name?: string; email?: string }) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(patch.name  !== undefined && { name: patch.name }),
+        ...(patch.email !== undefined && { email: patch.email, idNumber: patch.email }),
+      },
+      select: { id: true, name: true, email: true, role: true, isActive: true },
+    });
+  }
+
   async updateWorker(userId: string, patch: { name?: string; idNumber?: string; phone?: string }) {
     return this.prisma.user.update({
       where: { id: userId },

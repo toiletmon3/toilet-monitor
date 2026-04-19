@@ -1,9 +1,153 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { UserPlus, Trash2, Building2, Globe, Pencil, X, Check } from 'lucide-react';
+import { UserPlus, Trash2, Building2, Globe, Pencil, X, Check, KeyRound, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
+
+interface EditState { id: string; name: string; idNumber: string; phone: string }
+
+// ── Password change modal ───────────────────────────────────────────────────────
+function PasswordModal({ userId, userName, onClose }: { userId: string; userName: string; onClose: () => void }) {
+  const [pw, setPw] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [show, setShow] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const valid = pw.length >= 6 && pw === confirm;
+
+  const save = async () => {
+    if (!valid) return;
+    setSaving(true);
+    try {
+      await api.patch(`/users/${userId}/password`, { password: pw });
+      toast.success('הסיסמה שונתה בהצלחה');
+      onClose();
+    } catch {
+      toast.error('שגיאה בשינוי סיסמה');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputStyle = { background: '#0a0e1a', border: '1px solid rgba(0,229,204,0.25)', color: 'white' };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+      <div className="w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'var(--color-surface)', border: '1px solid rgba(0,229,204,0.25)' }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-white flex items-center gap-2"><KeyRound size={16} style={{ color: 'var(--color-accent)' }} /> שינוי סיסמה</h2>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{userName}</p>
+          </div>
+          <button onClick={onClose} style={{ color: 'var(--color-text-secondary)' }}><X size={18} /></button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {[
+            { label: 'סיסמה חדשה', val: pw, set: setPw },
+            { label: 'אימות סיסמה', val: confirm, set: setConfirm },
+          ].map(({ label, val, set }) => (
+            <div key={label}>
+              <label className="text-xs mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>{label}</label>
+              <div className="relative">
+                <input
+                  type={show ? 'text' : 'password'}
+                  value={val}
+                  onChange={e => set(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl outline-none text-sm pr-10"
+                  style={inputStyle}
+                  placeholder="לפחות 6 תווים"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShow(s => !s)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                >
+                  {show ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+          ))}
+          {confirm && pw !== confirm && (
+            <p className="text-xs" style={{ color: '#ef4444' }}>הסיסמאות אינן תואמות</p>
+          )}
+          {pw && pw.length < 6 && (
+            <p className="text-xs" style={{ color: '#f59e0b' }}>סיסמה חייבת להכיל לפחות 6 תווים</p>
+          )}
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={save}
+            disabled={!valid || saving}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium"
+            style={{ background: valid ? 'rgba(0,229,204,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${valid ? 'var(--color-accent)' : 'rgba(255,255,255,0.1)'}`, color: valid ? 'var(--color-accent)' : 'var(--color-text-secondary)', opacity: saving ? 0.6 : 1 }}
+          >
+            <Check size={15} /> שמור סיסמה
+          </button>
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm" style={{ color: 'var(--color-text-secondary)' }}>ביטול</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Admin user edit modal ───────────────────────────────────────────────────────
+function AdminEditModal({ user, onClose, onSaved }: { user: any; onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState(user.name ?? '');
+  const [email, setEmail] = useState(user.email ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      await api.patch(`/users/${user.id}/admin`, { name: name.trim(), email: email.trim() });
+      toast.success('פרטים עודכנו');
+      onSaved();
+      onClose();
+    } catch {
+      toast.error('שגיאה בשמירה');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputStyle = { background: '#0a0e1a', border: '1px solid rgba(0,229,204,0.25)', color: 'white' };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+      <div className="w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'var(--color-surface)', border: '1px solid rgba(0,229,204,0.25)' }}>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-white flex items-center gap-2"><Pencil size={15} style={{ color: 'var(--color-accent)' }} /> עריכת מנהל</h2>
+          <button onClick={onClose} style={{ color: 'var(--color-text-secondary)' }}><X size={18} /></button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>שם מלא</label>
+            <input value={name} onChange={e => setName(e.target.value)} className="w-full px-3 py-2.5 rounded-xl outline-none text-sm" style={inputStyle} />
+          </div>
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>אימייל (שם משתמש לכניסה)</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-3 py-2.5 rounded-xl outline-none text-sm" style={inputStyle} />
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button onClick={save} disabled={!name.trim() || saving}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium"
+            style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)', opacity: saving ? 0.6 : 1 }}>
+            <Check size={15} /> שמור
+          </button>
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm" style={{ color: 'var(--color-text-secondary)' }}>ביטול</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface EditState { id: string; name: string; idNumber: string; phone: string }
 
@@ -14,6 +158,8 @@ export default function AdminCleaners() {
   const [form, setForm] = useState({ name: '', idNumber: '', phone: '', preferredLang: 'he' });
   const [editWorker, setEditWorker] = useState<EditState | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [pwUser, setPwUser] = useState<{ id: string; name: string } | null>(null);
+  const [editAdmin, setEditAdmin] = useState<any | null>(null);
 
   const { i18n } = useTranslation();
   const lang = i18n.language;
@@ -29,6 +175,7 @@ export default function AdminCleaners() {
   });
 
   const cleaners = (users ?? []).filter((u: any) => u.role === 'CLEANER');
+  const admins   = (users ?? []).filter((u: any) => u.role === 'ORG_ADMIN' || u.role === 'MANAGER');
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +265,18 @@ export default function AdminCleaners() {
 
   return (
     <div className="flex flex-col gap-5">
+
+      {/* ── Password modal ── */}
+      {pwUser && <PasswordModal userId={pwUser.id} userName={pwUser.name} onClose={() => setPwUser(null)} />}
+
+      {/* ── Admin edit modal ── */}
+      {editAdmin && (
+        <AdminEditModal
+          user={editAdmin}
+          onClose={() => setEditAdmin(null)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['users'] })}
+        />
+      )}
 
       {/* ── Edit modal ── */}
       {editWorker && (
@@ -377,6 +536,72 @@ export default function AdminCleaners() {
           {cleaners.length === 0 && (
             <div className="px-5 py-8 text-center" style={{ color: 'var(--color-text-secondary)' }}>
               {lang === 'he' ? 'אין עובדים' : 'No workers yet'}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Admins & Managers ── */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(139,92,246,0.2)' }}>
+        <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(139,92,246,0.15)' }}>
+          <ShieldCheck size={16} style={{ color: '#8b5cf6' }} />
+          <h2 className="font-semibold text-white">{lang === 'he' ? 'מנהלים' : 'Admins'}</h2>
+          <span className="text-xs px-2 py-0.5 rounded-full ms-1" style={{ background: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>
+            {admins.length}
+          </span>
+          <p className="text-xs ms-auto" style={{ color: 'var(--color-text-secondary)' }}>
+            {lang === 'he' ? 'כניסה עם אימייל + סיסמה' : 'Login with email + password'}
+          </p>
+        </div>
+        <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+          {admins.map((a: any) => (
+            <div key={a.id} className="px-5 py-4 flex items-center gap-3 flex-wrap">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+                style={{ background: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>
+                {(a.name ?? '?').charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-white truncate">{a.name}</div>
+                <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
+                  {a.email}
+                  {' · '}
+                  <span style={{ color: a.role === 'ORG_ADMIN' ? '#8b5cf6' : '#f59e0b' }}>
+                    {a.role === 'ORG_ADMIN' ? (lang === 'he' ? 'מנהל ראשי' : 'Org Admin') : (lang === 'he' ? 'מנהל' : 'Manager')}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setEditAdmin(a)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-secondary)' }}
+                  title={lang === 'he' ? 'ערוך שם / אימייל' : 'Edit name / email'}
+                >
+                  <Pencil size={12} />
+                  {lang === 'he' ? 'ערוך' : 'Edit'}
+                </button>
+                <button
+                  onClick={() => setPwUser({ id: a.id, name: a.name })}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                  style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', color: '#8b5cf6' }}
+                  title={lang === 'he' ? 'שנה סיסמה' : 'Change password'}
+                >
+                  <KeyRound size={12} />
+                  {lang === 'he' ? 'שנה סיסמה' : 'Change password'}
+                </button>
+                <button
+                  onClick={() => handleDelete(a.id, a.name)}
+                  className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all"
+                  style={{ color: 'rgba(239,68,68,0.5)' }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
+          {admins.length === 0 && (
+            <div className="px-5 py-6 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              {lang === 'he' ? 'אין מנהלים' : 'No admins'}
             </div>
           )}
         </div>

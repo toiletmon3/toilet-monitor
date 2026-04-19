@@ -35,6 +35,16 @@ export class UsersController {
     return this.usersService.updateWorker(id, dto);
   }
 
+  @Patch(':id/password')
+  changePassword(@Param('id') id: string, @Body() dto: { password: string }) {
+    return this.usersService.changePassword(id, dto.password);
+  }
+
+  @Patch(':id/admin')
+  updateAdmin(@Param('id') id: string, @Body() dto: { name?: string; email?: string }) {
+    return this.usersService.updateAdmin(id, dto);
+  }
+
   @Patch(':id/toggle')
   toggleActive(@Param('id') id: string, @Body() dto: { isActive: boolean }) {
     return this.usersService.toggleActive(id, dto.isActive);
