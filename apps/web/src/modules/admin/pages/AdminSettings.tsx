@@ -676,8 +676,11 @@ export default function AdminSettings() {
 
   const updateOrgSettings = async (patch: { kioskLang?: string; cleanerLang?: string | null; timezone?: string }) => {
     await api.patch('/users/org-settings', patch);
-    // Update cache immediately so AdminLayout clock + all consumers update instantly
     queryClient.setQueryData(['org-settings'], (old: any) => ({ ...old, ...patch }));
+    // Notify AdminLayout immediately via custom event so the sidebar clock updates at once
+    if (patch.timezone) {
+      window.dispatchEvent(new CustomEvent('admin-tz-changed', { detail: patch.timezone }));
+    }
     toast.success(t('common.updated'));
   };
 

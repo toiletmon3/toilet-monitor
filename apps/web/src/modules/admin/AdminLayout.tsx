@@ -48,7 +48,21 @@ export default function AdminLayout() {
     queryFn: async () => (await api.get('/users/org-settings')).data,
     enabled: bypassReady,
   });
-  const tz = orgSettings?.timezone ?? 'Asia/Jerusalem';
+
+  // tzOverride is set instantly when the user changes timezone in Settings (via custom event)
+  // so the sidebar clock updates immediately without waiting for React Query refetch
+  const [tzOverride, setTzOverride] = useState<string | null>(null);
+  useEffect(() => {
+    const handler = (e: Event) => setTzOverride((e as CustomEvent<string>).detail);
+    window.addEventListener('admin-tz-changed', handler);
+    return () => window.removeEventListener('admin-tz-changed', handler);
+  }, []);
+  // When org settings first load from server, clear any stale override
+  useEffect(() => {
+    if (orgSettings?.timezone) setTzOverride(null);
+  }, [orgSettings?.timezone]);
+
+  const tz = tzOverride ?? orgSettings?.timezone ?? 'Asia/Jerusalem';
 
   useEffect(() => {
     if (bypassReady) return;
