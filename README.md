@@ -3,7 +3,7 @@
 מערכת ניטור שירותים חכמה עם 3 ממשקים: **קיוסק טאבלט**, **אפליקציית עובד**, ו**לוח בקרה למנהל**.
 בנויה עם NestJS + React PWA + PostgreSQL, עם deploy אוטומטי לענן.
 
-**גרסה נוכחית:** [`v1.0.6`](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.6) — Full i18n · Timezone · Admin permissions · Delete device
+**גרסה נוכחית:** [`v1.0.7`](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.7) — Kiosk live clock · Timezone fix (now persisted + auto-propagated to all kiosks)
 
 ---
 
@@ -78,6 +78,7 @@ packages/
 - כל טאבלט יכול לקבל תבנית עיצוב שונה
 - דיווח תקלות בלחיצה אחת — כפתורים מותאמים אישית
 - **בחירת שפה בולטת בראש הדף** (עברית / English)
+- **שעון חי + תאריך** בכותרת — לפי אזור זמן ארגוני, מתעדכן אוטומטית
 - **אייקונים וטקסט גדולים** למילוי אופטימלי של הכפתורים
 - כניסת צוות ניקוי דרך הקיוסק (ת.ז מוצגת כמספרים) + סגירה אוטומטית אחרי 20 שניות
 - **שגיאה ברורה** אם ת.ז לא קיימת בעת check-in
@@ -185,6 +186,7 @@ git push origin v1.0.6
 ```
 
 ### גרסאות קיימות
+- **[v1.0.7](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.7)** — Live clock in kiosk · Critical timezone persistence fix (NestJS route order bug) · Kiosks auto-pickup timezone changes every 5 min
 - **[v1.0.6](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.6)** — Add Poland/Bulgaria timezones · Delete device button in settings
 - **[v1.0.5](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.5)** — Full i18n (all interfaces) · Org timezone setting · Admin permissions & ID for kiosk · Device offline tracking
 - **[v1.0.4](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.4)** — Dashboard filters · Device online/offline · Kiosk templates (Classic/Neon) · Full i18n for analytics/settings/kiosk pages
@@ -334,7 +336,7 @@ Toilet/
 
 - [x] **v1.0.0** — Core stable release
 - [x] **v1.0.1–v1.0.4** — UX fixes · templates · analytics · dashboard filters
-- [x] **v1.0.5–v1.0.6** — Full i18n · timezone · admin permissions · device management
+- [x] **v1.0.5–v1.0.7** — Full i18n · timezone · admin permissions · device management · kiosk clock
 - [ ] v1.1.0 — משוב חוזר והיסטוריית עובד
 - [ ] v1.2.0 — התראות push לעובדים (FCM)
 - [ ] v1.3.0 — דוחות PDF/CSV לייצוא
