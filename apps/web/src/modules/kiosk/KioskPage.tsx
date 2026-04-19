@@ -52,7 +52,7 @@ export default function KioskPage() {
   const { deviceCode } = useParams<{ deviceCode: string }>();
   const { t, i18n } = useTranslation();
   const now = useClock();
-  const tz = localStorage.getItem('orgTimezone') ?? 'Asia/Jerusalem';
+  const [tz, setTz] = useState(() => localStorage.getItem('orgTimezone') ?? 'Asia/Jerusalem');
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
   const [issueTypes, setIssueTypes] = useState<any[]>([]);
   const [kioskButtons, setKioskButtons] = useState<any[]>(DEFAULT_BUTTONS);
@@ -81,10 +81,16 @@ export default function KioskPage() {
         } catch { /* use defaults */ }
 
         // Apply kiosk language and timezone from org settings
-        api.get('/auth/default-org').then(r => {
+        const applyOrgSettings = () => api.get('/auth/default-org').then(r => {
           if (r.data?.kioskLang) import('../../i18n').then(m => m.setLanguage(r.data.kioskLang));
-          if (r.data?.timezone) localStorage.setItem('orgTimezone', r.data.timezone);
+          if (r.data?.timezone) {
+            localStorage.setItem('orgTimezone', r.data.timezone);
+            setTz(r.data.timezone);
+          }
         }).catch(() => {});
+        applyOrgSettings();
+        // Re-poll every 5 minutes so timezone/language changes propagate without reload
+        const orgPollId = setInterval(applyOrgSettings, 5 * 60 * 1000);
 
         // Fetch real kiosk stats
         api.get(`/analytics/kiosk-stats/${device.restroom.id}`)
@@ -103,7 +109,7 @@ export default function KioskPage() {
           sendHeartbeat(device.id, device.restroom.id);
         }, 60_000);
 
-        return () => clearInterval(heartbeatInterval);
+        return () => { clearInterval(heartbeatInterval); clearInterval(orgPollId); };
       } catch {
         setConnectionStatus('offline');
       }

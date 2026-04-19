@@ -30,6 +30,17 @@ export class UsersController {
     return this.usersService.createAdmin(user.orgId, dto);
   }
 
+  // Literal routes MUST come before parameterized ':id' routes in NestJS
+  @Get('org-settings')
+  getOrgSettings(@CurrentUser() user: any) {
+    return this.usersService.getOrgSettings(user.orgId);
+  }
+
+  @Patch('org-settings')
+  updateOrgSettings(@CurrentUser() user: any, @Body() dto: { kioskLang?: string; cleanerLang?: string | null; timezone?: string }) {
+    return this.usersService.updateOrgSettings(user.orgId, dto);
+  }
+
   @Patch(':id')
   updateWorker(@Param('id') id: string, @Body() dto: { name?: string; idNumber?: string; phone?: string }) {
     return this.usersService.updateWorker(id, dto);
@@ -101,13 +112,4 @@ export class UsersController {
     return this.usersService.updateLang(id, dto.preferredLang);
   }
 
-  @Get('org-settings')
-  getOrgSettings(@CurrentUser() user: any) {
-    return this.usersService.getOrgSettings(user.orgId);
-  }
-
-  @Patch('org-settings')
-  updateOrgSettings(@CurrentUser() user: any, @Body() dto: { kioskLang?: string; cleanerLang?: string | null; timezone?: string }) {
-    return this.usersService.updateOrgSettings(user.orgId, dto);
-  }
 }
