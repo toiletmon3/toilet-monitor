@@ -251,6 +251,9 @@ pm2 logs           # לוגים
 ### 📋 גיבוי ונגישות — חובה לקרוא
 👉 **[docs/BACKUP_AND_ACCESS.md](docs/BACKUP_AND_ACCESS.md)** — רשימת כל הנכסים הקריטיים (DigitalOcean, DuckDNS, SSH keys, DB backups) ואיך לגבות אותם
 
+### 💰 עלויות ותמחור ללקוח
+👉 **[docs/PRICING.md](docs/PRICING.md)** — פירוט עלויות תשתית, חומרה, מודלי תמחור ודוגמת פיילוט
+
 ---
 
 ## 📱 הגדרת טאבלט Kiosk
