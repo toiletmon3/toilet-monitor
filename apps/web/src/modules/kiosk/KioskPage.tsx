@@ -221,7 +221,9 @@ export default function KioskPage() {
     return (
       <CleanerCheckIn
         restroomId={deviceInfo.restroom.id}
+        deviceCode={deviceCode}
         onBack={() => setShowCleanerMode(false)}
+        onReassigned={() => window.location.reload()}
       />
     );
   }

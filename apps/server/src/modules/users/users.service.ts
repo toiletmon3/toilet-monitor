@@ -87,6 +87,15 @@ export class UsersService {
     return { found: true, name: cleaner.name };
   }
 
+  async verifyAdminByIdNumber(idNumber: string) {
+    const admin = await this.prisma.user.findFirst({
+      where: { idNumber, role: { in: ['ORG_ADMIN', 'MANAGER'] }, isActive: true },
+      select: { id: true, name: true, role: true, orgId: true },
+    });
+    if (!admin) return { found: false };
+    return { found: true, name: admin.name, role: admin.role, orgId: admin.orgId };
+  }
+
   async checkin(dto: { cleanerIdNumber: string; restroomId?: string; buildingId?: string; note?: string }) {
     const cleaner = await this.prisma.user.findFirst({
       where: { idNumber: dto.cleanerIdNumber, isActive: true, role: 'CLEANER' },
@@ -163,14 +172,15 @@ export class UsersService {
     });
   }
 
-  async updateAdmin(userId: string, patch: { name?: string; email?: string }) {
+  async updateAdmin(userId: string, patch: { name?: string; email?: string; idNumber?: string }) {
     return this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...(patch.name  !== undefined && { name: patch.name }),
-        ...(patch.email !== undefined && { email: patch.email, idNumber: patch.email }),
+        ...(patch.name     !== undefined && { name: patch.name }),
+        ...(patch.email    !== undefined && { email: patch.email }),
+        ...(patch.idNumber !== undefined && { idNumber: patch.idNumber }),
       },
-      select: { id: true, name: true, email: true, role: true, isActive: true },
+      select: { id: true, name: true, email: true, idNumber: true, role: true, isActive: true },
     });
   }
 

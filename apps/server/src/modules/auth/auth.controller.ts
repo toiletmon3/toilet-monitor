@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/public.decorator';
 
@@ -40,5 +40,14 @@ export class AuthController {
   @Get('admin-bypass')
   adminBypass() {
     return this.authService.getAdminBypassToken();
+  }
+
+  @Public()
+  @Patch('kiosk/:deviceCode/restroom')
+  reassignDevice(
+    @Param('deviceCode') deviceCode: string,
+    @Body() body: { restroomId: string },
+  ) {
+    return this.authService.reassignDevice(deviceCode, body.restroomId);
   }
 }

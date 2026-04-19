@@ -110,18 +110,25 @@ function AdminEditModal({ user, onClose, onSaved }: { user: any; onClose: () => 
   const { t } = useTranslation();
   const [name, setName] = useState(user.name ?? '');
   const [email, setEmail] = useState(user.email ?? '');
+  // idNumber for admins: if it equals the email (legacy default) show empty so admin can set a real one
+  const currentId = user.idNumber === user.email ? '' : (user.idNumber ?? '');
+  const [idNumber, setIdNumber] = useState(currentId);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await api.patch(`/users/${user.id}/admin`, { name: name.trim(), email: email.trim() });
+      await api.patch(`/users/${user.id}/admin`, {
+        name: name.trim(),
+        email: email.trim(),
+        ...(idNumber.trim() && { idNumber: idNumber.trim() }),
+      });
       toast.success(t('admin.cleaners.savedMsg'));
       onSaved();
       onClose();
-    } catch {
-      toast.error(t('common.error'));
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? t('common.error'));
     } finally {
       setSaving(false);
     }
@@ -148,6 +155,20 @@ function AdminEditModal({ user, onClose, onSaved }: { user: any; onClose: () => 
           <div>
             <label className="text-xs mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.cleaners.adminEmail')}</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-3 py-2.5 rounded-xl outline-none text-sm" style={inputStyle} />
+          </div>
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>
+              {t('admin.cleaners.idNumber')}
+              <span className="ms-1 opacity-60 text-[10px]">— לכניסה דרך קיוסק / צוות</span>
+            </label>
+            <input
+              value={idNumber}
+              onChange={e => setIdNumber(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl outline-none text-sm font-mono"
+              style={inputStyle}
+              placeholder="מספר תעודת זהות"
+              inputMode="numeric"
+            />
           </div>
         </div>
 
@@ -568,6 +589,17 @@ export default function AdminCleaners() {
                       {a.role === 'ORG_ADMIN' ? t('admin.cleaners.orgAdmin') : t('admin.cleaners.manager')}
                     </span>
                   </div>
+                  {/* Show ID number if set (not equal to email = legacy default) */}
+                  {a.idNumber && a.idNumber !== a.email && (
+                    <div className="text-xs mt-0.5 font-mono" style={{ color: 'rgba(0,229,204,0.6)' }}>
+                      🪪 {a.idNumber}
+                    </div>
+                  )}
+                  {(!a.idNumber || a.idNumber === a.email) && (
+                    <div className="text-xs mt-0.5" style={{ color: 'rgba(239,68,68,0.5)' }}>
+                      ⚠ תז לא מוגדר — ערוך כדי להוסיף
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {/* Edit (name/email) — available for all */}

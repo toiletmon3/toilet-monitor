@@ -41,8 +41,14 @@ export class UsersController {
   }
 
   @Patch(':id/admin')
-  updateAdmin(@Param('id') id: string, @Body() dto: { name?: string; email?: string }) {
+  updateAdmin(@Param('id') id: string, @Body() dto: { name?: string; email?: string; idNumber?: string }) {
     return this.usersService.updateAdmin(id, dto);
+  }
+
+  @Public()
+  @Post('verify-admin')
+  verifyAdmin(@Body() dto: { idNumber: string }) {
+    return this.usersService.verifyAdminByIdNumber(dto.idNumber);
   }
 
   @Patch(':id/toggle')

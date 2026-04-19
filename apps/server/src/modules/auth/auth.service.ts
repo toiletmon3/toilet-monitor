@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -106,6 +106,26 @@ export class AuthService {
 
     if (!device) throw new UnauthorizedException('Device not registered');
     return device;
+  }
+
+  async reassignDevice(deviceCode: string, restroomId: string) {
+    const restroom = await this.prisma.restroom.findUnique({
+      where: { id: restroomId },
+      include: { floor: { include: { building: { include: { organization: true } } } } },
+    });
+    if (!restroom) throw new NotFoundException('Restroom not found');
+
+    const device = await this.prisma.device.upsert({
+      where: { deviceCode },
+      update: { restroomId },
+      create: { deviceCode, restroomId, type: 'KIOSK' },
+      include: {
+        restroom: {
+          include: { floor: { include: { building: true } } },
+        },
+      },
+    });
+    return { ok: true, deviceCode, restroomId, restroomName: restroom.name };
   }
 
   private generateTokens(user: any) {

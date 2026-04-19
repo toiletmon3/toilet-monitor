@@ -182,7 +182,14 @@ export default function KioskPageNeon() {
   if (confirmed) return <KioskConfirmation issueCode={confirmed} onReturn={() => setConfirmed(null)} />;
 
   if (showCleanerMode && deviceInfo) {
-    return <CleanerCheckIn restroomId={deviceInfo.restroom.id} onBack={() => setShowCleanerMode(false)} />;
+    return (
+      <CleanerCheckIn
+        restroomId={deviceInfo.restroom.id}
+        deviceCode={deviceCode}
+        onBack={() => setShowCleanerMode(false)}
+        onReassigned={() => window.location.reload()}
+      />
+    );
   }
 
   const gridBtns = kioskButtons.filter(b => b.code !== 'positive_feedback' && b.enabled !== false)
