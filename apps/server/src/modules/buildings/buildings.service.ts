@@ -100,19 +100,29 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
    * Built-in templates that every org should see in the Admin UI out of the box.
    * They're created lazily on first access so existing orgs get them automatically.
    */
-  private readonly BUILTIN_TEMPLATES: { name: string; theme: string; isDefault?: boolean }[] = [
-    { name: 'קלאסי', theme: 'default', isDefault: true },
-    { name: 'ניאון',  theme: 'neon' },
+  private readonly BUILTIN_TEMPLATES: { name: string; heAlias: string; theme: string; isDefault?: boolean }[] = [
+    { name: 'Classic', heAlias: 'קלאסי', theme: 'default', isDefault: true },
+    { name: 'Neon',    heAlias: 'ניאון',  theme: 'neon' },
   ];
 
   private async ensureBuiltinTemplates(orgId: string) {
     const existing = await this.prisma.kioskTemplate.findMany({
       where: { orgId },
-      select: { name: true, theme: true },
+      select: { id: true, name: true, theme: true },
     });
     const buttons = this.defaultButtons() as any;
     for (const tpl of this.BUILTIN_TEMPLATES) {
-      const already = existing.some(e => e.name === tpl.name || e.theme === tpl.theme);
+      // Rename legacy Hebrew-named builtin templates to English
+      const hebrewRecord = existing.find(e => e.name === tpl.heAlias && e.theme === tpl.theme);
+      if (hebrewRecord) {
+        await this.prisma.kioskTemplate.update({
+          where: { id: hebrewRecord.id },
+          data: { name: tpl.name },
+        });
+        continue;
+      }
+      // Create if neither the English nor Hebrew variant exists for this theme
+      const already = existing.some(e => (e.name === tpl.name || e.name === tpl.heAlias) && e.theme === tpl.theme);
       if (!already) {
         await this.prisma.kioskTemplate.create({
           data: {
