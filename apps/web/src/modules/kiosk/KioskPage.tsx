@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { setLanguage } from '../../i18n';
@@ -10,6 +10,16 @@ import KioskConfirmation from './components/KioskConfirmation';
 import CleanerCheckIn from './components/CleanerCheckIn';
 import { Scroll, Wind, Trash2, ShowerHead, Wrench, Droplets, SmilePlus, Star, Bell, AlertCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+
+function useClock() {
+  const [now, setNow] = useState(new Date());
+  const ref = useRef<ReturnType<typeof setInterval>>(null);
+  useEffect(() => {
+    ref.current = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(ref.current!);
+  }, []);
+  return now;
+}
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Scroll, Wind, Trash2, ShowerHead, Wrench, Droplets, SmilePlus, Star, Bell, AlertCircle,
@@ -41,6 +51,8 @@ type ConnectionStatus = 'online' | 'offline' | 'syncing';
 export default function KioskPage() {
   const { deviceCode } = useParams<{ deviceCode: string }>();
   const { t, i18n } = useTranslation();
+  const now = useClock();
+  const tz = localStorage.getItem('orgTimezone') ?? 'Asia/Jerusalem';
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
   const [issueTypes, setIssueTypes] = useState<any[]>([]);
   const [kioskButtons, setKioskButtons] = useState<any[]>(DEFAULT_BUTTONS);
@@ -271,6 +283,17 @@ export default function KioskPage() {
         >
           {t('kiosk.title')}
         </h1>
+
+        {/* Live clock */}
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-2xl font-bold tabular-nums" style={{ color: '#00e5cc', textShadow: '0 0 18px rgba(0,229,204,0.45)', letterSpacing: '0.04em' }}>
+            {now.toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit' })}
+          </span>
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            {now.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' })}
+          </span>
+        </div>
+
         {stats && (
           <div className="flex gap-4 text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
             <div className="flex items-center gap-1">
