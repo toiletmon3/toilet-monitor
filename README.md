@@ -3,7 +3,7 @@
 מערכת ניטור שירותים חכמה עם 3 ממשקים: **קיוסק טאבלט**, **אפליקציית עובד**, ו**לוח בקרה למנהל**.
 בנויה עם NestJS + React PWA + PostgreSQL, עם deploy אוטומטי לענן.
 
-**גרסה נוכחית:** [`v1.0.7`](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.7) — Kiosk live clock · Timezone fix (now persisted + auto-propagated to all kiosks)
+**גרסה נוכחית:** [`v1.0.8`](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.8) — Pricing doc for clients · SSL/HTTPS explanation · Kiosk live clock · Timezone fix
 
 ---
 
@@ -186,6 +186,7 @@ git push origin v1.0.6
 ```
 
 ### גרסאות קיימות
+- **[v1.0.8](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.8)** — Client pricing document (HTML + MD) with infrastructure costs, SSL explanation, and pilot example
 - **[v1.0.7](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.7)** — Live clock in kiosk · Critical timezone persistence fix (NestJS route order bug) · Kiosks auto-pickup timezone changes every 5 min
 - **[v1.0.6](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.6)** — Add Poland/Bulgaria timezones · Delete device button in settings
 - **[v1.0.5](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.5)** — Full i18n (all interfaces) · Org timezone setting · Admin permissions & ID for kiosk · Device offline tracking
@@ -339,7 +340,7 @@ Toilet/
 
 - [x] **v1.0.0** — Core stable release
 - [x] **v1.0.1–v1.0.4** — UX fixes · templates · analytics · dashboard filters
-- [x] **v1.0.5–v1.0.7** — Full i18n · timezone · admin permissions · device management · kiosk clock
+- [x] **v1.0.5–v1.0.8** — Full i18n · timezone · admin permissions · device management · kiosk clock · client docs
 - [ ] v1.1.0 — משוב חוזר והיסטוריית עובד
 - [ ] v1.2.0 — התראות push לעובדים (FCM)
 - [ ] v1.3.0 — דוחות PDF/CSV לייצוא
