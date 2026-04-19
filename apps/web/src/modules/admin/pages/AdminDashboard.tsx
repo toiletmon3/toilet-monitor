@@ -38,7 +38,8 @@ function formatRelative(date: string | null, t: (k: string) => string) {
 }
 
 export default function AdminDashboard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const queryClient = useQueryClient();
   const [buildingId, setBuildingId] = useState<string>(''); // '' = all
 
@@ -187,7 +188,7 @@ export default function AdminDashboard() {
                   <span className="text-xl">{inc.issueType?.icon ?? '📋'}</span>
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-white truncate">
-                      {inc.issueType?.nameI18n?.he}
+                      {inc.issueType?.nameI18n?.[lang] ?? inc.issueType?.nameI18n?.he}
                     </div>
                     <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
                       📍 {location}
@@ -196,7 +197,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                    {new Date(inc.reportedAt).toLocaleString('he-IL')}
+                    {new Date(inc.reportedAt).toLocaleString(lang === 'he' ? 'he-IL' : 'en-US')}
                   </div>
                   <span
                     className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap"

@@ -259,7 +259,13 @@
       "kioskHint": "Open in tablet browser ✦ Add to home screen",
       "noTablets": "No tablets registered — add devices in the building tree",
       "copy": "Copy",
-      "copied": "Copied"
+      "copied": "Copied",
+      "langSettings": "Language Settings",
+      "kioskLang": "📋 Kiosk Language",
+      "kioskLangDesc": "All kiosks will display in this language",
+      "cleanerLangTitle": "🧹 Worker Language",
+      "cleanerLangDesc": "\"Per worker\" keeps each worker's personal language. Selecting a language here overrides all workers.",
+      "cleanerLangPerWorker": "👤 Per Worker"
     }
   },
   "common": {
@@ -272,6 +278,9 @@
     "edit": "Edit",
     "minutes": "min",
     "hours": "hours",
-    "days": "days"
+    "days": "days",
+    "updated": "Updated",
+    "copy": "Copy",
+    "copied": "Copied"
   }
 }

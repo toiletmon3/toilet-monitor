@@ -422,6 +422,7 @@ function BuildingCard({ building, onRefresh }: { building: any; onRefresh: () =>
 
 // ─── URL guide ─────────────────────────────────────────────────────────────────
 function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url: string; accent?: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const copy = () => {
     navigator.clipboard.writeText(url).then(() => {
@@ -452,7 +453,7 @@ function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url
       </div>
       <button
         onClick={copy}
-        title="העתק"
+        title={t('common.copy')}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0 transition-all"
         style={{
           background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
@@ -460,15 +461,14 @@ function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url
           border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.08)'}`,
         }}
       >
-        {copied ? <><Check size={12} /> הועתק</> : <><Copy size={12} /> העתק</>}
+        {copied ? <><Check size={12} /> {t('common.copied')}</> : <><Copy size={12} /> {t('common.copy')}</>}
       </button>
     </div>
   );
 }
 
 function UrlGuide({ structure }: { structure: any[] }) {
-  const { i18n } = useTranslation();
-  const lang = i18n.language;
+  const { t } = useTranslation();
   const origin = window.location.origin;
 
   type DeviceEntry = {
@@ -499,14 +499,14 @@ function UrlGuide({ structure }: { structure: any[] }) {
   }
 
   const fmtHeartbeat = (ts: string | null) => {
-    if (!ts) return lang === 'he' ? 'מעולם לא' : 'Never';
+    if (!ts) return t('admin.devices.never');
     const diff = Date.now() - new Date(ts).getTime();
     const m = Math.floor(diff / 60000);
-    if (m < 1) return lang === 'he' ? 'הרגע' : 'Just now';
-    if (m < 60) return lang === 'he' ? `לפני ${m} דק'` : `${m} min ago`;
+    if (m < 1) return t('admin.devices.justNow');
+    if (m < 60) return `${m} ${t('common.minutes')} ${t('admin.devices.ago')}`;
     const h = Math.floor(m / 60);
-    if (h < 24) return lang === 'he' ? `לפני ${h} שע'` : `${h} hr ago`;
-    return lang === 'he' ? `לפני ${Math.floor(h / 24)} ימים` : `${Math.floor(h / 24)} days ago`;
+    if (h < 24) return `${h} ${t('common.hours')} ${t('admin.devices.ago')}`;
+    return `${Math.floor(h / 24)} ${t('common.days')} ${t('admin.devices.ago')}`;
   };
 
   return (
@@ -515,11 +515,11 @@ function UrlGuide({ structure }: { structure: any[] }) {
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
           <ShieldCheck size={15} style={{ color: 'var(--color-accent)' }} />
-          <h2 className="font-semibold text-white">{lang === 'he' ? 'ממשקי צוות' : 'Staff Interfaces'}</h2>
+          <h2 className="font-semibold text-white">{t('admin.settings.staffInterfaces')}</h2>
         </div>
         <div className="flex flex-col gap-2 p-4">
-          <CopyRow label={lang === 'he' ? 'ממשק מנהל' : 'Admin Interface'} sub={lang === 'he' ? 'כניסה עם אימייל וסיסמה' : 'Login with email + password'} url={`${origin}/admin`} accent="#00e5cc" />
-          <CopyRow label={lang === 'he' ? 'ממשק עובד' : 'Worker Interface'} sub={lang === 'he' ? 'כניסה עם תעודת זהות' : 'Login with ID number'} url={`${origin}/cleaner`} accent="#8b5cf6" />
+          <CopyRow label={t('admin.settings.adminInterface')} sub={t('admin.settings.adminInterfaceSub')} url={`${origin}/admin`} accent="#00e5cc" />
+          <CopyRow label={t('admin.settings.workerInterface')} sub={t('admin.settings.workerInterfaceSub')} url={`${origin}/cleaner`} accent="#8b5cf6" />
         </div>
       </div>
 
@@ -527,23 +527,22 @@ function UrlGuide({ structure }: { structure: any[] }) {
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
           <Tablet size={15} style={{ color: 'var(--color-accent)' }} />
-          <h2 className="font-semibold text-white">{lang === 'he' ? 'קיוסקים' : 'Kiosks'}</h2>
+          <h2 className="font-semibold text-white">{t('admin.nav.kiosk')}</h2>
           <span className="text-xs px-2 py-0.5 rounded-full ms-1" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
             {allDevices.length}
           </span>
           <span className="text-[11px] ms-auto" style={{ color: 'var(--color-text-secondary)' }}>
-            {lang === 'he' ? 'פתח בדפדפן הטאבלט ✦ הוסף למסך הבית' : 'Open in tablet browser ✦ Add to home screen'}
+            {t('admin.settings.kioskHint')}
           </span>
         </div>
         <div className="flex flex-col gap-0 divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
           {allDevices.length === 0 && (
             <p className="text-sm text-center py-6" style={{ color: 'var(--color-text-secondary)' }}>
-              {lang === 'he' ? 'אין טאבלטים רשומים — הוסף מכשירים בעץ הבניין' : 'No tablets registered — add devices in the building tree'}
+              {t('admin.settings.noTablets')}
             </p>
           )}
           {allDevices.map(d => (
             <div key={d.deviceCode} className="px-4 py-4 flex flex-col gap-2">
-              {/* Top row: status + location */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -556,12 +555,11 @@ function UrlGuide({ structure }: { structure: any[] }) {
                   </div>
                   <div className="text-xs mt-0.5 ps-4" style={{ color: d.isOnline ? '#22c55e' : 'rgba(239,68,68,0.6)' }}>
                     {d.isOnline
-                      ? (lang === 'he' ? '● מחובר' : '● Online')
-                      : `○ ${lang === 'he' ? 'לא מחובר' : 'Offline'} — ${fmtHeartbeat(d.lastHeartbeat)}`}
+                      ? `● ${t('admin.devices.online')}`
+                      : `○ ${t('admin.devices.offline')} — ${fmtHeartbeat(d.lastHeartbeat)}`}
                   </div>
                 </div>
               </div>
-              {/* Bottom row: copyable URL */}
               <CopyRow
                 label={`${origin}/kiosk/${d.deviceCode}`}
                 url={`${origin}/kiosk/${d.deviceCode}`}
@@ -595,7 +593,7 @@ export default function AdminSettings() {
   const updateOrgSettings = async (patch: { kioskLang?: string; cleanerLang?: string | null }) => {
     await api.patch('/users/org-settings', patch);
     queryClient.invalidateQueries({ queryKey: ['org-settings'] });
-    toast.success('עודכן');
+    toast.success(t('common.updated'));
   };
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['building-structure'] });
@@ -606,13 +604,13 @@ export default function AdminSettings() {
       <div className="rounded-2xl p-5 flex flex-col gap-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <h2 className="font-semibold text-white flex items-center gap-2">
           <Globe size={16} style={{ color: 'var(--color-accent)' }} />
-          הגדרות שפה
+          {t('admin.settings.langSettings')}
         </h2>
 
         {/* Kiosk language */}
         <div className="flex flex-col gap-2">
-          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>📋 שפת קיוסק</div>
-          <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>כל הקיוסקים יוצגו בשפה זו</div>
+          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.kioskLang')}</div>
+          <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.kioskLangDesc')}</div>
           <div className="flex gap-2">
             {['he', 'en'].map(l => (
               <LangButton key={l} value={l} current={orgSettings?.kioskLang ?? 'he'}
@@ -623,11 +621,11 @@ export default function AdminSettings() {
 
         <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
-        {/* Cleaner language */}
+        {/* Worker language */}
         <div className="flex flex-col gap-2">
-          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>🧹 שפת מנקים</div>
+          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.cleanerLangTitle')}</div>
           <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-            "לכל מנקה בנפרד" — שומר על השפה שנקבעה לכל מנקה אישית. בחירת שפה כאן דורסת את כולם.
+            {t('admin.settings.cleanerLangDesc')}
           </div>
           <div className="flex gap-2">
             <button
@@ -638,7 +636,7 @@ export default function AdminSettings() {
                 border: `1px solid ${!orgSettings?.cleanerLang ? 'rgba(0,229,204,0.6)' : 'rgba(255,255,255,0.1)'}`,
                 color: !orgSettings?.cleanerLang ? '#00e5cc' : 'var(--color-text-secondary)',
               }}>
-              👤 לכל מנקה בנפרד
+              {t('admin.settings.cleanerLangPerWorker')}
             </button>
             {['he', 'en'].map(l => (
               <LangButton key={l} value={l} current={orgSettings?.cleanerLang ?? ''}
