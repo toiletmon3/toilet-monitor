@@ -216,7 +216,9 @@ export default function AdminAnalytics() {
                   <span className="text-xl">{issue.icon}</span>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{issue.name}</span>
+                      <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
+                        {issue.nameI18n?.[lang] ?? issue.nameI18n?.he ?? issue.name}
+                      </span>
                       {issue.aboveAvg && (
                         <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.15)', color: RED }}>{t('admin.analytics.aboveAvg')}</span>
                       )}
@@ -258,7 +260,7 @@ export default function AdminAnalytics() {
         <Card title={t('admin.analytics.dowTitle')}>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={dow ?? []}>
-              <XAxis dataKey="day" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} />
+              <XAxis dataKey={lang === 'he' ? 'dayHe' : 'dayEn'} stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} />
               <YAxis stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="count" name={t('admin.analytics.reports')} radius={[4, 4, 0, 0]}>

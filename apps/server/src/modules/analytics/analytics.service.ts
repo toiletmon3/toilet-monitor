@@ -195,8 +195,9 @@ export class AnalyticsService {
       select: { reportedAt: true },
     });
 
-    const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-    const counts = Array.from({ length: 7 }, (_, i) => ({ day: DAY_NAMES[i], count: 0 }));
+    const DAY_NAMES_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+    const DAY_NAMES_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const counts = Array.from({ length: 7 }, (_, i) => ({ dayHe: DAY_NAMES_HE[i], dayEn: DAY_NAMES_EN[i], count: 0 }));
     for (const inc of incidents) counts[inc.reportedAt.getDay()].count++;
     return counts;
   }
@@ -220,10 +221,14 @@ export class AnalyticsService {
     });
 
     // Top repeating issue types
-    const issueMap = new Map<string, { icon: string; name: string; count: number }>();
+    const issueMap = new Map<string, { icon: string; nameI18n: { he?: string; en?: string }; count: number }>();
     for (const inc of incidents) {
       const key = inc.issueTypeId;
-      const existing = issueMap.get(key) ?? { icon: (inc.issueType as any).icon ?? '⚠️', name: (inc.issueType as any).nameI18n?.he ?? key, count: 0 };
+      const existing = issueMap.get(key) ?? {
+        icon: (inc.issueType as any).icon ?? '⚠️',
+        nameI18n: (inc.issueType as any).nameI18n ?? { he: key },
+        count: 0,
+      };
       existing.count++;
       issueMap.set(key, existing);
     }
