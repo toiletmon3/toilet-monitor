@@ -418,58 +418,7 @@ function BuildingCard({ building, onRefresh }: { building: any; onRefresh: () =>
   );
 }
 
-// ─── devices panel ─────────────────────────────────────────────────────────────
-function DevicesPanel({ structure }: { structure: any[] }) {
-  const { t } = useTranslation();
-  const devices = structure.flatMap((b: any) =>
-    (b.floors ?? []).flatMap((f: any) =>
-      (f.restrooms ?? []).flatMap((r: any) =>
-        (r.devices ?? []).map((d: any) => ({
-          ...d,
-          restroomName: r.name,
-          floorName: f.name,
-          buildingName: b.name,
-        }))
-      )
-    )
-  );
-
-  if (devices.length === 0) return null;
-
-  return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-      <div className="px-5 py-4 font-semibold text-white" style={{ borderBottom: '1px solid rgba(0,229,204,0.1)' }}>
-        <div className="flex items-center gap-2">
-          <Tablet size={16} style={{ color: 'var(--color-accent)' }} />
-          {t('admin.devices.title')}
-        </div>
-      </div>
-      <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-        {devices.map((d: any) => (
-          <div key={d.id} className="flex items-center justify-between px-5 py-3">
-            <div>
-              <div className="text-sm font-medium text-white font-mono">{d.deviceCode}</div>
-              <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                {d.buildingName} › {d.floorName} › {d.restroomName}
-              </div>
-              {d.lastHeartbeat && (
-                <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-                  {t('admin.devices.lastSeen')}: {new Date(d.lastHeartbeat).toLocaleString()}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className={`w-2.5 h-2.5 rounded-full ${d.isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
-              <span className="text-sm" style={{ color: d.isOnline ? '#22c55e' : '#ef4444' }}>
-                {d.isOnline ? t('admin.devices.online') : t('admin.devices.offline')}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// ─── devices panel — removed, merged into UrlGuide ────────────────────────────
 
 // ─── URL guide ─────────────────────────────────────────────────────────────────
 function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url: string; accent?: string }) {
@@ -518,9 +467,20 @@ function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url
 }
 
 function UrlGuide({ structure }: { structure: any[] }) {
+  const { i18n } = useTranslation();
+  const lang = i18n.language;
   const origin = window.location.origin;
 
-  const allDevices: { deviceCode: string; buildingName: string; floorName: string; restroomName: string; isOnline: boolean }[] = [];
+  type DeviceEntry = {
+    deviceCode: string;
+    buildingName: string;
+    floorName: string;
+    restroomName: string;
+    isOnline: boolean;
+    lastHeartbeat: string | null;
+  };
+
+  const allDevices: DeviceEntry[] = [];
   for (const b of structure) {
     for (const f of b.floors ?? []) {
       for (const r of f.restrooms ?? []) {
@@ -531,11 +491,23 @@ function UrlGuide({ structure }: { structure: any[] }) {
             floorName: f.name,
             restroomName: r.name,
             isOnline: d.isOnline,
+            lastHeartbeat: d.lastHeartbeat ?? null,
           });
         }
       }
     }
   }
+
+  const fmtHeartbeat = (ts: string | null) => {
+    if (!ts) return lang === 'he' ? 'מעולם לא' : 'Never';
+    const diff = Date.now() - new Date(ts).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return lang === 'he' ? 'הרגע' : 'Just now';
+    if (m < 60) return lang === 'he' ? `לפני ${m} דק'` : `${m} min ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return lang === 'he' ? `לפני ${h} שע'` : `${h} hr ago`;
+    return lang === 'he' ? `לפני ${Math.floor(h / 24)} ימים` : `${Math.floor(h / 24)} days ago`;
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -543,50 +515,57 @@ function UrlGuide({ structure }: { structure: any[] }) {
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
           <ShieldCheck size={15} style={{ color: 'var(--color-accent)' }} />
-          <h2 className="font-semibold text-white">ממשקי צוות</h2>
+          <h2 className="font-semibold text-white">{lang === 'he' ? 'ממשקי צוות' : 'Staff Interfaces'}</h2>
         </div>
         <div className="flex flex-col gap-2 p-4">
-          <CopyRow
-            label="ממשק מנהל"
-            sub="כניסה עם אימייל וסיסמה"
-            url={`${origin}/admin`}
-            accent="#00e5cc"
-          />
-          <CopyRow
-            label="ממשק עובד"
-            sub="כניסה עם תעודת זהות"
-            url={`${origin}/cleaner`}
-            accent="#8b5cf6"
-          />
+          <CopyRow label={lang === 'he' ? 'ממשק מנהל' : 'Admin Interface'} sub={lang === 'he' ? 'כניסה עם אימייל וסיסמה' : 'Login with email + password'} url={`${origin}/admin`} accent="#00e5cc" />
+          <CopyRow label={lang === 'he' ? 'ממשק עובד' : 'Worker Interface'} sub={lang === 'he' ? 'כניסה עם תעודת זהות' : 'Login with ID number'} url={`${origin}/cleaner`} accent="#8b5cf6" />
         </div>
       </div>
 
-      {/* Kiosk tablets */}
+      {/* Kiosk tablets — merged with device status */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
           <Tablet size={15} style={{ color: 'var(--color-accent)' }} />
-          <h2 className="font-semibold text-white">קיוסקים — כתובת לכל טאבלט</h2>
+          <h2 className="font-semibold text-white">{lang === 'he' ? 'קיוסקים' : 'Kiosks'}</h2>
+          <span className="text-xs px-2 py-0.5 rounded-full ms-1" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
+            {allDevices.length}
+          </span>
           <span className="text-[11px] ms-auto" style={{ color: 'var(--color-text-secondary)' }}>
-            פתח בדפדפן הטאבלט ✦ הוסף למסך הבית
+            {lang === 'he' ? 'פתח בדפדפן הטאבלט ✦ הוסף למסך הבית' : 'Open in tablet browser ✦ Add to home screen'}
           </span>
         </div>
-        <div className="flex flex-col gap-2 p-4">
+        <div className="flex flex-col gap-0 divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
           {allDevices.length === 0 && (
-            <p className="text-sm text-center py-4" style={{ color: 'var(--color-text-secondary)' }}>
-              אין טאבלטים רשומים — הוסף מכשירים בעץ הבניין
+            <p className="text-sm text-center py-6" style={{ color: 'var(--color-text-secondary)' }}>
+              {lang === 'he' ? 'אין טאבלטים רשומים — הוסף מכשירים בעץ הבניין' : 'No tablets registered — add devices in the building tree'}
             </p>
           )}
           {allDevices.map(d => (
-            <div key={d.deviceCode} className="relative">
+            <div key={d.deviceCode} className="px-4 py-4 flex flex-col gap-2">
+              {/* Top row: status + location */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${d.isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
+                    <span className="text-sm font-semibold text-white truncate">{d.restroomName}</span>
+                    <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.05)', color: '#8a9bb0' }}>{d.deviceCode}</span>
+                  </div>
+                  <div className="text-xs mt-0.5 ps-4" style={{ color: 'var(--color-text-secondary)' }}>
+                    {d.buildingName} › {d.floorName}
+                  </div>
+                  <div className="text-xs mt-0.5 ps-4" style={{ color: d.isOnline ? '#22c55e' : 'rgba(239,68,68,0.6)' }}>
+                    {d.isOnline
+                      ? (lang === 'he' ? '● מחובר' : '● Online')
+                      : `○ ${lang === 'he' ? 'לא מחובר' : 'Offline'} — ${fmtHeartbeat(d.lastHeartbeat)}`}
+                  </div>
+                </div>
+              </div>
+              {/* Bottom row: copyable URL */}
               <CopyRow
-                label={`${d.restroomName}`}
-                sub={`${d.buildingName} › ${d.floorName} › ${d.deviceCode}`}
+                label={`${origin}/kiosk/${d.deviceCode}`}
                 url={`${origin}/kiosk/${d.deviceCode}`}
                 accent="#f59e0b"
-              />
-              <span
-                className="absolute top-3 left-3 w-2 h-2 rounded-full"
-                style={{ background: d.isOnline ? '#22c55e' : '#ef4444' }}
               />
             </div>
           ))}
@@ -710,10 +689,7 @@ export default function AdminSettings() {
         ))
       )}
 
-      {/* devices overview */}
-      {structure.length > 0 && <DevicesPanel structure={structure} />}
-
-      {/* ── URL Guide ── */}
+      {/* ── Kiosk URLs + device status (merged) ── */}
       <UrlGuide structure={structure} />
 
       {showBuildingModal && (
