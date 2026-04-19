@@ -95,6 +95,7 @@ export default function CleanerPage() {
   const queryClient = useQueryClient();
   const user = JSON.parse(localStorage.getItem('user') ?? '{}');
   const lang = i18n.language;
+  const tz = localStorage.getItem('orgTimezone') ?? 'Asia/Jerusalem';
 
   // Filter state
   const [filterFloorId, setFilterFloorId] = useState<string>('');
@@ -233,11 +234,11 @@ export default function CleanerPage() {
           <div className="flex items-baseline gap-3">
             <h1 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>{t('cleaner.title')}</h1>
             <span className="text-xl font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>
-              {now.toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              {now.toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
           </div>
           <p className="text-xs flex items-center gap-2 flex-wrap mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-            <span>{now.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            <span>{now.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' })}</span>
             <span>·</span>
             <span>{user.name}</span>
             {user.buildingName && (

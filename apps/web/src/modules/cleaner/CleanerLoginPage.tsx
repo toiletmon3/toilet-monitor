@@ -23,8 +23,8 @@ export default function CleanerLoginPage() {
       localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('orgId', data.user.orgId);
-      // Apply effective language (org override > user preference)
       if (data.effectiveLang) setLanguage(data.effectiveLang);
+      if (data.effectiveTimezone) localStorage.setItem('orgTimezone', data.effectiveTimezone);
       navigate('/cleaner');
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? '';

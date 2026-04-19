@@ -42,9 +42,9 @@ export class AuthService {
 
     const tokens = this.generateTokens(user);
     const orgSettings = (user.organization?.settings ?? {}) as any;
-    // cleanerLang from org overrides individual, null means use user's preferredLang
     const effectiveLang = orgSettings.cleanerLang ?? user.preferredLang ?? 'he';
-    return { ...tokens, effectiveLang };
+    const effectiveTimezone = orgSettings.timezone ?? 'Asia/Jerusalem';
+    return { ...tokens, effectiveLang, effectiveTimezone };
   }
 
   async getAdminBypassToken() {
@@ -66,6 +66,7 @@ export class AuthService {
       kioskLang: s.kioskLang ?? s.defaultLanguage ?? 'he',
       cleanerLang: s.cleanerLang ?? null,
       kioskTheme: s.kioskTheme ?? 'default',
+      timezone: s.timezone ?? 'Asia/Jerusalem',
     };
   }
 

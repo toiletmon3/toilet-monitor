@@ -1,9 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Plus, ChevronDown, ChevronRight, Building2, Layers2, Tablet, Trash2, Pencil, Check, X, Globe, Copy, ExternalLink, ShieldCheck } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
+
+const TIMEZONES = [
+  { label: '🇮🇱 Israel (Jerusalem)',          value: 'Asia/Jerusalem' },
+  { label: '🇺🇸 USA – East (New York)',        value: 'America/New_York' },
+  { label: '🇺🇸 USA – Central (Chicago)',      value: 'America/Chicago' },
+  { label: '🇺🇸 USA – Mountain (Denver)',      value: 'America/Denver' },
+  { label: '🇺🇸 USA – West (Los Angeles)',     value: 'America/Los_Angeles' },
+  { label: '🇬🇧 UK (London)',                  value: 'Europe/London' },
+  { label: '🇫🇷 France (Paris)',               value: 'Europe/Paris' },
+  { label: '🇩🇪 Germany (Berlin)',             value: 'Europe/Berlin' },
+  { label: '🇳🇱 Netherlands (Amsterdam)',      value: 'Europe/Amsterdam' },
+  { label: '🇪🇸 Spain (Madrid)',               value: 'Europe/Madrid' },
+  { label: '🇮🇹 Italy (Rome)',                 value: 'Europe/Rome' },
+  { label: '🇬🇷 Greece (Athens)',              value: 'Europe/Athens' },
+  { label: '🇹🇷 Turkey (Istanbul)',            value: 'Europe/Istanbul' },
+  { label: '🇦🇪 UAE (Dubai)',                  value: 'Asia/Dubai' },
+  { label: '🇸🇦 Saudi Arabia (Riyadh)',        value: 'Asia/Riyadh' },
+  { label: '🇮🇳 India (Mumbai)',               value: 'Asia/Kolkata' },
+  { label: '🇨🇳 China (Shanghai)',             value: 'Asia/Shanghai' },
+  { label: '🇯🇵 Japan (Tokyo)',                value: 'Asia/Tokyo' },
+  { label: '🇦🇺 Australia East (Sydney)',      value: 'Australia/Sydney' },
+  { label: '🇧🇷 Brazil (São Paulo)',           value: 'America/Sao_Paulo' },
+  { label: '🇿🇦 South Africa (Johannesburg)', value: 'Africa/Johannesburg' },
+];
+
+function TimezoneSelect({ value, onChange }: { value: string; onChange: (tz: string) => void }) {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const current = TIMEZONES.find(t => t.value === value);
+  const preview = now.toLocaleTimeString('en-US', { timeZone: value, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return (
+    <div className="flex flex-col gap-2">
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="px-3 py-2.5 rounded-xl text-sm outline-none w-full max-w-xs"
+        style={{ background: '#0a0e1a', border: '1px solid rgba(0,229,204,0.25)', color: 'white' }}
+      >
+        {TIMEZONES.map(tz => (
+          <option key={tz.value} value={tz.value}>{tz.label}</option>
+        ))}
+      </select>
+      <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+        <span>{current?.label ?? value}</span>
+        <span className="font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>{preview}</span>
+      </div>
+    </div>
+  );
+}
 
 function LangButton({ value, current, onChange }: { value: string; current: string; onChange: (v: string) => void }) {
   const active = value === current;
@@ -590,7 +642,7 @@ export default function AdminSettings() {
     queryFn: async () => (await api.get('/users/org-settings')).data,
   });
 
-  const updateOrgSettings = async (patch: { kioskLang?: string; cleanerLang?: string | null }) => {
+  const updateOrgSettings = async (patch: { kioskLang?: string; cleanerLang?: string | null; timezone?: string }) => {
     await api.patch('/users/org-settings', patch);
     queryClient.invalidateQueries({ queryKey: ['org-settings'] });
     toast.success(t('common.updated'));
@@ -643,6 +695,18 @@ export default function AdminSettings() {
                 onChange={v => updateOrgSettings({ cleanerLang: v })} />
             ))}
           </div>
+        </div>
+
+        <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+
+        {/* Timezone */}
+        <div className="flex flex-col gap-2">
+          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.timezoneTitle')}</div>
+          <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.timezoneDesc')}</div>
+          <TimezoneSelect
+            value={orgSettings?.timezone ?? 'Asia/Jerusalem'}
+            onChange={tz => updateOrgSettings({ timezone: tz })}
+          />
         </div>
       </div>
 

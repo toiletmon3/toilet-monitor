@@ -11,12 +11,13 @@ export class UsersService {
     const s = (org?.settings ?? {}) as any;
     return {
       kioskLang: s.kioskLang ?? s.defaultLanguage ?? 'he',
-      cleanerLang: s.cleanerLang ?? null, // null = use per-cleaner
-      kioskTheme: s.kioskTheme ?? 'default', // 'default' | 'neon'
+      cleanerLang: s.cleanerLang ?? null,
+      kioskTheme: s.kioskTheme ?? 'default',
+      timezone: s.timezone ?? 'Asia/Jerusalem',
     };
   }
 
-  async updateOrgSettings(orgId: string, patch: { kioskLang?: string; cleanerLang?: string | null; kioskTheme?: string }) {
+  async updateOrgSettings(orgId: string, patch: { kioskLang?: string; cleanerLang?: string | null; kioskTheme?: string; timezone?: string }) {
     const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
     const current = (org?.settings ?? {}) as any;
     const updated = { ...current, ...patch };
@@ -25,6 +26,7 @@ export class UsersService {
       kioskLang: updated.kioskLang ?? 'he',
       cleanerLang: updated.cleanerLang ?? null,
       kioskTheme: updated.kioskTheme ?? 'default',
+      timezone: updated.timezone ?? 'Asia/Jerusalem',
     };
   }
 

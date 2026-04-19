@@ -107,7 +107,7 @@ export class UsersController {
   }
 
   @Patch('org-settings')
-  updateOrgSettings(@CurrentUser() user: any, @Body() dto: { kioskLang?: string; cleanerLang?: string | null }) {
+  updateOrgSettings(@CurrentUser() user: any, @Body() dto: { kioskLang?: string; cleanerLang?: string | null; timezone?: string }) {
     return this.usersService.updateOrgSettings(user.orgId, dto);
   }
 }

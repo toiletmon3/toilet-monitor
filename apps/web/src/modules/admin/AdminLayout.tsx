@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { Outlet, useNavigate, NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { setLanguage } from '../../i18n';
+import api from '../../lib/api';
 import {
   LayoutDashboard, AlertCircle, BarChart2, Users, Settings, LogOut,
   Sun, Moon, LayoutTemplate, Menu, X, ChevronLeft, ChevronRight,
@@ -41,6 +42,13 @@ export default function AdminLayout() {
 
   const qc = useQueryClient();
   const [bypassReady, setBypassReady] = useState(!!localStorage.getItem('accessToken'));
+
+  const { data: orgSettings } = useQuery({
+    queryKey: ['org-settings'],
+    queryFn: async () => (await api.get('/users/org-settings')).data,
+    enabled: bypassReady,
+  });
+  const tz = orgSettings?.timezone ?? 'Asia/Jerusalem';
 
   useEffect(() => {
     if (bypassReady) return;
@@ -156,10 +164,10 @@ export default function AdminLayout() {
       {(!collapsed || mobile) && (
         <div className="mx-1 mb-5 px-3 py-2.5 rounded-xl" style={{ background: 'rgba(0,229,204,0.06)', border: '1px solid rgba(0,229,204,0.12)' }}>
           <div className="text-xl font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>
-            {now.toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            {now.toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </div>
           <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-            {now.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+            {now.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' })}
           </div>
         </div>
       )}
@@ -293,7 +301,7 @@ export default function AdminLayout() {
           </button>
           <span className="text-base font-bold" style={{ color: 'var(--color-accent)' }}>🚾 ToiletMon</span>
           <div className="text-sm font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>
-            {now.toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+            {now.toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit' })}
           </div>
         </header>
 
