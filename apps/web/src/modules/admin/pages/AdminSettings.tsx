@@ -18,6 +18,8 @@ const TIMEZONES = [
   { label: '🇪🇸 Spain (Madrid)',               value: 'Europe/Madrid' },
   { label: '🇮🇹 Italy (Rome)',                 value: 'Europe/Rome' },
   { label: '🇬🇷 Greece (Athens)',              value: 'Europe/Athens' },
+  { label: '🇵🇱 Poland (Warsaw)',              value: 'Europe/Warsaw' },
+  { label: '🇧🇬 Bulgaria (Sofia)',             value: 'Europe/Sofia' },
   { label: '🇹🇷 Turkey (Istanbul)',            value: 'Europe/Istanbul' },
   { label: '🇦🇪 UAE (Dubai)',                  value: 'Asia/Dubai' },
   { label: '🇸🇦 Saudi Arabia (Riyadh)',        value: 'Asia/Riyadh' },
