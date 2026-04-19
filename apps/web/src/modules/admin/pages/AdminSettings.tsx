@@ -32,18 +32,27 @@ const TIMEZONES = [
 ];
 
 function TimezoneSelect({ value, onChange }: { value: string; onChange: (tz: string) => void }) {
+  // Local state so the preview and dropdown update immediately without waiting for server
+  const [localTz, setLocalTz] = useState(value);
+  useEffect(() => { setLocalTz(value); }, [value]);
+
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
-  const current = TIMEZONES.find(t => t.value === value);
-  const preview = now.toLocaleTimeString('en-US', { timeZone: value, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  const current = TIMEZONES.find(t => t.value === localTz);
+  const preview = now.toLocaleTimeString('en-US', { timeZone: localTz, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
   return (
     <div className="flex flex-col gap-2">
       <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
+        value={localTz}
+        onChange={e => {
+          setLocalTz(e.target.value);
+          onChange(e.target.value);
+        }}
         className="px-3 py-2.5 rounded-xl text-sm outline-none w-full max-w-xs"
         style={{ background: '#0a0e1a', border: '1px solid rgba(0,229,204,0.25)', color: 'white' }}
       >
@@ -52,7 +61,7 @@ function TimezoneSelect({ value, onChange }: { value: string; onChange: (tz: str
         ))}
       </select>
       <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-        <span>{current?.label ?? value}</span>
+        <span>{current?.label ?? localTz}</span>
         <span className="font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>{preview}</span>
       </div>
     </div>
@@ -667,7 +676,8 @@ export default function AdminSettings() {
 
   const updateOrgSettings = async (patch: { kioskLang?: string; cleanerLang?: string | null; timezone?: string }) => {
     await api.patch('/users/org-settings', patch);
-    queryClient.invalidateQueries({ queryKey: ['org-settings'] });
+    // Update cache immediately so AdminLayout clock + all consumers update instantly
+    queryClient.setQueryData(['org-settings'], (old: any) => ({ ...old, ...patch }));
     toast.success(t('common.updated'));
   };
 
