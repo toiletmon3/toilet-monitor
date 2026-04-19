@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, UserCheck, CheckCircle, RefreshCw, Clock, Wrench, CheckSquare, Trash2 } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
@@ -12,43 +13,57 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   IN_PROGRESS: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b' },
   RESOLVED:    { bg: 'rgba(34,197,94,0.15)',  text: '#22c55e' },
 };
-const ACTION_LABEL: Record<string, string> = {
-  REPORTED: 'דווח', ACKNOWLEDGED: 'התקבל', RESOLVED: 'טופל', ESCALATED: 'הועבר',
-};
 
 function IncidentRow({ inc, cleaners }: { inc: any; cleaners: any[] }) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState('');
   const [assignId, setAssignId] = useState(inc.assignedCleanerId ?? '');
   const qc = useQueryClient();
 
+  const ACTION_LABEL: Record<string, string> = {
+    REPORTED:     t('admin.incidents.actionReported'),
+    ACKNOWLEDGED: t('admin.incidents.actionAcknowledged'),
+    RESOLVED:     t('admin.incidents.actionResolved'),
+    ESCALATED:    t('admin.incidents.actionEscalated'),
+  };
+
   const mut = useMutation({
     mutationFn: (body: any) => api.patch(`/incidents/${inc.id}/admin-update`, body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['incidents'] }); toast.success('עודכן'); },
-    onError: () => toast.error('שגיאה'),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['incidents'] }); toast.success(t('admin.incidents.actionResolved')); },
+    onError: () => toast.error(t('common.error')),
   });
 
   const st = STATUS_COLORS[inc.status] ?? STATUS_COLORS.OPEN;
   const location = [inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › ');
+
   const timeAgo = (() => {
     const diff = Date.now() - new Date(inc.reportedAt).getTime();
     const m = Math.floor(diff / 60000);
-    if (m < 60) return `לפני ${m} דק'`;
+    if (m < 60) return t('admin.incidents.agoMinutes', { n: m });
     const h = Math.floor(m / 60);
-    if (h < 24) return `לפני ${h} שע'`;
-    return `לפני ${Math.floor(h / 24)} ימים`;
+    if (h < 24) return t('admin.incidents.agoHours', { n: h });
+    return t('admin.incidents.agoDays', { n: Math.floor(h / 24) });
   })();
+
+  const issueName = inc.issueType?.nameI18n?.[lang] ?? inc.issueType?.nameI18n?.he ?? t('common.error');
+
+  const statusLabel = inc.status === 'OPEN'
+    ? t('admin.incidents.open')
+    : inc.status === 'IN_PROGRESS'
+    ? t('admin.incidents.inProgress')
+    : t('admin.incidents.resolved');
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: 'var(--color-bg)', border: '1px solid rgba(255,255,255,0.06)' }}>
-      {/* Row header */}
       <div
         className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors"
         onClick={() => setOpen(o => !o)}
       >
         <span className="text-xl">{inc.issueType?.icon ?? '⚠️'}</span>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm" style={{ color: 'var(--color-text)' }}>{inc.issueType?.nameI18n?.he ?? 'תקלה'}</div>
+          <div className="font-medium text-sm" style={{ color: 'var(--color-text)' }}>{issueName}</div>
           <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-secondary)' }}>{location}</div>
         </div>
         <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
@@ -59,7 +74,7 @@ function IncidentRow({ inc, cleaners }: { inc: any; cleaners: any[] }) {
           )}
           <span>{timeAgo}</span>
           <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: st.bg, color: st.text }}>
-            {inc.status === 'OPEN' ? 'ממתין' : inc.status === 'IN_PROGRESS' ? 'בטיפול' : 'טופל'}
+            {statusLabel}
           </span>
           {open
             ? <ChevronDown size={14} style={{ color: 'var(--color-accent)' }} />
@@ -67,19 +82,16 @@ function IncidentRow({ inc, cleaners }: { inc: any; cleaners: any[] }) {
         </div>
       </div>
 
-      {/* Expanded details */}
       {open && (
         <div className="px-4 pb-4 pt-2 flex flex-col gap-4" style={{ borderTop: '1px solid rgba(0,229,204,0.08)' }}>
-          {/* Time detail */}
           <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-            <span>דווח: </span>
-            <span>{new Date(inc.reportedAt).toLocaleString('he-IL')}</span>
+            <span>{t('admin.incidents.reportedAt')}: </span>
+            <span>{new Date(inc.reportedAt).toLocaleString(lang === 'he' ? 'he-IL' : 'en-US')}</span>
           </div>
 
-          {/* Timeline */}
           {(inc.actions ?? []).length > 0 && (
             <div className="flex flex-col gap-1.5">
-              <p className="text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>היסטוריה</p>
+              <p className="text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.incidents.history')}</p>
               {inc.actions.map((a: any) => (
                 <div key={a.id} className="flex items-start gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                   <span className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: 'var(--color-accent)' }} />
@@ -87,35 +99,34 @@ function IncidentRow({ inc, cleaners }: { inc: any; cleaners: any[] }) {
                     <b style={{ color: 'var(--color-text)' }}>{ACTION_LABEL[a.actionType] ?? a.actionType}</b>
                     {a.user && ` — ${a.user.name}`}
                     {a.notes && ` — "${a.notes}"`}
-                    <span className="ms-2 opacity-50">{new Date(a.performedAt).toLocaleTimeString('he-IL')}</span>
+                    <span className="ms-2 opacity-50">{new Date(a.performedAt).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US')}</span>
                   </span>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Actions */}
           {inc.status !== 'RESOLVED' && (
             <div className="flex flex-wrap gap-3 items-end">
               <div className="flex flex-col gap-1">
-                <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>שייך מנקה</label>
+                <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.incidents.assignCleaner')}</label>
                 <select
                   value={assignId}
                   onChange={e => setAssignId(e.target.value)}
                   className="px-3 py-1.5 rounded-xl text-sm outline-none"
                   style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.3)', color: 'var(--color-text)', minWidth: 150 }}
                 >
-                  <option value="">— לא משויך —</option>
+                  <option value="">{t('admin.incidents.unassigned')}</option>
                   {cleaners.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
 
               <div className="flex flex-col gap-1 flex-1" style={{ minWidth: 180 }}>
-                <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>הערה</label>
+                <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.incidents.note')}</label>
                 <input
                   value={note}
                   onChange={e => setNote(e.target.value)}
-                  placeholder="הוסף הערה..."
+                  placeholder={t('admin.incidents.notePlaceholder')}
                   className="px-3 py-1.5 rounded-xl text-sm outline-none"
                   style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-text)' }}
                 />
@@ -129,7 +140,7 @@ function IncidentRow({ inc, cleaners }: { inc: any; cleaners: any[] }) {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
                     style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b' }}
                   >
-                    <UserCheck size={13} /> קבל לטיפול
+                    <UserCheck size={13} /> {t('admin.incidents.accept')}
                   </button>
                 )}
                 <button
@@ -138,7 +149,7 @@ function IncidentRow({ inc, cleaners }: { inc: any; cleaners: any[] }) {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
                   style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e' }}
                 >
-                  <CheckCircle size={13} /> סמן כטופל
+                  <CheckCircle size={13} /> {t('admin.incidents.markResolved')}
                 </button>
                 {assignId && inc.status === 'IN_PROGRESS' && (
                   <button
@@ -147,7 +158,7 @@ function IncidentRow({ inc, cleaners }: { inc: any; cleaners: any[] }) {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
                     style={{ background: 'rgba(0,229,204,0.1)', border: '1px solid rgba(0,229,204,0.3)', color: 'var(--color-accent)' }}
                   >
-                    <RefreshCw size={13} /> עדכן שיוך
+                    <RefreshCw size={13} /> {t('admin.incidents.updateAssignment')}
                   </button>
                 )}
               </div>
@@ -165,13 +176,11 @@ function Section({
   title: string; icon: React.ReactNode; count: number; color: string;
   children: React.ReactNode; defaultOpen?: boolean;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="flex flex-col gap-2">
-      <button
-        className="flex items-center gap-3 px-1 py-1 w-full text-start"
-        onClick={() => setOpen(o => !o)}
-      >
+      <button className="flex items-center gap-3 px-1 py-1 w-full text-start" onClick={() => setOpen(o => !o)}>
         <span style={{ color }}>{icon}</span>
         <span className="font-bold text-base" style={{ color: 'var(--color-text)' }}>{title}</span>
         <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: `${color}22`, color }}>
@@ -181,11 +190,10 @@ function Section({
           {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </span>
       </button>
-
       {open && (
         <div className="flex flex-col gap-2">
           {count === 0
-            ? <div className="text-sm px-4 py-6 text-center rounded-xl" style={{ color: 'var(--color-text-secondary)', background: 'var(--color-card)' }}>אין בקשות</div>
+            ? <div className="text-sm px-4 py-6 text-center rounded-xl" style={{ color: 'var(--color-text-secondary)', background: 'var(--color-card)' }}>{t('admin.incidents.empty')}</div>
             : children}
         </div>
       )}
@@ -194,6 +202,7 @@ function Section({
 }
 
 export default function AdminIncidents() {
+  const { t } = useTranslation();
   const [showResolved, setShowResolved] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialog>(null);
   const qc = useQueryClient();
@@ -203,7 +212,7 @@ export default function AdminIncidents() {
     const params = new URLSearchParams({ scope: deleteDialog.scope });
     if (deleteDialog.olderThanDays) params.set('olderThanDays', String(deleteDialog.olderThanDays));
     const { data } = await api.delete(`/incidents/bulk?${params}`);
-    toast.success(`נמחקו ${data.deleted} דיווחים`);
+    toast.success(t('admin.incidents.deletedCount', { count: data.deleted }));
     qc.invalidateQueries({ queryKey: ['incidents'] });
   };
 
@@ -227,115 +236,105 @@ export default function AdminIncidents() {
 
   const allActive: any[] = activeData?.items ?? [];
   const inProgress = allActive.filter(i => i.status === 'IN_PROGRESS' && i.issueType?.code !== 'positive_feedback');
-  const open = allActive.filter(i => i.status === 'OPEN' && i.issueType?.code !== 'positive_feedback');
-  const resolved: any[] = (resolvedData?.items ?? []).filter((i: any) => i.issueType?.code !== 'positive_feedback');
+  const openItems  = allActive.filter(i => i.status === 'OPEN'        && i.issueType?.code !== 'positive_feedback');
+  const resolved: any[]       = (resolvedData?.items ?? []).filter((i: any) => i.issueType?.code !== 'positive_feedback');
   const positiveFeedback: any[] = (resolvedData?.items ?? []).filter((i: any) => i.issueType?.code === 'positive_feedback');
+
+  const deleteDialogContent = deleteDialog ? {
+    resolved: {
+      title: t('admin.incidents.deleteResolvedTitle'),
+      desc:   t('admin.incidents.deleteResolvedDesc'),
+    },
+    older: {
+      title: t('admin.incidents.deleteOlderTitle'),
+      desc:   t('admin.incidents.deleteOlderDesc'),
+    },
+    all: {
+      title: t('admin.incidents.deleteAllTitle'),
+      desc:   t('admin.incidents.deleteAllDesc'),
+    },
+  }[deleteDialog.scope] : null;
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>תקלות</h1>
-          <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{inProgress.length + open.length} פעילות</span>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{t('admin.incidents.title')}</h1>
+          <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{inProgress.length + openItems.length} {t('admin.incidents.active')}</span>
         </div>
         <div className="flex gap-1">
           <button onClick={() => setDeleteDialog({ scope: 'resolved' })}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
             style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
-            <Trash2 size={12} /> מחק טופלו
+            <Trash2 size={12} /> {t('admin.incidents.deleteResolved')}
           </button>
           <button onClick={() => setDeleteDialog({ scope: 'older', olderThanDays: 30 })}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
             style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
-            <Trash2 size={12} /> ישנים מ-30 יום
+            <Trash2 size={12} /> {t('admin.incidents.deleteOlder')}
           </button>
           <button onClick={() => setDeleteDialog({ scope: 'all' })}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
             style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444' }}>
-            <Trash2 size={12} /> מחק הכל
+            <Trash2 size={12} /> {t('admin.incidents.deleteAll')}
           </button>
         </div>
       </div>
 
-      {deleteDialog && (
+      {deleteDialog && deleteDialogContent && (
         <ConfirmDialog
-          title={
-            deleteDialog.scope === 'resolved' ? 'מחיקת דיווחים שטופלו' :
-            deleteDialog.scope === 'older' ? 'מחיקת דיווחים ישנים מ-30 יום' :
-            '⚠️ מחיקת כל הדיווחים'
-          }
-          description={
-            deleteDialog.scope === 'resolved' ? 'כל הדיווחים עם סטטוס "טופל" יימחקו לצמיתות.' :
-            deleteDialog.scope === 'older' ? 'כל הדיווחים שדווחו לפני יותר מ-30 יום יימחקו לצמיתות.' :
-            'כל הדיווחים במערכת יימחקו לצמיתות. פעולה זו לא ניתנת לביטול.'
-          }
-          confirmLabel="מחק"
-          requireType={deleteDialog.scope === 'all' ? 'מחק הכל' : undefined}
+          title={deleteDialogContent.title}
+          description={deleteDialogContent.desc}
+          confirmLabel={t('admin.incidents.deleteConfirmLabel')}
+          requireType={deleteDialog.scope === 'all' ? t('admin.incidents.deleteAllRequireType') : undefined}
           onConfirm={handleDelete}
           onClose={() => setDeleteDialog(null)}
         />
       )}
 
       {loadingActive ? (
-        <div className="p-12 text-center" style={{ color: 'var(--color-text-secondary)' }}>טוען...</div>
+        <div className="p-12 text-center" style={{ color: 'var(--color-text-secondary)' }}>{t('common.loading')}</div>
       ) : (
         <>
-          {/* IN PROGRESS */}
-          <Section
-            title="בטיפול"
-            icon={<Wrench size={18} />}
-            count={inProgress.length}
-            color="#f59e0b"
-          >
+          <Section title={t('admin.incidents.inProgressSection')} icon={<Wrench size={18} />} count={inProgress.length} color="#f59e0b">
             {inProgress.map(inc => <IncidentRow key={inc.id} inc={inc} cleaners={cleaners} />)}
           </Section>
 
-          {/* OPEN */}
-          <Section
-            title="ממתין לטיפול"
-            icon={<Clock size={18} />}
-            count={open.length}
-            color="#ef4444"
-          >
-            {open.map(inc => <IncidentRow key={inc.id} inc={inc} cleaners={cleaners} />)}
+          <Section title={t('admin.incidents.waitingSection')} icon={<Clock size={18} />} count={openItems.length} color="#ef4444">
+            {openItems.map(inc => <IncidentRow key={inc.id} inc={inc} cleaners={cleaners} />)}
           </Section>
 
           {/* RESOLVED toggle */}
           <div className="flex flex-col gap-2">
-            <button
-              onClick={() => setShowResolved(v => !v)}
-              className="flex items-center gap-3 px-1 py-1 w-full text-start"
-            >
+            <button onClick={() => setShowResolved(v => !v)} className="flex items-center gap-3 px-1 py-1 w-full text-start">
               <span style={{ color: '#22c55e' }}><CheckSquare size={18} /></span>
-              <span className="font-bold text-base" style={{ color: 'var(--color-text)' }}>טופלו</span>
+              <span className="font-bold text-base" style={{ color: 'var(--color-text)' }}>{t('admin.incidents.resolvedSection')}</span>
               {resolvedData && (
                 <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(34,197,94,0.13)', color: '#22c55e' }}>
                   {resolved.length}
                 </span>
               )}
               <span className="ms-auto text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                {showResolved ? 'הסתר' : 'הצג'}
+                {showResolved ? t('admin.incidents.hide') : t('admin.incidents.show')}
               </span>
             </button>
 
             {showResolved && (
               loadingResolved
-                ? <div className="text-sm px-4 py-6 text-center" style={{ color: 'var(--color-text-secondary)' }}>טוען...</div>
+                ? <div className="text-sm px-4 py-6 text-center" style={{ color: 'var(--color-text-secondary)' }}>{t('common.loading')}</div>
                 : resolved.length === 0
-                  ? <div className="text-sm px-4 py-6 text-center rounded-xl" style={{ color: 'var(--color-text-secondary)', background: 'var(--color-card)' }}>אין</div>
+                  ? <div className="text-sm px-4 py-6 text-center rounded-xl" style={{ color: 'var(--color-text-secondary)', background: 'var(--color-card)' }}>{t('admin.incidents.noData')}</div>
                   : <div className="flex flex-col gap-2">
                       {resolved.map(inc => <IncidentRow key={inc.id} inc={inc} cleaners={cleaners} />)}
                     </div>
             )}
           </div>
 
-          {/* POSITIVE FEEDBACK — read-only log */}
           {showResolved && positiveFeedback.length > 0 && (
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-3 px-1 py-1">
                 <span>😊</span>
-                <span className="font-bold text-base" style={{ color: 'var(--color-text)' }}>משובים חיוביים</span>
+                <span className="font-bold text-base" style={{ color: 'var(--color-text)' }}>{t('admin.incidents.positiveFeedback')}</span>
                 <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(250,204,21,0.13)', color: '#facc15' }}>
                   {positiveFeedback.length}
                 </span>
@@ -343,20 +342,17 @@ export default function AdminIncidents() {
               <div className="flex flex-col gap-2">
                 {positiveFeedback.map((inc: any) => {
                   const location = [inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › ');
-                  const timeAgo = (() => {
-                    const diff = Date.now() - new Date(inc.reportedAt).getTime();
-                    const m = Math.floor(diff / 60000);
-                    if (m < 60) return `לפני ${m} דק'`;
-                    const h = Math.floor(m / 60);
-                    if (h < 24) return `לפני ${h} שע'`;
-                    return `לפני ${Math.floor(h / 24)} ימים`;
-                  })();
+                  const diff = Date.now() - new Date(inc.reportedAt).getTime();
+                  const m = Math.floor(diff / 60000);
+                  const timeAgo = m < 60 ? t('admin.incidents.agoMinutes', { n: m })
+                    : Math.floor(m / 60) < 24 ? t('admin.incidents.agoHours', { n: Math.floor(m / 60) })
+                    : t('admin.incidents.agoDays', { n: Math.floor(m / 1440) });
                   return (
                     <div key={inc.id} className="flex items-center gap-3 px-4 py-3 rounded-xl"
                       style={{ background: 'var(--color-bg)', border: '1px solid rgba(250,204,21,0.15)' }}>
                       <span className="text-2xl">😊</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>עבודה טובה / משוב חיובי</div>
+                        <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.incidents.positiveFeedbackLabel')}</div>
                         <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-secondary)' }}>📍 {location}</div>
                       </div>
                       <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{timeAgo}</span>

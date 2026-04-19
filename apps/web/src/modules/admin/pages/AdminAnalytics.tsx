@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   RadialBarChart, RadialBar, PolarAngleAxis,
@@ -50,6 +51,8 @@ function CustomTooltip({ active, payload, label }: any) {
 type DeleteDialog = { scope: 'resolved' | 'older' | 'all'; olderThanDays?: number } | null;
 
 export default function AdminAnalytics() {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const [days, setDays] = useState(30);
   const [slaTarget, setSlaTarget] = useState(15);
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialog>(null);
@@ -60,7 +63,7 @@ export default function AdminAnalytics() {
     const params = new URLSearchParams({ scope: deleteDialog.scope });
     if (deleteDialog.olderThanDays) params.set('olderThanDays', String(deleteDialog.olderThanDays));
     const { data } = await api.delete(`/incidents/bulk?${params}`);
-    toast.success(`נמחקו ${data.deleted} דיווחים`);
+    toast.success(t('admin.incidents.deletedCount', { count: data.deleted }));
     qc.invalidateQueries({ queryKey: ['incidents'] });
     qc.invalidateQueries({ queryKey: ['freq'] });
     qc.invalidateQueries({ queryKey: ['sla'] });
@@ -83,11 +86,16 @@ export default function AdminAnalytics() {
 
   const slaColor = !sla ? CYAN : sla.slaPercent >= 80 ? GREEN : sla.slaPercent >= 50 ? AMBER : RED;
 
+  const deleteDialogContent = deleteDialog ? {
+    resolved: { title: t('admin.incidents.deleteResolvedTitle'), desc: t('admin.incidents.deleteResolvedDesc') },
+    older:    { title: t('admin.incidents.deleteOlderTitle'),    desc: t('admin.incidents.deleteOlderDesc') },
+    all:      { title: t('admin.incidents.deleteAllTitle'),      desc: t('admin.incidents.deleteAllDesc') },
+  }[deleteDialog.scope] : null;
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>סטטיסטיקות</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{t('admin.analytics.title')}</h1>
         <div className="flex gap-2 flex-wrap items-center">
           {[7, 30, 90].map((d) => (
             <button key={d} onClick={() => setDays(d)}
@@ -97,66 +105,57 @@ export default function AdminAnalytics() {
                 border: `1px solid ${days === d ? CYAN : 'rgba(255,255,255,0.08)'}`,
                 color: days === d ? CYAN : 'var(--color-text-secondary)',
               }}>
-              {d} יום
+              {d} {t('common.days')}
             </button>
           ))}
 
-          {/* Reset menu */}
           <div className="w-px h-5 mx-1" style={{ background: 'rgba(255,255,255,0.1)' }} />
           <div className="flex gap-1">
             <button onClick={() => setDeleteDialog({ scope: 'resolved' })}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all"
               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
-              <Trash2 size={12} /> מחק טופלו
+              <Trash2 size={12} /> {t('admin.analytics.deleteResolved')}
             </button>
             <button onClick={() => setDeleteDialog({ scope: 'older', olderThanDays: 30 })}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all"
               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
-              <Trash2 size={12} /> ישנים מ-30 יום
+              <Trash2 size={12} /> {t('admin.analytics.deleteOlder')}
             </button>
             <button onClick={() => setDeleteDialog({ scope: 'all' })}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all"
               style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444' }}>
-              <Trash2 size={12} /> מחק הכל
+              <Trash2 size={12} /> {t('admin.analytics.deleteAll')}
             </button>
           </div>
         </div>
       </div>
 
-      {deleteDialog && (
+      {deleteDialog && deleteDialogContent && (
         <ConfirmDialog
-          title={
-            deleteDialog.scope === 'resolved' ? 'מחיקת דיווחים שטופלו' :
-            deleteDialog.scope === 'older' ? `מחיקת דיווחים ישנים מ-30 יום` :
-            '⚠️ מחיקת כל הדיווחים'
-          }
-          description={
-            deleteDialog.scope === 'resolved' ? 'כל הדיווחים עם סטטוס "טופל" יימחקו לצמיתות.' :
-            deleteDialog.scope === 'older' ? 'כל הדיווחים שדווחו לפני יותר מ-30 יום יימחקו לצמיתות.' :
-            'כל הדיווחים במערכת יימחקו לצמיתות. פעולה זו לא ניתנת לביטול.'
-          }
-          confirmLabel="מחק"
-          requireType={deleteDialog.scope === 'all' ? 'מחק הכל' : undefined}
+          title={deleteDialogContent.title}
+          description={deleteDialogContent.desc}
+          confirmLabel={t('admin.incidents.deleteConfirmLabel')}
+          requireType={deleteDialog.scope === 'all' ? t('admin.incidents.deleteAllRequireType') : undefined}
           onConfirm={handleDelete}
           onClose={() => setDeleteDialog(null)}
         />
       )}
 
-      {/* ── Row 1: SLA ── */}
-      <Card title="⏱ עמידה ב-SLA — זמן תגובה">
+      {/* ── SLA ── */}
+      <Card title={t('admin.analytics.slaTitle')}>
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex flex-col gap-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-            <span>יעד (דקות)</span>
+            <span>{t('admin.analytics.slaTarget')}</span>
             <div className="flex gap-1">
-              {[10, 15, 20, 30].map(t => (
-                <button key={t} onClick={() => setSlaTarget(t)}
+              {[10, 15, 20, 30].map(tv => (
+                <button key={tv} onClick={() => setSlaTarget(tv)}
                   className="px-2 py-1 rounded-lg text-xs"
                   style={{
-                    background: slaTarget === t ? 'rgba(0,229,204,0.15)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${slaTarget === t ? CYAN : 'rgba(255,255,255,0.1)'}`,
-                    color: slaTarget === t ? CYAN : 'var(--color-text-secondary)',
+                    background: slaTarget === tv ? 'rgba(0,229,204,0.15)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${slaTarget === tv ? CYAN : 'rgba(255,255,255,0.1)'}`,
+                    color: slaTarget === tv ? CYAN : 'var(--color-text-secondary)',
                   }}>
-                  {t}′
+                  {tv}′
                 </button>
               ))}
             </div>
@@ -165,15 +164,10 @@ export default function AdminAnalytics() {
 
         {sla && sla.totalResolved > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-            {/* Radial gauge */}
             <div className="flex flex-col items-center col-span-2 md:col-span-1">
               <div style={{ width: 120, height: 120, position: 'relative' }}>
-                <RadialBarChart
-                  width={120} height={120}
-                  innerRadius={38} outerRadius={55}
-                  data={[{ value: sla.slaPercent, fill: slaColor }]}
-                  startAngle={90} endAngle={-270}
-                >
+                <RadialBarChart width={120} height={120} innerRadius={38} outerRadius={55}
+                  data={[{ value: sla.slaPercent, fill: slaColor }]} startAngle={90} endAngle={-270}>
                   <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
                   <RadialBar dataKey="value" cornerRadius={8} background={{ fill: 'rgba(255,255,255,0.06)' }} />
                 </RadialBarChart>
@@ -182,30 +176,29 @@ export default function AdminAnalytics() {
                 </div>
               </div>
               <div className="text-xs mt-1 text-center" style={{ color: 'var(--color-text-secondary)' }}>
-                עמדו ביעד<br />{sla.withinSla} / {sla.totalResolved}
+                {t('admin.analytics.slaGoalMet')}<br />{sla.withinSla} / {sla.totalResolved}
               </div>
             </div>
-
-            <StatBig value={`${sla.avgMinutes}′`} label="ממוצע תגובה" color={CYAN} />
-            <StatBig value={`${sla.p50}′`} label="חציון (P50)" color={CYAN} sub="50% מטופלים תוך כן" />
-            <StatBig value={`${sla.p90}′`} label="P90" color={sla.p90 > slaTarget * 2 ? RED : AMBER} sub="90% מטופלים תוך כן" />
+            <StatBig value={`${sla.avgMinutes}′`} label={t('admin.analytics.slaAvg')} color={CYAN} />
+            <StatBig value={`${sla.p50}′`} label={t('admin.analytics.slaMedian')} color={CYAN} sub={t('admin.analytics.slaP50sub')} />
+            <StatBig value={`${sla.p90}′`} label={t('admin.analytics.slaP90')} color={sla.p90 > slaTarget * 2 ? RED : AMBER} sub={t('admin.analytics.slaP90sub')} />
           </div>
         ) : (
           <div className="text-center py-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            אין מספיק נתונים — נדרשות תקלות שטופלו
+            {t('admin.analytics.slaNoData')}
           </div>
         )}
       </Card>
 
-      {/* ── Row 2: Issue frequency + Patterns ── */}
+      {/* ── Frequency + Patterns ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <Card title="📊 תדירות בעיות">
+        <Card title={t('admin.analytics.frequencyTitle')}>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={frequency ?? []} layout="vertical" margin={{ left: 10, right: 20 }}>
               <XAxis type="number" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} />
-              <YAxis type="category" dataKey="nameI18n.he" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} width={110} />
+              <YAxis type="category" dataKey={`nameI18n.${lang}`} stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} width={110} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name="דיווחים" radius={[0, 6, 6, 0]}>
+              <Bar dataKey="count" name={t('admin.analytics.reports')} radius={[0, 6, 6, 0]}>
                 {(frequency ?? []).map((_: any, i: number) => (
                   <Cell key={i} fill={`rgba(0,229,204,${Math.max(0.3, 0.9 - i * 0.12)})`} />
                 ))}
@@ -214,10 +207,10 @@ export default function AdminAnalytics() {
           </ResponsiveContainer>
         </Card>
 
-        <Card title="🔥 זיהוי דפוסים — נקודות חמות">
+        <Card title={t('admin.analytics.patternsTitle')}>
           <div className="flex flex-col gap-3">
             <div>
-              <p className="text-xs mb-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>בעיות חוזרות (מעל הממוצע)</p>
+              <p className="text-xs mb-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.analytics.recurringIssues')}</p>
               {(patterns?.topIssues ?? []).map((issue: any) => (
                 <div key={issue.name} className="flex items-center gap-3 py-1.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                   <span className="text-xl">{issue.icon}</span>
@@ -225,7 +218,7 @@ export default function AdminAnalytics() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{issue.name}</span>
                       {issue.aboveAvg && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.15)', color: RED }}>⚠ גבוה</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.15)', color: RED }}>{t('admin.analytics.aboveAvg')}</span>
                       )}
                     </div>
                     <div className="w-full mt-1 rounded-full overflow-hidden" style={{ height: 4, background: 'rgba(255,255,255,0.06)' }}>
@@ -236,9 +229,8 @@ export default function AdminAnalytics() {
                 </div>
               ))}
             </div>
-
             <div className="mt-2">
-              <p className="text-xs mb-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>שירותים עמוסים ביותר</p>
+              <p className="text-xs mb-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.analytics.busiestRestrooms')}</p>
               {(patterns?.hotspots ?? []).slice(0, 3).map((h: any, i: number) => (
                 <div key={i} className="flex items-center justify-between py-1.5 border-b text-sm" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>📍 {h.location}</span>
@@ -250,26 +242,26 @@ export default function AdminAnalytics() {
         </Card>
       </div>
 
-      {/* ── Row 3: Hourly + Day of week ── */}
+      {/* ── Hourly + DoW ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <Card title="🕐 התפלגות שעתית (7 ימים אחרונים)">
+        <Card title={t('admin.analytics.hourlyTitle')}>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={hourly ?? []}>
               <XAxis dataKey="hour" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} tickFormatter={(h) => `${h}:00`} interval={3} />
               <YAxis stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name="דיווחים" fill={CYAN} fillOpacity={0.65} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" name={t('admin.analytics.reports')} fill={CYAN} fillOpacity={0.65} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
 
-        <Card title="📅 התפלגות לפי יום שבוע">
+        <Card title={t('admin.analytics.dowTitle')}>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={dow ?? []}>
               <XAxis dataKey="day" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} />
               <YAxis stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 11 }} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name="דיווחים" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="count" name={t('admin.analytics.reports')} radius={[4, 4, 0, 0]}>
                 {(dow ?? []).map((_: any, i: number) => (
                   <Cell key={i} fill={DAY_COLORS[i]} fillOpacity={0.75} />
                 ))}
@@ -279,8 +271,8 @@ export default function AdminAnalytics() {
         </Card>
       </div>
 
-      {/* ── Row 4: Cleaner performance ── */}
-      <Card title="🧹 ביצועי מנקים">
+      {/* ── Worker performance ── */}
+      <Card title={t('admin.analytics.cleanerTitle')}>
         <div className="flex flex-col gap-2">
           {(cleaners ?? []).map((c: any, i: number) => (
             <div key={c.id} className="flex items-center gap-4 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
@@ -300,13 +292,13 @@ export default function AdminAnalytics() {
               <div className="text-right">
                 <div className="text-base font-bold" style={{ color: CYAN }}>{c.totalResolved} ✓</div>
                 <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                  {Math.round(c.avgResolutionMinutes)}′ ממוצע
+                  {Math.round(c.avgResolutionMinutes)}′ {t('admin.analytics.avgLabel')}
                 </div>
               </div>
             </div>
           ))}
           {(!cleaners || cleaners.length === 0) && (
-            <div className="text-center py-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>אין נתונים</div>
+            <div className="text-center py-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.analytics.noData')}</div>
           )}
         </div>
       </Card>
