@@ -309,6 +309,8 @@
       "kioskSection": "Kiosks — URL per tablet",
       "kioskHint": "Open in tablet browser ✦ Add to home screen",
       "noTablets": "No tablets registered — add devices in the building tree",
+      "deleteDevice": "Delete tablet",
+      "deviceDeleted": "Tablet deleted",
       "copy": "Copy",
       "copied": "Copied",
       "langSettings": "Language & Clock Settings",

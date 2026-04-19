@@ -519,11 +519,12 @@ function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url
   );
 }
 
-function UrlGuide({ structure }: { structure: any[] }) {
+function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () => void }) {
   const { t } = useTranslation();
   const origin = window.location.origin;
 
   type DeviceEntry = {
+    id: string;
     deviceCode: string;
     buildingName: string;
     floorName: string;
@@ -538,6 +539,7 @@ function UrlGuide({ structure }: { structure: any[] }) {
       for (const r of f.restrooms ?? []) {
         for (const d of r.devices ?? []) {
           allDevices.push({
+            id: d.id,
             deviceCode: d.deviceCode,
             buildingName: b.name,
             floorName: f.name,
@@ -549,6 +551,17 @@ function UrlGuide({ structure }: { structure: any[] }) {
       }
     }
   }
+
+  const handleDeleteDevice = async (deviceId: string, deviceCode: string) => {
+    if (!window.confirm(`${t('admin.settings.deleteDevice')} "${deviceCode}"?`)) return;
+    try {
+      await api.delete(`/buildings/devices/${deviceId}`);
+      onRefresh();
+      toast.success(t('admin.settings.deviceDeleted'));
+    } catch {
+      toast.error(t('common.error'));
+    }
+  };
 
   const fmtHeartbeat = (ts: string | null) => {
     if (!ts) return t('admin.devices.never');
@@ -611,6 +624,14 @@ function UrlGuide({ structure }: { structure: any[] }) {
                       : `○ ${t('admin.devices.offline')} — ${fmtHeartbeat(d.lastHeartbeat)}`}
                   </div>
                 </div>
+                <button
+                  onClick={() => handleDeleteDevice(d.id, d.deviceCode)}
+                  title={t('admin.settings.deleteDevice')}
+                  className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all flex-shrink-0"
+                  style={{ color: 'rgba(239,68,68,0.5)' }}
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
               <CopyRow
                 label={`${origin}/kiosk/${d.deviceCode}`}
@@ -752,7 +773,7 @@ export default function AdminSettings() {
       )}
 
       {/* ── Kiosk URLs + device status (merged) ── */}
-      <UrlGuide structure={structure} />
+      <UrlGuide structure={structure} onRefresh={refresh} />
 
       {showBuildingModal && (
         <AddBuildingModal

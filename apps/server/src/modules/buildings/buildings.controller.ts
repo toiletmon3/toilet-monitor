@@ -41,7 +41,6 @@ export class BuildingsController {
     return this.buildingsService.registerDevice(restroomId, dto.deviceCode);
   }
 
-
   @UseGuards(JwtAuthGuard)
   @Patch(':buildingId')
   updateBuilding(@Param('buildingId') buildingId: string, @Body() dto: { name?: string; address?: string }) {
