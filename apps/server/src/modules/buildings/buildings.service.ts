@@ -1,9 +1,35 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
+const OFFLINE_AFTER_MS = 90_000; // mark offline if no heartbeat for 90s (1.5× the 60s interval)
+
 @Injectable()
-export class BuildingsService {
+export class BuildingsService implements OnModuleInit, OnModuleDestroy {
   constructor(private prisma: PrismaService) {}
+
+  private _offlineTimer: NodeJS.Timeout | null = null;
+
+  onModuleInit() {
+    this._offlineTimer = setInterval(() => this._markStaleDevicesOffline(), 60_000);
+  }
+
+  onModuleDestroy() {
+    if (this._offlineTimer) clearInterval(this._offlineTimer);
+  }
+
+  private async _markStaleDevicesOffline() {
+    const cutoff = new Date(Date.now() - OFFLINE_AFTER_MS);
+    await this.prisma.device.updateMany({
+      where: {
+        isOnline: true,
+        OR: [
+          { lastHeartbeat: { lt: cutoff } },
+          { lastHeartbeat: null },
+        ],
+      },
+      data: { isOnline: false },
+    });
+  }
 
   async getStructure(orgId: string) {
     return this.prisma.building.findMany({
