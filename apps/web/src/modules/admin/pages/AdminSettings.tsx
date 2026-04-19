@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, ChevronDown, ChevronRight, Building2, Layers2, DoorOpen, Tablet, Trash2, Pencil, Check, X, Globe } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Building2, Layers2, Tablet, Trash2, Pencil, Check, X, Globe, Copy, ExternalLink, ShieldCheck } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -471,6 +471,131 @@ function DevicesPanel({ structure }: { structure: any[] }) {
   );
 }
 
+// ─── URL guide ─────────────────────────────────────────────────────────────────
+function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url: string; accent?: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  const color = accent ?? 'var(--color-accent)';
+
+  return (
+    <div
+      className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl"
+      style={{ background: '#0a0e1a', border: '1px solid rgba(255,255,255,0.05)' }}
+    >
+      <div className="flex flex-col min-w-0">
+        <span className="text-sm font-medium text-white truncate">{label}</span>
+        {sub && <span className="text-[11px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{sub}</span>}
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] font-mono truncate mt-0.5 hover:underline flex items-center gap-1"
+          style={{ color }}
+        >
+          {url}
+          <ExternalLink size={10} />
+        </a>
+      </div>
+      <button
+        onClick={copy}
+        title="העתק"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0 transition-all"
+        style={{
+          background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+          color: copied ? '#22c55e' : 'var(--color-text-secondary)',
+          border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.08)'}`,
+        }}
+      >
+        {copied ? <><Check size={12} /> הועתק</> : <><Copy size={12} /> העתק</>}
+      </button>
+    </div>
+  );
+}
+
+function UrlGuide({ structure }: { structure: any[] }) {
+  const origin = window.location.origin;
+
+  const allDevices: { deviceCode: string; buildingName: string; floorName: string; restroomName: string; isOnline: boolean }[] = [];
+  for (const b of structure) {
+    for (const f of b.floors ?? []) {
+      for (const r of f.restrooms ?? []) {
+        for (const d of r.devices ?? []) {
+          allDevices.push({
+            deviceCode: d.deviceCode,
+            buildingName: b.name,
+            floorName: f.name,
+            restroomName: r.name,
+            isOnline: d.isOnline,
+          });
+        }
+      }
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Staff interfaces */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+        <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
+          <ShieldCheck size={15} style={{ color: 'var(--color-accent)' }} />
+          <h2 className="font-semibold text-white">ממשקי צוות</h2>
+        </div>
+        <div className="flex flex-col gap-2 p-4">
+          <CopyRow
+            label="ממשק מנהל"
+            sub="כניסה עם אימייל וסיסמה"
+            url={`${origin}/admin`}
+            accent="#00e5cc"
+          />
+          <CopyRow
+            label="ממשק עובד"
+            sub="כניסה עם תעודת זהות"
+            url={`${origin}/cleaner`}
+            accent="#8b5cf6"
+          />
+        </div>
+      </div>
+
+      {/* Kiosk tablets */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+        <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
+          <Tablet size={15} style={{ color: 'var(--color-accent)' }} />
+          <h2 className="font-semibold text-white">קיוסקים — כתובת לכל טאבלט</h2>
+          <span className="text-[11px] ms-auto" style={{ color: 'var(--color-text-secondary)' }}>
+            פתח בדפדפן הטאבלט ✦ הוסף למסך הבית
+          </span>
+        </div>
+        <div className="flex flex-col gap-2 p-4">
+          {allDevices.length === 0 && (
+            <p className="text-sm text-center py-4" style={{ color: 'var(--color-text-secondary)' }}>
+              אין טאבלטים רשומים — הוסף מכשירים בעץ הבניין
+            </p>
+          )}
+          {allDevices.map(d => (
+            <div key={d.deviceCode} className="relative">
+              <CopyRow
+                label={`${d.restroomName}`}
+                sub={`${d.buildingName} › ${d.floorName} › ${d.deviceCode}`}
+                url={`${origin}/kiosk/${d.deviceCode}`}
+                accent="#f59e0b"
+              />
+              <span
+                className="absolute top-3 left-3 w-2 h-2 rounded-full"
+                style={{ background: d.isOnline ? '#22c55e' : '#ef4444' }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── main page ─────────────────────────────────────────────────────────────────
 export default function AdminSettings() {
   const { t } = useTranslation();
@@ -588,32 +713,8 @@ export default function AdminSettings() {
       {/* devices overview */}
       {structure.length > 0 && <DevicesPanel structure={structure} />}
 
-      {/* kiosk URL guide */}
-      <div className="rounded-2xl p-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-        <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
-          <DoorOpen size={16} style={{ color: 'var(--color-accent)' }} />
-          {t('admin.settings.kioskUrls')}
-        </h2>
-        <div className="flex flex-col gap-2">
-          {structure.flatMap((b: any) =>
-            (b.floors ?? []).flatMap((f: any) =>
-              (f.restrooms ?? []).flatMap((r: any) =>
-                (r.devices ?? []).map((d: any) => (
-                  <div key={d.id} className="flex items-center justify-between py-2 px-3 rounded-xl text-sm" style={{ background: '#0a0e1a' }}>
-                    <span style={{ color: 'var(--color-text-secondary)' }}>{b.name} › {f.name} › {r.name}</span>
-                    <code className="font-mono text-xs px-2 py-1 rounded-lg" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
-                      /kiosk/{d.deviceCode}
-                    </code>
-                  </div>
-                ))
-              )
-            )
-          )}
-          {structure.flatMap((b: any) => (b.floors ?? []).flatMap((f: any) => (f.restrooms ?? []).flatMap((r: any) => r.devices ?? []))).length === 0 && (
-            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.noDevicesYet')}</p>
-          )}
-        </div>
-      </div>
+      {/* ── URL Guide ── */}
+      <UrlGuide structure={structure} />
 
       {showBuildingModal && (
         <AddBuildingModal
