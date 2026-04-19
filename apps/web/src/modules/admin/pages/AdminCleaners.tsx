@@ -201,6 +201,9 @@ export default function AdminCleaners() {
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', idNumber: '', phone: '', preferredLang: 'he' });
+  const [showAdminForm, setShowAdminForm] = useState(false);
+  const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '', idNumber: '' });
+  const [adminFormShow, setAdminFormShow] = useState(false);
   const [editWorker, setEditWorker] = useState<EditState | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [pwUser, setPwUser] = useState<{ id: string; name: string } | null>(null);
@@ -227,6 +230,27 @@ export default function AdminCleaners() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowForm(false);
       setForm({ name: '', idNumber: '', phone: '', preferredLang: 'he' });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? t('common.error'));
+    }
+  };
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminForm.name.trim() || !adminForm.email.trim() || adminForm.password.length < 6) return;
+    try {
+      const payload: any = { name: adminForm.name.trim(), email: adminForm.email.trim(), password: adminForm.password };
+      await api.post('/users/admins', payload);
+      // If ID number supplied, update it immediately
+      if (adminForm.idNumber.trim()) {
+        const { data: all } = await api.get('/users');
+        const created = all.find((u: any) => u.email === adminForm.email.trim());
+        if (created) await api.patch(`/users/${created.id}/admin`, { idNumber: adminForm.idNumber.trim() });
+      }
+      toast.success(lang === 'he' ? 'מנהל נוסף בהצלחה' : 'Admin added');
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setShowAdminForm(false);
+      setAdminForm({ name: '', email: '', password: '', idNumber: '' });
     } catch (err: any) {
       toast.error(err.response?.data?.message ?? t('common.error'));
     }
@@ -564,10 +588,83 @@ export default function AdminCleaners() {
           <span className="text-xs px-2 py-0.5 rounded-full ms-1" style={{ background: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>
             {admins.length}
           </span>
-          <p className="text-xs ms-auto" style={{ color: 'var(--color-text-secondary)' }}>
-            {t('admin.cleaners.adminLoginHint')}
-          </p>
+          <button
+            onClick={() => setShowAdminForm(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ms-auto transition-all"
+            style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)', color: '#a78bfa' }}
+          >
+            <UserPlus size={13} />
+            {lang === 'he' ? 'הוסף מנהל' : 'Add Admin'}
+          </button>
         </div>
+
+        {/* ── Add admin form ── */}
+        {showAdminForm && (
+          <form onSubmit={handleCreateAdmin}
+            className="px-5 py-4 flex flex-col gap-3 border-b"
+            style={{ borderColor: 'rgba(139,92,246,0.1)', background: 'rgba(139,92,246,0.04)' }}>
+            <h3 className="text-sm font-semibold" style={{ color: '#a78bfa' }}>
+              {lang === 'he' ? 'מנהל חדש' : 'New Admin'}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                value={adminForm.name}
+                onChange={e => setAdminForm(f => ({ ...f, name: e.target.value }))}
+                placeholder={lang === 'he' ? 'שם מלא' : 'Full name'}
+                required
+                className="px-4 py-2.5 rounded-xl outline-none text-sm"
+                style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.3)', color: 'white' }}
+              />
+              <input
+                type="email"
+                value={adminForm.email}
+                onChange={e => setAdminForm(f => ({ ...f, email: e.target.value }))}
+                placeholder={lang === 'he' ? 'אימייל (שם משתמש)' : 'Email (username)'}
+                required
+                className="px-4 py-2.5 rounded-xl outline-none text-sm"
+                style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.3)', color: 'white' }}
+              />
+              <div className="relative">
+                <input
+                  type={adminFormShow ? 'text' : 'password'}
+                  value={adminForm.password}
+                  onChange={e => setAdminForm(f => ({ ...f, password: e.target.value }))}
+                  placeholder={lang === 'he' ? 'סיסמה (6+ תווים)' : 'Password (6+ chars)'}
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-2.5 rounded-xl outline-none text-sm pr-10"
+                  style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.3)', color: 'white' }}
+                />
+                <button type="button" onClick={() => setAdminFormShow(v => !v)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2"
+                  style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  {adminFormShow ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+              <input
+                value={adminForm.idNumber}
+                onChange={e => setAdminForm(f => ({ ...f, idNumber: e.target.value }))}
+                placeholder={lang === 'he' ? 'תעודת זהות (לכניסה דרך קיוסק)' : 'ID number (for kiosk login)'}
+                inputMode="numeric"
+                className="px-4 py-2.5 rounded-xl outline-none text-sm font-mono"
+                style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.25)', color: 'white' }}
+              />
+            </div>
+            <div className="flex gap-2">
+              <button type="submit"
+                className="px-5 py-2 rounded-xl text-sm font-medium"
+                style={{ background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.5)', color: '#a78bfa' }}>
+                {t('common.save')}
+              </button>
+              <button type="button" onClick={() => { setShowAdminForm(false); setAdminForm({ name: '', email: '', password: '', idNumber: '' }); }}
+                className="px-5 py-2 rounded-xl text-sm"
+                style={{ color: 'var(--color-text-secondary)' }}>
+                {t('common.cancel')}
+              </button>
+            </div>
+          </form>
+        )}
+
         <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
           {admins.map((a: any) => {
             const isSelf = a.id === currentUserId;
