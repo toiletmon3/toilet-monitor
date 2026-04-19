@@ -82,7 +82,7 @@ export default function AdminLayout() {
       qc.invalidateQueries({ queryKey: ['incidents'] });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
     };
-    const onCreated = () => { toast('📋 תקלה חדשה!', { duration: 4000 }); refresh(); };
+    const onCreated = () => { toast(t('admin.incidents.newIncident'), { duration: 4000 }); refresh(); };
     socket.on('incident:created', onCreated);
     socket.on('incident:updated', refresh);
     socket.on('incident:resolved', refresh);
@@ -98,7 +98,7 @@ export default function AdminLayout() {
       <div className="h-screen flex items-center justify-center" style={{ background: 'var(--color-bg)', color: 'var(--color-text)' }}>
         <div className="text-center">
           <div className="text-4xl mb-3">⏳</div>
-          <div>מתחבר...</div>
+          <div>{t('common.connecting')}</div>
         </div>
       </div>
     );
@@ -117,7 +117,7 @@ export default function AdminLayout() {
     { to: '/admin/analytics', icon: BarChart2, label: t('admin.nav.analytics') },
     { to: '/admin/cleaners', icon: Users, label: t('admin.nav.cleaners') },
     { to: '/admin/settings', icon: Settings, label: t('admin.nav.settings') },
-    { to: '/admin/kiosk', icon: LayoutTemplate, label: lang === 'he' ? 'קיוסק' : 'Kiosk' },
+    { to: '/admin/kiosk', icon: LayoutTemplate, label: t('admin.nav.kiosk') },
   ];
 
   const sidebarW = collapsed ? 64 : 224;
@@ -142,7 +142,7 @@ export default function AdminLayout() {
             onClick={() => setCollapsed(c => !c)}
             className="p-1.5 rounded-lg hover:bg-white/10 transition-all"
             style={{ color: 'var(--color-text-secondary)' }}
-            title={collapsed ? 'הרחב תפריט' : 'כווץ תפריט'}
+            title={collapsed ? t('common.expandMenu') : t('common.collapseMenu')}
           >
             {lang === 'he'
               ? (collapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />)
@@ -156,10 +156,10 @@ export default function AdminLayout() {
       {(!collapsed || mobile) && (
         <div className="mx-1 mb-5 px-3 py-2.5 rounded-xl" style={{ background: 'rgba(0,229,204,0.06)', border: '1px solid rgba(0,229,204,0.12)' }}>
           <div className="text-xl font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>
-            {now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            {now.toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </div>
           <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-            {now.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}
+            {now.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
           </div>
         </div>
       )}
@@ -293,7 +293,7 @@ export default function AdminLayout() {
           </button>
           <span className="text-base font-bold" style={{ color: 'var(--color-accent)' }}>🚾 ToiletMon</span>
           <div className="text-sm font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>
-            {now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+            {now.toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
           </div>
         </header>
 

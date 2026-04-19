@@ -159,14 +159,14 @@ function AdminEditModal({ user, onClose, onSaved }: { user: any; onClose: () => 
           <div>
             <label className="text-xs mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>
               {t('admin.cleaners.idNumber')}
-              <span className="ms-1 opacity-60 text-[10px]">— לכניסה דרך קיוסק / צוות</span>
+              <span className="ms-1 opacity-60 text-[10px]">{t('admin.cleaners.kioskLoginHint')}</span>
             </label>
             <input
               value={idNumber}
               onChange={e => setIdNumber(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl outline-none text-sm font-mono"
               style={inputStyle}
-              placeholder="מספר תעודת זהות"
+              placeholder={t('admin.cleaners.idPlaceholder')}
               inputMode="numeric"
             />
           </div>
@@ -247,7 +247,7 @@ export default function AdminCleaners() {
         const created = all.find((u: any) => u.email === adminForm.email.trim());
         if (created) await api.patch(`/users/${created.id}/admin`, { idNumber: adminForm.idNumber.trim() });
       }
-      toast.success(lang === 'he' ? 'מנהל נוסף בהצלחה' : 'Admin added');
+      toast.success(t('admin.cleaners.adminAdded'));
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowAdminForm(false);
       setAdminForm({ name: '', email: '', password: '', idNumber: '' });
@@ -594,7 +594,7 @@ export default function AdminCleaners() {
             style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)', color: '#a78bfa' }}
           >
             <UserPlus size={13} />
-            {lang === 'he' ? 'הוסף מנהל' : 'Add Admin'}
+            {t('admin.cleaners.addAdmin')}
           </button>
         </div>
 
@@ -604,13 +604,13 @@ export default function AdminCleaners() {
             className="px-5 py-4 flex flex-col gap-3 border-b"
             style={{ borderColor: 'rgba(139,92,246,0.1)', background: 'rgba(139,92,246,0.04)' }}>
             <h3 className="text-sm font-semibold" style={{ color: '#a78bfa' }}>
-              {lang === 'he' ? 'מנהל חדש' : 'New Admin'}
+              {t('admin.cleaners.newAdmin')}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input
                 value={adminForm.name}
                 onChange={e => setAdminForm(f => ({ ...f, name: e.target.value }))}
-                placeholder={lang === 'he' ? 'שם מלא' : 'Full name'}
+                placeholder={t('admin.cleaners.fullName')}
                 required
                 className="px-4 py-2.5 rounded-xl outline-none text-sm"
                 style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.3)', color: 'white' }}
@@ -619,7 +619,7 @@ export default function AdminCleaners() {
                 type="email"
                 value={adminForm.email}
                 onChange={e => setAdminForm(f => ({ ...f, email: e.target.value }))}
-                placeholder={lang === 'he' ? 'אימייל (שם משתמש)' : 'Email (username)'}
+                placeholder={t('admin.cleaners.adminEmail')}
                 required
                 className="px-4 py-2.5 rounded-xl outline-none text-sm"
                 style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.3)', color: 'white' }}
@@ -629,7 +629,7 @@ export default function AdminCleaners() {
                   type={adminFormShow ? 'text' : 'password'}
                   value={adminForm.password}
                   onChange={e => setAdminForm(f => ({ ...f, password: e.target.value }))}
-                  placeholder={lang === 'he' ? 'סיסמה (6+ תווים)' : 'Password (6+ chars)'}
+                  placeholder={t('admin.cleaners.passwordMin')}
                   required
                   minLength={6}
                   className="w-full px-4 py-2.5 rounded-xl outline-none text-sm pr-10"
@@ -644,7 +644,7 @@ export default function AdminCleaners() {
               <input
                 value={adminForm.idNumber}
                 onChange={e => setAdminForm(f => ({ ...f, idNumber: e.target.value }))}
-                placeholder={lang === 'he' ? 'תעודת זהות (לכניסה דרך קיוסק)' : 'ID number (for kiosk login)'}
+                placeholder={t('admin.cleaners.adminIdPlaceholder')}
                 inputMode="numeric"
                 className="px-4 py-2.5 rounded-xl outline-none text-sm font-mono"
                 style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.25)', color: 'white' }}
@@ -694,7 +694,7 @@ export default function AdminCleaners() {
                   )}
                   {(!a.idNumber || a.idNumber === a.email) && (
                     <div className="text-xs mt-0.5" style={{ color: 'rgba(239,68,68,0.5)' }}>
-                      ⚠ תז לא מוגדר — ערוך כדי להוסיף
+                      {t('admin.cleaners.idWarning')}
                     </div>
                   )}
                 </div>

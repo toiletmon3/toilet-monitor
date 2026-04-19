@@ -13,6 +13,7 @@ function IncidentCard({ inc, lang, onAccept, onResolve, onReturn }: {
   onResolve: () => void;
   onReturn?: () => void;
 }) {
+  const { t } = useTranslation();
   const location = [
     inc.restroom?.floor?.building?.name,
     inc.restroom?.floor?.name,
@@ -46,20 +47,20 @@ function IncidentCard({ inc, lang, onAccept, onResolve, onReturn }: {
           <button onClick={onAccept}
             className="flex-1 py-2.5 rounded-xl text-sm font-medium active:scale-95 transition-all"
             style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}>
-            👋 {lang === 'he' ? 'לוקח — בדרך' : 'On my way'}
+            👋 {t('cleaner.onMyWay')}
           </button>
         )}
         {onReturn && (
           <button onClick={onReturn}
             className="py-2.5 px-3 rounded-xl text-sm active:scale-95 transition-all"
             style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}>
-            {lang === 'he' ? '↩ החזר' : '↩ Return'}
+            {t('cleaner.returnTask')}
           </button>
         )}
         <button onClick={onResolve}
           className="flex-1 py-2.5 rounded-xl text-sm font-medium active:scale-95 transition-all"
           style={{ background: 'rgba(0,229,204,0.15)', color: 'var(--color-accent)', border: '1px solid rgba(0,229,204,0.4)' }}>
-          ✓ {lang === 'he' ? 'סיימתי' : 'Done'}
+          ✓ {t('cleaner.done')}
         </button>
       </div>
     </div>
@@ -83,6 +84,8 @@ function timeAgo(date: string, lang: string) {
   const h = Math.floor(diff / 60);
   return lang === 'he' ? `לפני ${h} שע'` : `${h}h ago`;
 }
+
+
 
 
 export default function CleanerPage() {
@@ -160,7 +163,7 @@ export default function CleanerPage() {
 
     const socket = getSocket();
     const handler = () => {
-      toast('📋 משימה חדשה!', { duration: 4000 });
+      toast(t('cleaner.newTask'), { duration: 4000 });
       queryClient.invalidateQueries({ queryKey: ['cleaner-incidents'] });
     };
     socket.on('incident:created', handler);
@@ -177,22 +180,22 @@ export default function CleanerPage() {
     await api.patch(`/incidents/${incidentId}/resolve`, { cleanerIdNumber: user.idNumber });
     queryClient.invalidateQueries({ queryKey: ['cleaner-incidents'] });
     queryClient.invalidateQueries({ queryKey: ['cleaner-today'] });
-    toast.success(lang === 'he' ? 'טופל בהצלחה ✅' : 'Resolved ✅');
+    toast.success(t('cleaner.resolved'));
   };
 
   const handleReturn = async (incidentId: string) => {
     await api.patch(`/incidents/${incidentId}/return`, { cleanerIdNumber: user.idNumber });
     queryClient.invalidateQueries({ queryKey: ['cleaner-incidents'] });
-    toast(lang === 'he' ? 'הוחזר לתור' : 'Returned to queue');
+    toast(t('cleaner.returnedToQueue'));
   };
 
   const handleCheckout = async () => {
-    if (!window.confirm(lang === 'he' ? 'לדווח על יציאה מהעבודה?' : 'Report end of shift?')) return;
+    if (!window.confirm(t('cleaner.checkoutConfirm'))) return;
     try {
       await api.post('/users/checkout', { cleanerIdNumber: user.idNumber });
-      toast.success(lang === 'he' ? 'יציאה נרשמה בהצלחה ✅' : 'Checkout recorded ✅');
+      toast.success(t('cleaner.checkoutSuccess'));
     } catch {
-      toast.error(lang === 'he' ? 'שגיאה בדיווח יציאה' : 'Checkout failed');
+      toast.error(t('cleaner.checkoutError'));
     }
   };
 
@@ -230,11 +233,11 @@ export default function CleanerPage() {
           <div className="flex items-baseline gap-3">
             <h1 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>{t('cleaner.title')}</h1>
             <span className="text-xl font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>
-              {now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              {now.toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
           </div>
           <p className="text-xs flex items-center gap-2 flex-wrap mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-            <span>{now.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            <span>{now.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
             <span>·</span>
             <span>{user.name}</span>
             {user.buildingName && (
@@ -244,7 +247,7 @@ export default function CleanerPage() {
             )}
             <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
               style={{ background: completedToday > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.07)', color: completedToday > 0 ? '#22c55e' : 'var(--color-text-secondary)', border: `1px solid ${completedToday > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
-              ✅ {completedToday} {lang === 'he' ? 'משימות היום' : 'done today'}
+              ✅ {completedToday} {t('cleaner.doneToday')}
             </span>
           </p>
         </div>
@@ -254,11 +257,11 @@ export default function CleanerPage() {
           </button>
           <button
             onClick={handleCheckout}
-            title={lang === 'he' ? 'דווח על יציאה מעבודה' : 'Report end of shift'}
+            title={t('cleaner.checkoutTitle')}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
             style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', color: '#f59e0b' }}
           >
-            🏁 {lang === 'he' ? 'יציאה' : 'Check out'}
+            🏁 {t('cleaner.checkoutLabel')}
           </button>
           <button onClick={handleLogout} style={{ color: 'var(--color-text-secondary)' }}>
             <LogOut size={18} />
@@ -279,7 +282,7 @@ export default function CleanerPage() {
             }}
           >
             <span className="flex-1 text-start">
-              {activeFiltersLabel || (lang === 'he' ? 'כל הקומות והשירותים' : 'All floors & restrooms')}
+              {activeFiltersLabel || t('cleaner.allFloorsRestrooms')}
             </span>
             <ChevronDown size={14} className={`transition-transform ${showFilter ? 'rotate-180' : ''}`} />
           </button>
@@ -297,7 +300,7 @@ export default function CleanerPage() {
                     color: !filterFloorId ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                   }}
                 >
-                  {lang === 'he' ? 'הכל' : 'All'}
+                  {t('cleaner.all')}
                 </button>
                 {floors.map(f => (
                   <button
@@ -327,7 +330,7 @@ export default function CleanerPage() {
                       color: !filterRestroomId ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                     }}
                   >
-                    {lang === 'he' ? 'כל השירותים' : 'All restrooms'}
+                    {t('cleaner.allRestrooms')}
                   </button>
                   {restrooms.map((r: any) => (
                     <button
@@ -370,7 +373,7 @@ export default function CleanerPage() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 px-1">
               <span className="text-xs font-bold tracking-wide" style={{ color: '#f59e0b' }}>
-                ⚙ בטיפולי ({myIncidents.length})
+                ⚙ {t('cleaner.myTasks')} ({myIncidents.length})
               </span>
               <div className="flex-1 h-px" style={{ background: 'rgba(245,158,11,0.25)' }} />
             </div>
@@ -387,7 +390,7 @@ export default function CleanerPage() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 px-1">
               <span className="text-xs font-bold tracking-wide" style={{ color: '#ef4444' }}>
-                📋 ממתינות לטיפול ({openIncidents.length})
+                📋 {t('cleaner.waitingQueue')} ({openIncidents.length})
               </span>
               <div className="flex-1 h-px" style={{ background: 'rgba(239,68,68,0.2)' }} />
             </div>

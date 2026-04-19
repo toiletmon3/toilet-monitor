@@ -53,7 +53,24 @@
     },
     "reportedAgo": "{{time}} ago",
     "logout": "Logout",
-    "checkout": "End shift"
+    "checkout": "End shift",
+    "onMyWay": "On my way",
+    "returnTask": "↩ Return",
+    "done": "Done",
+    "newTask": "📋 New task!",
+    "resolved": "Resolved ✅",
+    "returnedToQueue": "Returned to queue",
+    "checkoutConfirm": "Report end of shift?",
+    "checkoutSuccess": "Checkout recorded ✅",
+    "checkoutError": "Checkout failed",
+    "checkoutTitle": "Report end of shift",
+    "checkoutLabel": "Check out",
+    "doneToday": "done today",
+    "allFloorsRestrooms": "All floors & restrooms",
+    "allRestrooms": "All restrooms",
+    "all": "All",
+    "myTasks": "My tasks",
+    "waitingQueue": "Waiting"
   },
   "admin": {
     "title": "Dashboard",
@@ -80,6 +97,7 @@
     },
     "incidents": {
       "title": "Requests",
+      "newIncident": "📋 New Request!",
       "active": "active",
       "filter": "Filter",
       "all": "All",
@@ -224,7 +242,14 @@
       "savePassword": "Save password",
       "noBuilding2": "No building",
       "edit": "Edit",
-      "delete": "Delete"
+      "delete": "Delete",
+      "kioskLoginHint": "— for kiosk login",
+      "idPlaceholder": "ID number",
+      "adminAdded": "Admin added",
+      "idWarning": "⚠ ID not set — edit to add",
+      "addAdmin": "Add Admin",
+      "newAdmin": "New Admin",
+      "adminIdPlaceholder": "ID number (for kiosk login)"
     },
     "kiosk": {
       "title": "Kiosk Templates",
@@ -296,6 +321,7 @@
   },
   "common": {
     "loading": "Loading...",
+    "connecting": "Connecting...",
     "error": "Error",
     "retry": "Retry",
     "save": "Save",
@@ -307,6 +333,10 @@
     "days": "days",
     "updated": "Updated",
     "copy": "Copy",
-    "copied": "Copied"
+    "copied": "Copied",
+    "confirm": "Confirm",
+    "typeToConfirm": "Type <1>{{text}}</1> to confirm",
+    "expandMenu": "Expand menu",
+    "collapseMenu": "Collapse menu"
   }
 }

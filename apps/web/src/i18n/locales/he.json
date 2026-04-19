@@ -53,7 +53,24 @@
     },
     "reportedAgo": "לפני {{time}}",
     "logout": "יציאה",
-    "checkout": "יציאה מעבודה"
+    "checkout": "יציאה מעבודה",
+    "onMyWay": "לוקח — בדרך",
+    "returnTask": "↩ החזר",
+    "done": "סיימתי",
+    "newTask": "📋 משימה חדשה!",
+    "resolved": "טופל בהצלחה ✅",
+    "returnedToQueue": "הוחזר לתור",
+    "checkoutConfirm": "לדווח על יציאה מהעבודה?",
+    "checkoutSuccess": "יציאה נרשמה בהצלחה ✅",
+    "checkoutError": "שגיאה בדיווח יציאה",
+    "checkoutTitle": "דווח על יציאה מעבודה",
+    "checkoutLabel": "יציאה",
+    "doneToday": "משימות היום",
+    "allFloorsRestrooms": "כל הקומות והשירותים",
+    "allRestrooms": "כל השירותים",
+    "all": "הכל",
+    "myTasks": "בטיפולי",
+    "waitingQueue": "ממתינות לטיפול"
   },
   "admin": {
     "title": "לוח בקרה",
@@ -80,6 +97,7 @@
     },
     "incidents": {
       "title": "בקשות",
+      "newIncident": "📋 תקלה חדשה!",
       "active": "פעילות",
       "filter": "סינון",
       "all": "הכל",
@@ -224,7 +242,14 @@
       "savePassword": "שמור סיסמה",
       "noBuilding2": "ללא שיוך",
       "edit": "ערוך",
-      "delete": "מחק"
+      "delete": "מחק",
+      "kioskLoginHint": "— לכניסה דרך קיוסק / צוות",
+      "idPlaceholder": "מספר תעודת זהות",
+      "adminAdded": "מנהל נוסף בהצלחה",
+      "idWarning": "⚠ תז לא מוגדר — ערוך כדי להוסיף",
+      "addAdmin": "הוסף מנהל",
+      "newAdmin": "מנהל חדש",
+      "adminIdPlaceholder": "תעודת זהות (לכניסה דרך קיוסק)"
     },
     "kiosk": {
       "title": "טמפלטים לקיוסק",
@@ -296,6 +321,7 @@
   },
   "common": {
     "loading": "טוען...",
+    "connecting": "מתחבר...",
     "error": "שגיאה",
     "retry": "נסה שוב",
     "save": "שמור",
@@ -307,6 +333,10 @@
     "days": "ימים",
     "updated": "עודכן",
     "copy": "העתק",
-    "copied": "הועתק"
+    "copied": "הועתק",
+    "confirm": "אשר",
+    "typeToConfirm": "הקלד <1>{{text}}</1> לאישור",
+    "expandMenu": "הרחב תפריט",
+    "collapseMenu": "כווץ תפריט"
   }
 }

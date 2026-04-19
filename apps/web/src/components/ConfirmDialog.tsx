@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -6,12 +7,13 @@ interface Props {
   description: string;
   confirmLabel?: string;
   danger?: boolean;
-  requireType?: string; // if set, user must type this string to confirm
+  requireType?: string;
   onConfirm: () => Promise<void>;
   onClose: () => void;
 }
 
-export default function ConfirmDialog({ title, description, confirmLabel = 'אשר', danger = true, requireType, onConfirm, onClose }: Props) {
+export default function ConfirmDialog({ title, description, confirmLabel, danger = true, requireType, onConfirm, onClose }: Props) {
+  const { t } = useTranslation();
   const [typed, setTyped] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +46,9 @@ export default function ConfirmDialog({ title, description, confirmLabel = 'אש
         {requireType && (
           <div className="flex flex-col gap-1">
             <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-              הקלד <b style={{ color: '#ef4444' }}>{requireType}</b> לאישור
+              {t('common.typeToConfirm', { text: '' }).split('<1>')[0]}
+              <b style={{ color: '#ef4444' }}>{requireType}</b>
+              {t('common.typeToConfirm', { text: '' }).split('</1>')[1]}
             </label>
             <input
               value={typed}
@@ -60,7 +64,7 @@ export default function ConfirmDialog({ title, description, confirmLabel = 'אש
         <div className="flex gap-3 justify-end">
           <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm"
             style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--color-text-secondary)' }}>
-            ביטול
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleConfirm}
@@ -71,7 +75,7 @@ export default function ConfirmDialog({ title, description, confirmLabel = 'אש
               border: `1px solid ${danger ? 'rgba(239,68,68,0.5)' : 'rgba(0,229,204,0.5)'}`,
               color: danger ? '#f87171' : '#00e5cc',
             }}>
-            {loading ? '...' : confirmLabel}
+            {loading ? '...' : (confirmLabel ?? t('common.confirm'))}
           </button>
         </div>
       </div>
