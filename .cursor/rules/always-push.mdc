@@ -1,0 +1,25 @@
+---
+description: Always commit and push changes after every task so they deploy live
+alwaysApply: true
+---
+
+# Auto-push after every change
+
+After completing ANY code change in this project — always:
+
+1. `git add -A`
+2. `git commit -F` (write message to a temp file, then use `-F`, since PowerShell doesn't support heredoc)
+3. `git pull --rebase origin main` (in case remote has new commits)
+4. `git push origin main`
+
+This triggers the GitHub Actions CI/CD pipeline which deploys to production automatically.
+
+**Never leave changes un-pushed.** The user expects to see every change live on the web immediately after it's made.
+
+## PowerShell commit pattern (use this, heredoc doesn't work in PowerShell):
+
+```powershell
+# Write message to temp file first
+# Then commit with -F flag
+git commit -F ".git\COMMIT_MSG_TMP.txt"
+```
