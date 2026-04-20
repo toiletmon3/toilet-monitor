@@ -362,6 +362,23 @@ export class IncidentsService {
     });
     if (!cleaner) throw new NotFoundException('Cleaner not found');
 
+    // Auto check-in if the cleaner resolved without having checked in
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const activeArrival = await this.prisma.cleanerArrival.findFirst({
+      where: { userId: cleaner.id, leftAt: null, arrivedAt: { gte: todayStart } },
+    });
+    if (!activeArrival) {
+      await this.prisma.cleanerArrival.create({
+        data: {
+          userId: cleaner.id,
+          buildingId: cleaner.buildingId ?? undefined,
+          arrivedAt: new Date(),
+          note: 'auto-checkin',
+        },
+      });
+    }
+
     const incident = await this.prisma.incident.update({
       where: { id: incidentId },
       data: {

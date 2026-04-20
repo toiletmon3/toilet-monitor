@@ -431,21 +431,26 @@ export default function AdminCleaners() {
       </div>
 
       {/* ── Mismatch alerts ── */}
-      {mismatches.length > 0 && (
-        <div className="rounded-2xl p-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(239,68,68,0.2)' }}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-white flex items-center gap-2">
-              <span style={{ color: '#ef4444' }}>⚠️</span>
-              {t('admin.cleaners.mismatchTitle')}
-            </h2>
-            <span className="text-xs px-2 py-1 rounded-full font-semibold"
-              style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
-              {mismatches.length}
-            </span>
+      <div className="rounded-2xl p-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(239,68,68,0.2)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-white flex items-center gap-2">
+            <span style={{ color: '#ef4444' }}>⚠️</span>
+            {t('admin.cleaners.mismatchTitle')}
+          </h2>
+          <span className="text-xs px-2 py-1 rounded-full font-semibold"
+            style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
+            {mismatches.length}
+          </span>
+        </div>
+        <div className="text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+          {t('admin.cleaners.mismatchDesc')}
+        </div>
+        {mismatches.length === 0 ? (
+          <div className="text-center py-6" style={{ color: 'var(--color-text-secondary)' }}>
+            <div className="text-2xl mb-2">✅</div>
+            <div className="text-sm">{t('admin.cleaners.mismatchEmpty')}</div>
           </div>
-          <div className="text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-            {t('admin.cleaners.mismatchDesc')}
-          </div>
+        ) : (
           <div className="flex flex-col gap-2">
             {mismatches.map((m: any) => (
               <div key={m.arrivalId} className="flex items-center gap-3 px-4 py-3 rounded-2xl"
@@ -468,8 +473,8 @@ export default function AdminCleaners() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">

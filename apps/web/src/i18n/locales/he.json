@@ -264,6 +264,7 @@
       "shiftSupervisor": "אחראי משמרת",
       "mismatchTitle": "התראת אי-התאמה",
       "mismatchDesc": "עובדים שדיווחו כניסה אך לא ביצעו פעולות ניקוי",
+      "mismatchEmpty": "אין התראות כרגע — כל העובדים תקינים",
       "checkedInAgo": "דיווח כניסה לפני {{n}} דק'"
     },
     "kiosk": {

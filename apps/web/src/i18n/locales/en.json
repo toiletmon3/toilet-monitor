@@ -264,6 +264,7 @@
       "shiftSupervisor": "Shift Supervisor",
       "mismatchTitle": "Mismatch Alerts",
       "mismatchDesc": "Workers who checked in but haven't performed any cleaning actions",
+      "mismatchEmpty": "No alerts right now — all workers are on track",
       "checkedInAgo": "Checked in {{n}} min ago"
     },
     "kiosk": {

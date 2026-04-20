@@ -232,8 +232,10 @@ export default function KioskPage() {
     );
   }
 
+  const handleConfirmationReturn = useCallback(() => setConfirmed(null), []);
+
   if (confirmed) {
-    return <KioskConfirmation issueCode={confirmed} onReturn={() => setConfirmed(null)} />;
+    return <KioskConfirmation issueCode={confirmed} onReturn={handleConfirmationReturn} />;
   }
 
   if (showCleanerMode && deviceInfo) {

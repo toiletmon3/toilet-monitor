@@ -8,7 +8,7 @@ interface Props {
 
 export default function KioskConfirmation({ onReturn }: Props) {
   const { t } = useTranslation();
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
     const interval = setInterval(() => {
