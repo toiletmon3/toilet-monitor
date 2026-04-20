@@ -313,7 +313,7 @@ export default function SupervisorPage() {
           </div>
         )}
 
-        {!isLoading && openIncidents.length === 0 && positiveFeedback.length === 0 && (
+        {!isLoading && openIncidents.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center pt-16">
             <div className="text-5xl">✅</div>
             <p style={{ color: 'var(--color-text-secondary)' }}>{t('cleaner.noTasks')}</p>
@@ -336,8 +336,8 @@ export default function SupervisorPage() {
           </div>
         )}
 
-        {/* ── Section: Positive Feedback ── */}
-        {!isLoading && positiveFeedback.length > 0 && (
+        {/* ── Section: Positive Feedback — only while open tasks exist ── */}
+        {!isLoading && positiveFeedback.length > 0 && openIncidents.length > 0 && (
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 px-1">
               <span className="text-xs font-bold tracking-wide" style={{ color: '#22c55e' }}>
