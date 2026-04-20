@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amazon Echo Show 15 — בדיקת התאמה למערכת ToiletMon</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 18mm;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #fff;
+      padding: 40px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 26px;
+      color: #1a365d;
+      border-bottom: 3px solid #2b6cb0;
+      padding-bottom: 12px;
+      margin-bottom: 6px;
+    }
+
+    .date {
+      font-size: 13px;
+      color: #718096;
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      font-size: 20px;
+      color: #2b6cb0;
+      margin-top: 36px;
+      margin-bottom: 14px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    h3 {
+      font-size: 16px;
+      color: #2d3748;
+      margin-top: 22px;
+      margin-bottom: 10px;
+    }
+
+    p {
+      margin-bottom: 12px;
+    }
+
+    .executive-summary {
+      background: #f7fafc;
+      border: 2px solid #2b6cb0;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin: 20px 0 30px;
+    }
+
+    .executive-summary h2 {
+      margin-top: 0;
+      border-bottom: none;
+      color: #1a365d;
+    }
+
+    .bottom-line {
+      background: #fff5f5;
+      border-right: 4px solid #e53e3e;
+      padding: 12px 16px;
+      margin: 14px 0;
+      border-radius: 0 6px 6px 0;
+      font-weight: 600;
+      color: #c53030;
+    }
+
+    .conclusion-box {
+      background: #f0fff4;
+      border-right: 4px solid #38a169;
+      padding: 12px 16px;
+      margin: 14px 0;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .conclusion-box.negative {
+      background: #fff5f5;
+      border-right-color: #e53e3e;
+    }
+
+    ol, ul {
+      margin: 8px 20px 14px 0;
+      padding-right: 18px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      font-size: 13.5px;
+    }
+
+    thead th {
+      background: #2b6cb0;
+      color: #fff;
+      font-weight: 600;
+      padding: 10px 14px;
+      text-align: right;
+    }
+
+    tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f7fafc;
+    }
+
+    .icon-yes {
+      color: #38a169;
+      font-weight: bold;
+    }
+
+    .icon-no {
+      color: #e53e3e;
+      font-weight: bold;
+    }
+
+    .icon-warn {
+      color: #d69e2e;
+      font-weight: bold;
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 2px solid #e2e8f0;
+      margin: 32px 0;
+    }
+
+    .option-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      background: #fafafa;
+    }
+
+    .option-card h3 {
+      margin-top: 0;
+      color: #2b6cb0;
+    }
+
+    .summary-section {
+      background: #f7fafc;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin: 20px 0;
+    }
+
+    .summary-section h3 {
+      margin-top: 10px;
+    }
+
+    .summary-section h3:first-child {
+      margin-top: 0;
+    }
+
+    .recommendation-good {
+      border-right: 4px solid #38a169;
+      padding-right: 14px;
+      margin-bottom: 18px;
+    }
+
+    .recommendation-bad {
+      border-right: 4px solid #e53e3e;
+      padding-right: 14px;
+      margin-bottom: 18px;
+    }
+
+    .appendix {
+      font-size: 13px;
+      color: #4a5568;
+    }
+
+    .appendix a {
+      color: #2b6cb0;
+      text-decoration: none;
+    }
+
+    .appendix a:hover {
+      text-decoration: underline;
+    }
+
+    strong {
+      color: #1a202c;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        font-size: 12px;
+      }
+
+      h1 { font-size: 22px; }
+      h2 { font-size: 17px; }
+      h3 { font-size: 14px; }
+
+      .executive-summary,
+      .summary-section {
+        break-inside: avoid;
+      }
+
+      table {
+        font-size: 11.5px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Amazon Echo Show 15 — בדיקת התאמה למערכת ToiletMon</h1>
+  <div class="date">אפריל 2026</div>
+
+  <!-- תקציר מנהלים -->
+  <div class="executive-summary">
+    <h2>תקציר מנהלים</h2>
+    <p>בדקנו האם מכשיר ה-Amazon Echo Show 15 יכול לשרת אותנו בשני תפקידים:</p>
+    <ol>
+      <li><strong>כמסך קיוסק</strong> — להציג את ממשק הדיווח של ToiletMon בשירותים (במקום טאבלט)</li>
+      <li><strong>כחיישן ספירת אנשים</strong> — לזהות ולספור כמה אנשים עוברים ליד השירותים</li>
+    </ol>
+
+    <div class="bottom-line">
+      שורה תחתונה: Echo Show 15 לא מתאים לאף אחד מהשימושים האלה.
+    </div>
+
+    <ul>
+      <li>כמסך קיוסק — יקר יותר ולא אמין ביחס לטאבלט רגיל</li>
+      <li>כחיישן ספירה — ה-API של Amazon מוגבל ולא מאפשר ספירת אנשים</li>
+    </ul>
+    <p>להלן הפירוט המלא.</p>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- חלק א -->
+  <h2>חלק א — שימוש כמסך קיוסק</h2>
+
+  <h3>מפרט המכשיר</h3>
+  <table>
+    <thead>
+      <tr><th>תכונה</th><th>פרט</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>מסך</td><td>15.6 אינץ', Full HD (1920×1080)</td></tr>
+      <tr><td>מצלמה</td><td>5 מגה-פיקסל עם זיהוי פנים (Visual ID)</td></tr>
+      <tr><td>מערכת הפעלה</td><td>Fire OS (מבוסס אנדרואיד, סגור ע"י Amazon)</td></tr>
+      <tr><td>דפדפן מובנה</td><td>Amazon Silk</td></tr>
+      <tr><td>חיבור</td><td>Wi-Fi דו-ערוצי</td></tr>
+      <tr><td>מחיר</td><td>כ-700–1,000 ש"ח</td></tr>
+    </tbody>
+  </table>
+
+  <h3>האם אפשר להציג את ToiletMon על המסך?</h3>
+  <p><strong>כן, אבל עם מגבלות משמעותיות שהופכות את זה ללא מעשי.</strong></p>
+
+  <div class="option-card">
+    <h3>אופציה א — שימוש בדפדפן Silk המובנה</h3>
+    <ul>
+      <li>אפשר לפתוח את הדפדפן עם הפקודה "Alexa, Open Silk" ולגלוש לכתובת הקיוסק</li>
+      <li><strong>הבעיה:</strong> הדפדפן נסגר אוטומטית אחרי כמה דקות וחוזר למסך הבית של Alexa</li>
+      <li>קיים מעקף חלקי (סקריפט חיצוני שמונע סגירה), אבל זה פתרון שביר — Amazon יכולה לחסום אותו בכל עדכון</li>
+    </ul>
+  </div>
+
+  <div class="option-card">
+    <h3>אופציה ב — התקנת אפליקציית קיוסק (Fully Kiosk Browser)</h3>
+    <ul>
+      <li>Amazon חסמה התקנת אפליקציות חיצוניות מפברואר 2023</li>
+      <li>קיימים מעקפים טכניים, אבל Amazon יכולה לחסום אותם בכל עדכון תוכנה</li>
+      <li>לא ניתן לסמוך על זה בסביבת עבודה אמיתית</li>
+    </ul>
+  </div>
+
+  <h3>השוואה — Echo Show 15 מול טאבלט רגיל</h3>
+  <table>
+    <thead>
+      <tr><th>קריטריון</th><th>Echo Show 15</th><th>טאבלט אנדרואיד / iPad</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>הצגת ToiletMon</td>
+        <td><span class="icon-warn">⚠</span> רק עם מעקפים לא יציבים</td>
+        <td><span class="icon-yes">✓</span> עובד מושלם</td>
+      </tr>
+      <tr>
+        <td>נעילה על מסך אחד</td>
+        <td><span class="icon-no">✗</span> לא קיים</td>
+        <td><span class="icon-yes">✓</span> Screen Pinning / Guided Access</td>
+      </tr>
+      <tr>
+        <td>אפליקציית קיוסק</td>
+        <td><span class="icon-no">✗</span> חסומה ע"י Amazon</td>
+        <td><span class="icon-yes">✓</span> נתמכת (Fully Kiosk Browser)</td>
+      </tr>
+      <tr>
+        <td>יציבות לטווח ארוך</td>
+        <td><span class="icon-no">✗</span> Amazon שולטת ויכולה לשבור</td>
+        <td><span class="icon-yes">✓</span> שליטה מלאה שלנו</td>
+      </tr>
+      <tr>
+        <td>עלות</td>
+        <td>700–1,000 ש"ח</td>
+        <td>300–500 ש"ח</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="conclusion-box negative">
+    <strong>מסקנה:</strong> טאבלט אנדרואיד רגיל עדיף בכל הפרמטרים — זול יותר, אמין יותר, ואנחנו שולטים עליו לגמרי.
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- חלק ב -->
+  <h2>חלק ב — שימוש כחיישן ספירת אנשים</h2>
+
+  <h3>מה המכשיר יכול לעשות?</h3>
+  <p>ל-Echo Show 15 יש מצלמה עם יכולות זיהוי נוכחות. Amazon חושפת שלושה ממשקי תכנות (API) לנושא:</p>
+
+  <div class="option-card">
+    <h3>1. חיישן נוכחות (Entity Sensing)</h3>
+    <ul>
+      <li>יכול לזהות אם יש מישהו מול המכשיר (כן/לא)</li>
+      <li>נותן מזהה ייחודי לאדם שמזוהה</li>
+      <li>מודד את הזווית של האדם ביחס למכשיר</li>
+      <li>מדווח כשהאדם הנוכחי עוזב ואדם חדש מגיע</li>
+    </ul>
+  </div>
+
+  <div class="option-card">
+    <h3>2. חיישן זיהוי אובייקטים (SmartVision)</h3>
+    <ul>
+      <li>מזהה שיש "אדם" בשדה הראייה</li>
+      <li>שולח התראה לאפליקציית Alexa בטלפון</li>
+      <li>לא נותן ספירה — רק "זוהה אדם"</li>
+    </ul>
+  </div>
+
+  <h3>מה המכשיר לא יכול לעשות?</h3>
+  <table>
+    <thead>
+      <tr><th>מה שאנחנו צריכים</th><th>מה שה-Echo Show 15 מספק</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>לספור כמה אנשים עברו</td>
+        <td><span class="icon-no">✗</span> מזהה רק אדם אחד בכל רגע</td>
+      </tr>
+      <tr>
+        <td>ספירה רציפית 24/7</td>
+        <td><span class="icon-no">✗</span> עובד רק כשאפליקציה פעילה על המסך</td>
+      </tr>
+      <tr>
+        <td>לשלוח נתונים למערכת שלנו</td>
+        <td><span class="icon-no">✗</span> אין דרך ישירה לשלוח נתונים לשרת חיצוני</td>
+      </tr>
+      <tr>
+        <td>לספור מספר אנשים בו-זמנית</td>
+        <td><span class="icon-no">✗</span> מזהה רק "משתמש ראשי" אחד</td>
+      </tr>
+      <tr>
+        <td>גישה לתמונה מהמצלמה</td>
+        <td><span class="icon-no">✗</span> חסום לחלוטין</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>למה אי אפשר לעקוף את זה?</h3>
+  <p>בתיאוריה אפשר לבנות אפליקציית Alexa שמנסה לספור לפי שינויי זיהוי, אבל:</p>
+  <ul>
+    <li><strong>האפליקציה חייבת להיות פעילה על המסך</strong> — ברגע שמישהו אומר "Alexa" או שעובר timeout, הספירה נעצרת</li>
+    <li><strong>מזהה רק אדם אחד בכל רגע</strong> — אם שני אנשים עוברים ביחד, נספור רק אחד</li>
+    <li><strong>הזיהוי לא נועד לספירה</strong> — Amazon בנתה אותו כדי להתאים את התצוגה למשתמש הנוכחי, לא לספור תנועה</li>
+    <li><strong>תלות מלאה ב-Amazon</strong> — הם יכולים לשנות או לבטל את ה-API בכל רגע</li>
+    <li><strong>דורש תשתית נוספת</strong> — חשבון מפתחים ב-Amazon, שרת Lambda ב-AWS, ועלויות חודשיות</li>
+  </ul>
+
+  <div class="conclusion-box negative">
+    <strong>מסקנה:</strong> ה-Echo Show 15 לא מתאים לספירת אנשים.
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- חלק ג -->
+  <div class="page-break"></div>
+  <h2>חלק ג — חלופות מומלצות לספירת אנשים</h2>
+  <p>אם רוצים לספור כמה אנשים נכנסים ויוצאים מהשירותים, יש פתרונות טובים, זולים ופשוטים הרבה יותר:</p>
+
+  <div class="option-card">
+    <h3>אופציה א — חיישן תנועה אינפרא-אדום (PIR)</h3>
+    <table>
+      <thead>
+        <tr><th>פרט</th><th>ערך</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>מה זה</td><td>חיישן קטן שמזהה תנועת אדם לפי חום הגוף</td></tr>
+        <tr><td>חומרה</td><td>לוח ESP32 + חיישן PIR (דגם HC-SR501)</td></tr>
+        <tr><td>עלות</td><td>כ-30–50 ש"ח</td></tr>
+        <tr><td>חיבור</td><td>מתחבר ל-Wi-Fi ושולח נתונים ישירות למערכת ToiletMon</td></tr>
+        <tr><td>יכולת</td><td>ספירת מעברים — כל פעם שמישהו עובר, המונה עולה</td></tr>
+        <tr><td>אמינות</td><td>גבוהה מאוד</td></tr>
+        <tr><td>גודל</td><td>קופסה קטנה (כגודל קופסת גפרורים) שמתקינים ליד הדלת</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="option-card">
+    <h3>אופציה ב — חיישן מרחק לייזר (ToF)</h3>
+    <table>
+      <thead>
+        <tr><th>פרט</th><th>ערך</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>מה זה</td><td>חיישן שמודד מרחק בלייזר ומזהה מעבר של אדם</td></tr>
+        <tr><td>חומרה</td><td>לוח ESP32 + חיישן VL53L1X</td></tr>
+        <tr><td>עלות</td><td>כ-50–80 ש"ח</td></tr>
+        <tr><td>חיבור</td><td>Wi-Fi ישירות למערכת ToiletMon</td></tr>
+        <tr><td>יכולת</td><td>ספירה מדויקת + הבחנה בין כניסה ליציאה</td></tr>
+        <tr><td>אמינות</td><td>גבוהה מאוד, מדויק יותר מחיישן PIR</td></tr>
+        <tr><td>גודל</td><td>קופסה קטנה שמתקינים במשקוף הדלת</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="option-card">
+    <h3>אופציה ג — מחסום אינפרא-אדום (beam break)</h3>
+    <table>
+      <thead>
+        <tr><th>פרט</th><th>ערך</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>מה זה</td><td>שני חיישנים בצדי הדלת — כשמישהו עובר ביניהם, הקרן נשברת</td></tr>
+        <tr><td>חומרה</td><td>לוח ESP32 + זוג חיישנים אינפרא-אדום</td></tr>
+        <tr><td>עלות</td><td>כ-40–60 ש"ח</td></tr>
+        <tr><td>חיבור</td><td>Wi-Fi ישירות למערכת ToiletMon</td></tr>
+        <tr><td>יכולת</td><td>ספירה כיוונית — מבחין בין כניסה ליציאה (שני חיישנים = כיוון)</td></tr>
+        <tr><td>אמינות</td><td>גבוהה, פשוט להתקנה</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>טבלת השוואה מסכמת</h3>
+  <table>
+    <thead>
+      <tr><th>קריטריון</th><th>Echo Show 15</th><th>חיישן PIR</th><th>חיישן לייזר (ToF)</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>ספירת אנשים</td>
+        <td><span class="icon-no">✗</span> לא</td>
+        <td><span class="icon-yes">✓</span> כן</td>
+        <td><span class="icon-yes">✓</span> כן</td>
+      </tr>
+      <tr>
+        <td>ספירה רציפית 24/7</td>
+        <td><span class="icon-no">✗</span> לא</td>
+        <td><span class="icon-yes">✓</span> כן</td>
+        <td><span class="icon-yes">✓</span> כן</td>
+      </tr>
+      <tr>
+        <td>עלות</td>
+        <td>700–1,000 ש"ח</td>
+        <td>30–50 ש"ח</td>
+        <td>50–80 ש"ח</td>
+      </tr>
+      <tr>
+        <td>שליחת נתונים למערכת</td>
+        <td><span class="icon-no">✗</span> לא</td>
+        <td><span class="icon-yes">✓</span> כן, ישירות</td>
+        <td><span class="icon-yes">✓</span> כן, ישירות</td>
+      </tr>
+      <tr>
+        <td>הבחנה כניסה/יציאה</td>
+        <td><span class="icon-no">✗</span> לא</td>
+        <td><span class="icon-warn">⚠</span> דורש שני חיישנים</td>
+        <td><span class="icon-yes">✓</span> מובנה</td>
+      </tr>
+      <tr>
+        <td>מורכבות התקנה</td>
+        <td>גבוהה</td>
+        <td>נמוכה</td>
+        <td>נמוכה-בינונית</td>
+      </tr>
+      <tr>
+        <td>תלות בספק חיצוני</td>
+        <td><span class="icon-no">✗</span> כן (Amazon)</td>
+        <td><span class="icon-yes">✓</span> לא</td>
+        <td><span class="icon-yes">✓</span> לא</td>
+      </tr>
+      <tr>
+        <td>תאימות ל-ToiletMon</td>
+        <td><span class="icon-no">✗</span> לא</td>
+        <td><span class="icon-yes">✓</span> תשתית קיימת</td>
+        <td><span class="icon-yes">✓</span> תשתית קיימת</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>מה צריך לפתח?</h3>
+  <p>המערכת שלנו (ToiletMon) כבר מכילה תשתית בסיסית לחיישנים בקוד. צריך להשלים שלושה דברים:</p>
+  <ol>
+    <li><strong>נקודת קליטה בשרת</strong> — כתובת API שהחיישן שולח אליה את נתוני הספירה</li>
+    <li><strong>קוד לחיישן</strong> — תוכנה קטנה שרצה על לוח ה-ESP32 ומדווחת מעברים דרך ה-Wi-Fi</li>
+    <li><strong>תצוגה בדשבורד</strong> — גרף בלוח הבקרה של המנהל שמראה כמה אנשים נכנסו לשירותים לפי שעות/ימים</li>
+  </ol>
+
+  <hr class="section-divider">
+
+  <!-- סיכום והמלצות -->
+  <h2>סיכום והמלצות</h2>
+
+  <div class="summary-section">
+    <div class="recommendation-good">
+      <h3>למסך קיוסק — להישאר עם טאבלט רגיל</h3>
+      <ul>
+        <li>זול יותר (300–500 ש"ח לעומת 700–1,000 ש"ח)</li>
+        <li>עובד מושלם עם אפליקציית קיוסק (Fully Kiosk Browser)</li>
+        <li>נעילת מסך מובנית (Screen Pinning באנדרואיד / Guided Access באייפד)</li>
+        <li>ToiletMon כבר תומך בטאבלטים לגמרי</li>
+      </ul>
+    </div>
+
+    <div class="recommendation-good">
+      <h3>לספירת אנשים — חיישן ESP32 (PIR או ToF)</h3>
+      <ul>
+        <li>עלות נמוכה מאוד (30–80 ש"ח ליחידה)</li>
+        <li>ספירה רציפית 24 שעות ביממה, 7 ימים בשבוע</li>
+        <li>שליחת נתונים ישירות למערכת ToiletMon דרך ה-Wi-Fi של המבנה</li>
+        <li>התקנה פשוטה — קופסה קטנה ליד דלת השירותים</li>
+        <li>תשתית בסיסית כבר קיימת בקוד המערכת</li>
+      </ul>
+    </div>
+
+    <div class="recommendation-bad">
+      <h3>Echo Show 15 — לא מומלץ</h3>
+      <ul>
+        <li>לא מתאים כקיוסק — אין מצב נעילה, הדפדפן נסגר לבד, יקר</li>
+        <li>לא מתאים לספירת אנשים — מזהה רק אדם אחד, עובד רק כשאפליקציה פעילה, אי אפשר לשלוח נתונים החוצה</li>
+        <li>תלות מלאה ב-Amazon — כל עדכון תוכנה שלהם יכול לשבור הכל</li>
+      </ul>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- נספח -->
+  <div class="appendix">
+    <h2>נספח — קישורים לתיעוד הטכני של Amazon</h2>
+    <ul>
+      <li><a href="https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-ext-entity-sensing.html">חיישן נוכחות — APL Entity Sensing</a></li>
+      <li><a href="https://developer.amazon.com/en-US/docs/alexa/web-api-for-games/alexa-games-extensions-entitysensing.html">חיישן נוכחות — Web API</a></li>
+      <li><a href="https://developer.amazon.com/en-US/docs/alexa/device-apis/alexa-smartvision-objectdetectionsensor.html">זיהוי אובייקטים — SmartVision</a></li>
+      <li><a href="https://developer.amazon.com/docs/device-specs/device-specifications-echo-show.html">מפרט מכשירי Echo Show</a></li>
+    </ul>
+  </div>
+
+</body>
+</html>
