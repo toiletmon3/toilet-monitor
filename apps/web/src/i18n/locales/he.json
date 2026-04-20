@@ -84,7 +84,7 @@
       "dashboard": "סקירה כללית",
       "incidents": "בקשות",
       "analytics": "סטטיסטיקות",
-      "cleaners": "מנקים",
+      "cleaners": "עובדים",
       "settings": "הגדרות",
       "kiosk": "טמפלטים"
     },
@@ -262,6 +262,8 @@
       "newAdmin": "מנהל חדש",
       "adminIdPlaceholder": "תעודת זהות (לכניסה דרך קיוסק)",
       "shiftSupervisor": "אחראי משמרת",
+      "filterByBuilding": "סנן לפי בניין",
+      "allBuildings": "כל הבניינים",
       "mismatchTitle": "התראת אי-התאמה",
       "mismatchDesc": "עובדים שדיווחו כניסה אך לא ביצעו פעולות ניקוי",
       "mismatchEmpty": "אין התראות כרגע — כל העובדים תקינים",

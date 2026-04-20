@@ -262,6 +262,8 @@
       "newAdmin": "New Admin",
       "adminIdPlaceholder": "ID number (for kiosk login)",
       "shiftSupervisor": "Shift Supervisor",
+      "filterByBuilding": "Filter by building",
+      "allBuildings": "All buildings",
       "mismatchTitle": "Mismatch Alerts",
       "mismatchDesc": "Workers who checked in but haven't performed any cleaning actions",
       "mismatchEmpty": "No alerts right now — all workers are on track",

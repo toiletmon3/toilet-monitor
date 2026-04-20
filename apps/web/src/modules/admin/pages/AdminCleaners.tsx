@@ -208,6 +208,8 @@ export default function AdminCleaners() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [pwUser, setPwUser] = useState<{ id: string; name: string } | null>(null);
   const [editAdmin, setEditAdmin] = useState<any | null>(null);
+  const [filterBuildingWorkers, setFilterBuildingWorkers] = useState('');
+  const [filterBuildingAdmins, setFilterBuildingAdmins] = useState('');
 
   const { data: users } = useQuery({
     queryKey: ['users'],
@@ -219,8 +221,15 @@ export default function AdminCleaners() {
     queryFn: async () => (await api.get('/buildings/structure')).data,
   });
 
-  const cleaners = (users ?? []).filter((u: any) => u.role === 'CLEANER');
-  const admins   = (users ?? []).filter((u: any) => u.role === 'ORG_ADMIN' || u.role === 'MANAGER' || u.role === 'SHIFT_SUPERVISOR');
+  const allWorkers = (users ?? []).filter((u: any) => u.role === 'CLEANER');
+  const cleaners = filterBuildingWorkers
+    ? allWorkers.filter((u: any) => u.buildingId === filterBuildingWorkers)
+    : allWorkers;
+
+  const allAdmins = (users ?? []).filter((u: any) => u.role === 'ORG_ADMIN' || u.role === 'MANAGER' || u.role === 'SHIFT_SUPERVISOR');
+  const admins = filterBuildingAdmins
+    ? allAdmins.filter((u: any) => u.buildingId === filterBuildingAdmins || u.role === 'ORG_ADMIN')
+    : allAdmins;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -482,13 +491,26 @@ export default function AdminCleaners() {
           <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{t('admin.cleaners.manage')}</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.cleaners.activeDesc')}</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
-          style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
-        >
-          <UserPlus size={16} /> {t('admin.cleaners.addWorker')}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={filterBuildingWorkers}
+            onChange={e => setFilterBuildingWorkers(e.target.value)}
+            className="px-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: 'rgba(0,229,204,0.08)', border: '1px solid rgba(0,229,204,0.25)', color: filterBuildingWorkers ? 'var(--color-accent)' : 'var(--color-text-secondary)' }}
+          >
+            <option value="">{t('admin.cleaners.allBuildings')}</option>
+            {buildings.map((b: any) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
+            style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
+          >
+            <UserPlus size={16} /> {t('admin.cleaners.addWorker')}
+          </button>
+        </div>
       </div>
 
       {/* Add form */}
@@ -634,12 +656,23 @@ export default function AdminCleaners() {
 
       {/* ── Admins & Managers ── */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(139,92,246,0.2)' }}>
-        <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(139,92,246,0.15)' }}>
+        <div className="px-5 py-4 flex items-center gap-2 flex-wrap border-b" style={{ borderColor: 'rgba(139,92,246,0.15)' }}>
           <ShieldCheck size={16} style={{ color: '#8b5cf6' }} />
           <h2 className="font-semibold text-white">{t('admin.cleaners.adminsSection')}</h2>
           <span className="text-xs px-2 py-0.5 rounded-full ms-1" style={{ background: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>
             {admins.length}
           </span>
+          <select
+            value={filterBuildingAdmins}
+            onChange={e => setFilterBuildingAdmins(e.target.value)}
+            className="px-3 py-1.5 rounded-lg text-xs outline-none"
+            style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.3)', color: filterBuildingAdmins ? '#a78bfa' : 'rgba(167,139,250,0.5)' }}
+          >
+            <option value="">{t('admin.cleaners.allBuildings')}</option>
+            {buildings.map((b: any) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
           <button
             onClick={() => setShowAdminForm(v => !v)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ms-auto transition-all"
