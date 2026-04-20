@@ -202,7 +202,6 @@ export default function AdminIncidents() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const [showResolved, setShowResolved] = useState(false);
-  const qc = useQueryClient();
 
   const { data: urgentData = [] } = useQuery({
     queryKey: ['incidents', 'urgent'],
