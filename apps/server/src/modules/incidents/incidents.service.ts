@@ -306,6 +306,56 @@ export class IncidentsService {
     return { deleted: count };
   }
 
+  async getPositiveFeedback(orgId: string, buildingId?: string) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const buildingFilter = buildingId
+      ? { floor: { buildingId } }
+      : { floor: { building: { orgId } } };
+
+    return this.prisma.incident.findMany({
+      where: {
+        restroom: buildingFilter,
+        issueType: { code: 'positive_feedback' },
+        reportedAt: { gte: todayStart },
+      },
+      include: {
+        restroom: { include: { floor: { include: { building: true } } } },
+        issueType: true,
+      },
+      orderBy: { reportedAt: 'desc' },
+      take: 20,
+    });
+  }
+
+  async getUrgent(orgId: string) {
+    const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
+    const s = (org?.settings ?? {}) as any;
+    const levels: number[] = s.escalationLevels ?? [5, 10, 15];
+    const firstLevel = levels[0] ?? 5;
+
+    const incidents = await this.prisma.incident.findMany({
+      where: {
+        restroom: { floor: { building: { orgId } } },
+        status: { in: ['OPEN', 'IN_PROGRESS'] },
+        reportedAt: { lte: new Date(Date.now() - firstLevel * 60 * 1000) },
+      },
+      include: INCIDENT_INCLUDE,
+      orderBy: { reportedAt: 'asc' },
+    });
+
+    return incidents.map(inc => {
+      const minutesOpen = Math.floor((Date.now() - inc.reportedAt.getTime()) / 60000);
+      const escalations = inc.actions.filter(a => a.actionType === 'ESCALATED');
+      const maxLevel = escalations.reduce((max, a) => {
+        const match = a.notes?.match(/level:(\d+)/);
+        return match ? Math.max(max, parseInt(match[1])) : max;
+      }, 0);
+      return { ...inc, minutesOpen, escalationLevel: maxLevel };
+    });
+  }
+
   async resolve(incidentId: string, cleanerIdNumber: string, notes?: string) {
     const cleaner = await this.prisma.user.findFirst({
       where: { idNumber: cleanerIdNumber, isActive: true },

@@ -64,6 +64,12 @@ export default function AdminDashboard() {
     refetchInterval: 15_000,
   });
 
+  const { data: urgentData = [] } = useQuery({
+    queryKey: ['incidents', 'urgent'],
+    queryFn: async () => (await api.get('/incidents/urgent')).data,
+    refetchInterval: 15_000,
+  });
+
   useEffect(() => {
     const orgId = localStorage.getItem('orgId');
     if (orgId) joinOrg(orgId);
@@ -75,7 +81,8 @@ export default function AdminDashboard() {
     };
     socket.on('incident:created', refresh);
     socket.on('incident:resolved', refresh);
-    return () => { socket.off('incident:created', refresh); socket.off('incident:resolved', refresh); };
+    socket.on('incident:escalated', refresh);
+    return () => { socket.off('incident:created', refresh); socket.off('incident:resolved', refresh); socket.off('incident:escalated', refresh); };
   }, [queryClient]);
 
   const incidents = incidentsData?.items ?? [];
@@ -132,6 +139,48 @@ export default function AdminDashboard() {
         <StatCard icon={Users} label={t('admin.summary.activeCleaners')} value={summary?.activeCleaners ?? 0} color="#00e5cc" />
         <StatCard icon={Tablet} label={t('admin.summary.onlineDevices')} value={summary?.onlineDevices ?? 0} color="#8b5cf6" />
       </div>
+
+      {/* Urgent alerts */}
+      {urgentData.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(239,68,68,0.3)' }}>
+          <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
+            <AlertCircle size={16} style={{ color: '#ef4444' }} />
+            <h2 className="font-semibold text-white">{t('admin.dashboard.urgentAlerts')}</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full font-bold animate-pulse"
+              style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444' }}>
+              {urgentData.length}
+            </span>
+          </div>
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+            {urgentData.map((inc: any) => {
+              const location = [inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › ');
+              return (
+                <div key={inc.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xl">{inc.issueType?.icon ?? '⚠️'}</span>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-white truncate">
+                        {inc.issueType?.nameI18n?.[lang] ?? inc.issueType?.nameI18n?.he}
+                      </div>
+                      <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>📍 {location}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
+                      ⏱ {inc.minutesOpen} {t('common.minutes')}
+                    </span>
+                    {inc.escalationLevel > 0 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
+                        L{inc.escalationLevel}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Offline tablets */}
       {offlineDevices.length > 0 && (

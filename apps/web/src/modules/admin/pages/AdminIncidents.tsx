@@ -1,12 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronRight, UserCheck, CheckCircle, RefreshCw, Clock, Wrench, CheckSquare, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, UserCheck, CheckCircle, RefreshCw, Clock, Wrench, CheckSquare, AlertTriangle } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
-import ConfirmDialog from '../../../components/ConfirmDialog';
-
-type DeleteDialog = { scope: 'resolved' | 'older' | 'all'; olderThanDays?: number } | null;
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   OPEN:        { bg: 'rgba(239,68,68,0.15)',  text: '#ef4444' },
@@ -202,19 +199,16 @@ function Section({
 }
 
 export default function AdminIncidents() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const [showResolved, setShowResolved] = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState<DeleteDialog>(null);
   const qc = useQueryClient();
 
-  const handleDelete = async () => {
-    if (!deleteDialog) return;
-    const params = new URLSearchParams({ scope: deleteDialog.scope });
-    if (deleteDialog.olderThanDays) params.set('olderThanDays', String(deleteDialog.olderThanDays));
-    const { data } = await api.delete(`/incidents/bulk?${params}`);
-    toast.success(t('admin.incidents.deletedCount', { count: data.deleted }));
-    qc.invalidateQueries({ queryKey: ['incidents'] });
-  };
+  const { data: urgentData = [] } = useQuery({
+    queryKey: ['incidents', 'urgent'],
+    queryFn: async () => (await api.get('/incidents/urgent')).data,
+    refetchInterval: 15_000,
+  });
 
   const { data: activeData, isLoading: loadingActive } = useQuery({
     queryKey: ['incidents', 'active'],
@@ -240,21 +234,6 @@ export default function AdminIncidents() {
   const resolved: any[]       = (resolvedData?.items ?? []).filter((i: any) => i.issueType?.code !== 'positive_feedback');
   const positiveFeedback: any[] = (resolvedData?.items ?? []).filter((i: any) => i.issueType?.code === 'positive_feedback');
 
-  const deleteDialogContent = deleteDialog ? {
-    resolved: {
-      title: t('admin.incidents.deleteResolvedTitle'),
-      desc:   t('admin.incidents.deleteResolvedDesc'),
-    },
-    older: {
-      title: t('admin.incidents.deleteOlderTitle'),
-      desc:   t('admin.incidents.deleteOlderDesc'),
-    },
-    all: {
-      title: t('admin.incidents.deleteAllTitle'),
-      desc:   t('admin.incidents.deleteAllDesc'),
-    },
-  }[deleteDialog.scope] : null;
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -262,40 +241,42 @@ export default function AdminIncidents() {
           <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{t('admin.incidents.title')}</h1>
           <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{inProgress.length + openItems.length} {t('admin.incidents.active')}</span>
         </div>
-        <div className="flex gap-1">
-          <button onClick={() => setDeleteDialog({ scope: 'resolved' })}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
-            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
-            <Trash2 size={12} /> {t('admin.incidents.deleteResolved')}
-          </button>
-          <button onClick={() => setDeleteDialog({ scope: 'older', olderThanDays: 30 })}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
-            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
-            <Trash2 size={12} /> {t('admin.incidents.deleteOlder')}
-          </button>
-          <button onClick={() => setDeleteDialog({ scope: 'all' })}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
-            style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444' }}>
-            <Trash2 size={12} /> {t('admin.incidents.deleteAll')}
-          </button>
-        </div>
       </div>
-
-      {deleteDialog && deleteDialogContent && (
-        <ConfirmDialog
-          title={deleteDialogContent.title}
-          description={deleteDialogContent.desc}
-          confirmLabel={t('admin.incidents.deleteConfirmLabel')}
-          requireType={deleteDialog.scope === 'all' ? t('admin.incidents.deleteAllRequireType') : undefined}
-          onConfirm={handleDelete}
-          onClose={() => setDeleteDialog(null)}
-        />
-      )}
 
       {loadingActive ? (
         <div className="p-12 text-center" style={{ color: 'var(--color-text-secondary)' }}>{t('common.loading')}</div>
       ) : (
         <>
+          {urgentData.length > 0 && (
+            <Section title={t('admin.incidents.urgentSection')} icon={<AlertTriangle size={18} />} count={urgentData.length} color="#ef4444">
+              {urgentData.map((inc: any) => (
+                <div key={inc.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--color-bg)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <span className="text-xl">{inc.issueType?.icon ?? '⚠️'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm" style={{ color: 'var(--color-text)' }}>
+                        {inc.issueType?.nameI18n?.[lang] ?? inc.issueType?.nameI18n?.he}
+                      </div>
+                      <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-secondary)' }}>
+                        📍 {[inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › ')}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
+                        ⏱ {inc.minutesOpen} {t('common.minutes')}
+                      </span>
+                      {inc.escalationLevel > 0 && (
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
+                          {t('admin.incidents.escalationLevel')} {inc.escalationLevel}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </Section>
+          )}
+
           <Section title={t('admin.incidents.inProgressSection')} icon={<Wrench size={18} />} count={inProgress.length} color="#f59e0b">
             {inProgress.map(inc => <IncidentRow key={inc.id} inc={inc} cleaners={cleaners} />)}
           </Section>

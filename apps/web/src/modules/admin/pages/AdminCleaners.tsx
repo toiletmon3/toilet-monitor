@@ -202,7 +202,7 @@ export default function AdminCleaners() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', idNumber: '', phone: '', preferredLang: 'he' });
   const [showAdminForm, setShowAdminForm] = useState(false);
-  const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '', idNumber: '' });
+  const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '', idNumber: '', role: 'MANAGER' });
   const [adminFormShow, setAdminFormShow] = useState(false);
   const [editWorker, setEditWorker] = useState<EditState | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -220,7 +220,7 @@ export default function AdminCleaners() {
   });
 
   const cleaners = (users ?? []).filter((u: any) => u.role === 'CLEANER');
-  const admins   = (users ?? []).filter((u: any) => u.role === 'ORG_ADMIN' || u.role === 'MANAGER');
+  const admins   = (users ?? []).filter((u: any) => u.role === 'ORG_ADMIN' || u.role === 'MANAGER' || u.role === 'SHIFT_SUPERVISOR');
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,7 +239,7 @@ export default function AdminCleaners() {
     e.preventDefault();
     if (!adminForm.name.trim() || !adminForm.email.trim() || adminForm.password.length < 6) return;
     try {
-      const payload: any = { name: adminForm.name.trim(), email: adminForm.email.trim(), password: adminForm.password };
+      const payload: any = { name: adminForm.name.trim(), email: adminForm.email.trim(), password: adminForm.password, role: adminForm.role };
       await api.post('/users/admins', payload);
       // If ID number supplied, update it immediately
       if (adminForm.idNumber.trim()) {
@@ -250,7 +250,7 @@ export default function AdminCleaners() {
       toast.success(t('admin.cleaners.adminAdded'));
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowAdminForm(false);
-      setAdminForm({ name: '', email: '', password: '', idNumber: '' });
+      setAdminForm({ name: '', email: '', password: '', idNumber: '', role: 'MANAGER' });
     } catch (err: any) {
       toast.error(err.response?.data?.message ?? t('common.error'));
     }
@@ -305,6 +305,12 @@ export default function AdminCleaners() {
   const { data: activeCleaners = [] } = useQuery({
     queryKey: ['active-cleaners'],
     queryFn: async () => (await api.get('/users/active-cleaners')).data,
+    refetchInterval: 30_000,
+  });
+
+  const { data: mismatches = [] } = useQuery({
+    queryKey: ['mismatches'],
+    queryFn: async () => (await api.get('/users/mismatches')).data,
     refetchInterval: 30_000,
   });
 
@@ -423,6 +429,47 @@ export default function AdminCleaners() {
           </div>
         )}
       </div>
+
+      {/* ── Mismatch alerts ── */}
+      {mismatches.length > 0 && (
+        <div className="rounded-2xl p-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-white flex items-center gap-2">
+              <span style={{ color: '#ef4444' }}>⚠️</span>
+              {t('admin.cleaners.mismatchTitle')}
+            </h2>
+            <span className="text-xs px-2 py-1 rounded-full font-semibold"
+              style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
+              {mismatches.length}
+            </span>
+          </div>
+          <div className="text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+            {t('admin.cleaners.mismatchDesc')}
+          </div>
+          <div className="flex flex-col gap-2">
+            {mismatches.map((m: any) => (
+              <div key={m.arrivalId} className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold"
+                  style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
+                  {m.user.name.charAt(0)}
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{m.user.name}</div>
+                  <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                    {m.user.building?.name && <span>🏢 {m.user.building.name} · </span>}
+                    🕐 {t('admin.cleaners.checkedInAgo', { n: m.minutesSinceArrival })}
+                  </div>
+                </div>
+                <span className="text-xs px-2 py-1 rounded-full font-bold"
+                  style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
+                  {m.minutesSinceArrival} {t('common.minutes')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -649,6 +696,15 @@ export default function AdminCleaners() {
                 className="px-4 py-2.5 rounded-xl outline-none text-sm font-mono"
                 style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.25)', color: 'white' }}
               />
+              <select
+                value={adminForm.role}
+                onChange={e => setAdminForm(f => ({ ...f, role: e.target.value }))}
+                className="px-4 py-2.5 rounded-xl outline-none text-sm"
+                style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.3)', color: 'white' }}
+              >
+                <option value="MANAGER">{t('admin.cleaners.manager')}</option>
+                <option value="SHIFT_SUPERVISOR">{t('admin.cleaners.shiftSupervisor')}</option>
+              </select>
             </div>
             <div className="flex gap-2">
               <button type="submit"
@@ -656,7 +712,7 @@ export default function AdminCleaners() {
                 style={{ background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.5)', color: '#a78bfa' }}>
                 {t('common.save')}
               </button>
-              <button type="button" onClick={() => { setShowAdminForm(false); setAdminForm({ name: '', email: '', password: '', idNumber: '' }); }}
+              <button type="button" onClick={() => { setShowAdminForm(false); setAdminForm({ name: '', email: '', password: '', idNumber: '', role: 'MANAGER' }); }}
                 className="px-5 py-2 rounded-xl text-sm"
                 style={{ color: 'var(--color-text-secondary)' }}>
                 {t('common.cancel')}
@@ -683,7 +739,7 @@ export default function AdminCleaners() {
                     {a.email}
                     {' · '}
                     <span style={{ color: a.role === 'ORG_ADMIN' ? '#8b5cf6' : '#f59e0b' }}>
-                      {a.role === 'ORG_ADMIN' ? t('admin.cleaners.orgAdmin') : t('admin.cleaners.manager')}
+                      {a.role === 'ORG_ADMIN' ? t('admin.cleaners.orgAdmin') : a.role === 'SHIFT_SUPERVISOR' ? t('admin.cleaners.shiftSupervisor') : t('admin.cleaners.manager')}
                     </span>
                   </div>
                   {/* Show ID number if set (not equal to email = legacy default) */}

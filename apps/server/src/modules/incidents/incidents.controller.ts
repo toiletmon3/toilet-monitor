@@ -44,8 +44,7 @@ export class IncidentsController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    // Cleaners are automatically scoped to their assigned building
-    const effectiveBuildingId = user.role === 'CLEANER' && user.buildingId
+    const effectiveBuildingId = (user.role === 'CLEANER' || user.role === 'SHIFT_SUPERVISOR') && user.buildingId
       ? user.buildingId
       : buildingId;
 
@@ -60,6 +59,18 @@ export class IncidentsController {
       limit: limit ? +limit : undefined,
       offset: offset ? +offset : undefined,
     });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('positive-feedback')
+  getPositiveFeedback(@CurrentUser() user: any) {
+    return this.incidentsService.getPositiveFeedback(user.orgId, user.buildingId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('urgent')
+  getUrgent(@CurrentUser() user: any) {
+    return this.incidentsService.getUrgent(user.orgId);
   }
 
   @Public()

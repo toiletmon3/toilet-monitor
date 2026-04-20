@@ -70,7 +70,13 @@
     "allRestrooms": "כל השירותים",
     "all": "הכל",
     "myTasks": "בטיפולי",
-    "waitingQueue": "ממתינות לטיפול"
+    "waitingQueue": "ממתינות לטיפול",
+    "positiveFeedback": "משובים חיוביים היום",
+    "positiveFeedbackLabel": "עבודה טובה / משוב חיובי"
+  },
+  "supervisor": {
+    "title": "אחראי משמרת",
+    "badge": "אחראי משמרת"
   },
   "admin": {
     "title": "לוח בקרה",
@@ -145,7 +151,9 @@
       "actionAcknowledged": "התקבל",
       "actionResolved": "טופל",
       "actionEscalated": "הועבר",
-      "reportedAt": "דווח"
+      "reportedAt": "דווח",
+      "urgentSection": "התראות דחופות",
+      "escalationLevel": "רמה"
     },
     "analytics": {
       "title": "סטטיסטיקות",
@@ -176,9 +184,11 @@
       "avgLabel": "ממוצע",
       "reports": "דיווחים",
       "noData": "אין נתונים",
-      "deleteResolved": "מחק טופלו",
-      "deleteOlder": "ישנים מ-30 יום",
-      "deleteAll": "מחק הכל"
+      "lastDay": "יום אחרון",
+      "last2Days": "יומיים",
+      "lastWeek": "שבוע",
+      "lastMonth": "חודש",
+      "last2Months": "חודשיים"
     },
     "devices": {
       "title": "מכשירים",
@@ -194,7 +204,8 @@
       "filteredBy": "מסונן לפי",
       "clearFilter": "נקה סינון",
       "offlineDevices": "טאבלטים לא מחוברים",
-      "lastSeen": "חיבור אחרון"
+      "lastSeen": "חיבור אחרון",
+      "urgentAlerts": "התראות דחופות"
     },
     "cleaners": {
       "onShift": "כרגע בעבודה",
@@ -249,7 +260,11 @@
       "idWarning": "⚠ תז לא מוגדר — ערוך כדי להוסיף",
       "addAdmin": "הוסף מנהל",
       "newAdmin": "מנהל חדש",
-      "adminIdPlaceholder": "תעודת זהות (לכניסה דרך קיוסק)"
+      "adminIdPlaceholder": "תעודת זהות (לכניסה דרך קיוסק)",
+      "shiftSupervisor": "אחראי משמרת",
+      "mismatchTitle": "התראת אי-התאמה",
+      "mismatchDesc": "עובדים שדיווחו כניסה אך לא ביצעו פעולות ניקוי",
+      "checkedInAgo": "דיווח כניסה לפני {{n}} דק'"
     },
     "kiosk": {
       "title": "טמפלטים לקיוסק",
@@ -306,6 +321,8 @@
       "adminInterfaceSub": "כניסה עם אימייל וסיסמה",
       "workerInterface": "ממשק עובד",
       "workerInterfaceSub": "כניסה עם תעודת זהות",
+      "supervisorInterface": "ממשק אחראי משמרת",
+      "supervisorInterfaceSub": "כניסה עם תעודת זהות",
       "kioskSection": "קיוסקים — כתובת לכל טאבלט",
       "kioskHint": "פתח בדפדפן הטאבלט ✦ הוסף למסך הבית",
       "noTablets": "אין טאבלטים רשומים — הוסף מכשירים בעץ הבניין",
@@ -320,7 +337,18 @@
       "kioskLangDesc": "כל הקיוסקים יוצגו בשפה זו",
       "cleanerLangTitle": "🧹 שפת עובדים",
       "cleanerLangDesc": "\"לכל עובד בנפרד\" — שומר על השפה שנקבעה לכל עובד אישית. בחירת שפה כאן דורסת את כולם.",
-      "cleanerLangPerWorker": "👤 לכל עובד בנפרד"
+      "cleanerLangPerWorker": "👤 לכל עובד בנפרד",
+      "escalationTitle": "⚡ אסקלציה והתראות",
+      "mismatchTitle": "⏱ סף אי-התאמה (דקות)",
+      "mismatchDesc": "אחרי כמה דקות מכניסה ללא פעולה — תוצג התראה",
+      "escalationLevelsTitle": "📢 רמות אסקלציה",
+      "escalationLevelsDesc": "אחרי כמה דקות תקלה פתוחה תועבר — כל רמה = התראה נוספת",
+      "level": "רמה",
+      "addLevel": "הוסף רמה",
+      "removeLevel": "הסר אחרון",
+      "escalationOn": "אסקלציה פעילה",
+      "escalationOff": "אסקלציה כבויה",
+      "escalationToggleHint": "הפעל/כבה את מנגנון האסקלציה האוטומטי"
     }
   },
   "common": {

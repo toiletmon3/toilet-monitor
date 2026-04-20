@@ -26,10 +26,9 @@ export class AuthService {
   }
 
   async loginCleaner(orgId: string | undefined, idNumber: string) {
-    const baseWhere: any = { idNumber, role: 'CLEANER' };
+    const baseWhere: any = { idNumber, role: { in: ['CLEANER', 'SHIFT_SUPERVISOR'] } };
     if (orgId) baseWhere.orgId = orgId;
 
-    // First check if the user exists at all (to give a clear error message)
     const anyUser = await this.prisma.user.findFirst({ where: baseWhere });
     if (!anyUser) throw new UnauthorizedException('NOT_FOUND');
     if (!anyUser.isActive) throw new UnauthorizedException('INACTIVE');

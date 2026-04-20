@@ -8,6 +8,7 @@ import { IncidentsModule } from './modules/incidents/incidents.module';
 import { UsersModule } from './modules/users/users.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { EventsModule } from './modules/events/events.module';
+import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -20,6 +21,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     UsersModule,
     AnalyticsModule,
     EventsModule,
+    SchedulerModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

@@ -81,12 +81,12 @@ export class UsersService {
 
   async verifyCleaner(idNumber: string) {
     const cleaner = await this.prisma.user.findFirst({
-      where: { idNumber, role: 'CLEANER' },
-      select: { id: true, name: true, isActive: true },
+      where: { idNumber, role: { in: ['CLEANER', 'SHIFT_SUPERVISOR'] } },
+      select: { id: true, name: true, isActive: true, role: true },
     });
     if (!cleaner) return { found: false };
     if (!cleaner.isActive) return { found: false, inactive: true };
-    return { found: true, name: cleaner.name };
+    return { found: true, name: cleaner.name, role: cleaner.role };
   }
 
   async verifyAdminByIdNumber(idNumber: string) {
@@ -218,5 +218,68 @@ export class UsersService {
     await this.prisma.incidentAction.updateMany({ where: { userId }, data: { userId: null } });
     await this.prisma.incident.updateMany({ where: { assignedCleanerId: userId }, data: { assignedCleanerId: null } });
     return this.prisma.user.delete({ where: { id: userId } });
+  }
+
+  async getMismatches(orgId: string) {
+    const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
+    const s = (org?.settings ?? {}) as any;
+    const thresholdMinutes = s.mismatchThresholdMinutes ?? 10;
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const cutoff = new Date(Date.now() - thresholdMinutes * 60 * 1000);
+
+    const activeArrivals = await this.prisma.cleanerArrival.findMany({
+      where: {
+        user: { orgId },
+        arrivedAt: { gte: todayStart, lte: cutoff },
+        leftAt: null,
+      },
+      include: { user: { select: { id: true, name: true, idNumber: true, buildingId: true, building: { select: { name: true } } } } },
+      orderBy: { arrivedAt: 'asc' },
+    });
+
+    const mismatches: any[] = [];
+    for (const arrival of activeArrivals) {
+      const actionCount = await this.prisma.incidentAction.count({
+        where: {
+          userId: arrival.user.id,
+          actionType: { in: ['ACKNOWLEDGED', 'RESOLVED'] },
+          performedAt: { gte: arrival.arrivedAt },
+        },
+      });
+      if (actionCount === 0) {
+        const minutesSinceArrival = Math.floor((Date.now() - arrival.arrivedAt.getTime()) / 60000);
+        mismatches.push({
+          arrivalId: arrival.id,
+          arrivedAt: arrival.arrivedAt,
+          minutesSinceArrival,
+          user: arrival.user,
+        });
+      }
+    }
+    return mismatches;
+  }
+
+  async getEscalationConfig(orgId: string) {
+    const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
+    const s = (org?.settings ?? {}) as any;
+    return {
+      escalationEnabled: s.escalationEnabled ?? true,
+      escalationLevels: s.escalationLevels ?? [5, 10, 15],
+      mismatchThresholdMinutes: s.mismatchThresholdMinutes ?? 10,
+    };
+  }
+
+  async updateEscalationConfig(orgId: string, patch: { escalationEnabled?: boolean; escalationLevels?: number[]; mismatchThresholdMinutes?: number }) {
+    const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
+    const current = (org?.settings ?? {}) as any;
+    const updated = { ...current, ...patch };
+    await this.prisma.organization.update({ where: { id: orgId }, data: { settings: updated } });
+    return {
+      escalationEnabled: updated.escalationEnabled ?? true,
+      escalationLevels: updated.escalationLevels ?? [5, 10, 15],
+      mismatchThresholdMinutes: updated.mismatchThresholdMinutes ?? 10,
+    };
   }
 }

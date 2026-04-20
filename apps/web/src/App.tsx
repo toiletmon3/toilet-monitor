@@ -11,6 +11,8 @@ import AdminAnalytics from './modules/admin/pages/AdminAnalytics';
 import AdminCleaners from './modules/admin/pages/AdminCleaners';
 import AdminSettings from './modules/admin/pages/AdminSettings';
 import AdminKiosk from './modules/admin/pages/AdminKiosk';
+import SupervisorLoginPage from './modules/cleaner/SupervisorLoginPage';
+import SupervisorPage from './modules/cleaner/SupervisorPage';
 
 export default function App() {
   return (
@@ -23,6 +25,10 @@ export default function App() {
         {/* Cleaner mobile app */}
         <Route path="/cleaner/login" element={<CleanerLoginPage />} />
         <Route path="/cleaner" element={<CleanerPage />} />
+
+        {/* Supervisor */}
+        <Route path="/supervisor/login" element={<SupervisorLoginPage />} />
+        <Route path="/supervisor" element={<SupervisorPage />} />
 
         {/* Admin dashboard */}
         <Route path="/admin/login" element={<AdminLoginPage />} />

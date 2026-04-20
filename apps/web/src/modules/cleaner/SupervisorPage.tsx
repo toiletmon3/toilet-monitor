@@ -68,7 +68,7 @@ function timeAgo(date: string, lang: string) {
 
 
 
-export default function CleanerPage() {
+export default function SupervisorPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const now = useClock();
@@ -83,7 +83,7 @@ export default function CleanerPage() {
   const [showFilter, setShowFilter] = useState(false);
 
   useEffect(() => {
-    if (!localStorage.getItem('accessToken')) navigate('/cleaner/login');
+    if (!localStorage.getItem('accessToken')) navigate('/supervisor/login');
   }, [navigate]);
 
   // Fetch building structure for floor/restroom filter (only if cleaner has a building)
@@ -163,7 +163,7 @@ export default function CleanerPage() {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
-    navigate('/cleaner/login');
+    navigate('/supervisor/login');
   };
 
   const openIncidents = data?.open ?? [];
@@ -190,7 +190,7 @@ export default function CleanerPage() {
       >
         <div>
           <div className="flex items-baseline gap-3">
-            <h1 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>{t('cleaner.title')}</h1>
+            <h1 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>{t('supervisor.title')}</h1>
             <span className="text-xl font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>
               {now.toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
@@ -199,6 +199,7 @@ export default function CleanerPage() {
             <span>{now.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' })}</span>
             <span>·</span>
             <span>{user.name}</span>
+            <span className="px-1.5 py-0.5 rounded text-xs" style={{ background: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>🛡️ {t('supervisor.badge')}</span>
             {user.buildingName && (
               <span className="px-1.5 py-0.5 rounded text-xs" style={{ background: 'rgba(0,229,204,0.12)', color: 'var(--color-accent)' }}>
                 🏢 {user.buildingName}

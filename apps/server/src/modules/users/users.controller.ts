@@ -41,6 +41,27 @@ export class UsersController {
     return this.usersService.updateOrgSettings(user.orgId, dto);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('mismatches')
+  getMismatches(@CurrentUser() user: any) {
+    return this.usersService.getMismatches(user.orgId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('escalation-config')
+  getEscalationConfig(@CurrentUser() user: any) {
+    return this.usersService.getEscalationConfig(user.orgId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('escalation-config')
+  updateEscalationConfig(
+    @CurrentUser() user: any,
+    @Body() dto: { escalationEnabled?: boolean; escalationLevels?: number[]; mismatchThresholdMinutes?: number },
+  ) {
+    return this.usersService.updateEscalationConfig(user.orgId, dto);
+  }
+
   @Patch(':id')
   updateWorker(@Param('id') id: string, @Body() dto: { name?: string; idNumber?: string; phone?: string }) {
     return this.usersService.updateWorker(id, dto);

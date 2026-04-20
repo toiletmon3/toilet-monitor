@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, ChevronDown, ChevronRight, Building2, Layers2, Tablet, Trash2, Pencil, Check, X, Globe, Copy, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Building2, Layers2, Tablet, Trash2, Pencil, Check, X, Globe, Copy, ExternalLink, ShieldCheck, AlertCircle } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -596,6 +596,7 @@ function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () =>
         <div className="flex flex-col gap-2 p-4">
           <CopyRow label={t('admin.settings.adminInterface')} sub={t('admin.settings.adminInterfaceSub')} url={`${origin}/admin`} accent="#00e5cc" />
           <CopyRow label={t('admin.settings.workerInterface')} sub={t('admin.settings.workerInterfaceSub')} url={`${origin}/cleaner`} accent="#8b5cf6" />
+          <CopyRow label={t('admin.settings.supervisorInterface')} sub={t('admin.settings.supervisorInterfaceSub')} url={`${origin}/supervisor`} accent="#f59e0b" />
         </div>
       </div>
 
@@ -674,6 +675,17 @@ export default function AdminSettings() {
     queryFn: async () => (await api.get('/users/org-settings')).data,
   });
 
+  const { data: escConfig } = useQuery({
+    queryKey: ['escalation-config'],
+    queryFn: async () => (await api.get('/users/escalation-config')).data,
+  });
+
+  const updateEscalation = async (patch: { escalationEnabled?: boolean; escalationLevels?: number[]; mismatchThresholdMinutes?: number }) => {
+    await api.patch('/users/escalation-config', patch);
+    queryClient.setQueryData(['escalation-config'], (old: any) => ({ ...old, ...patch }));
+    toast.success(t('common.updated'));
+  };
+
   const updateOrgSettings = async (patch: { kioskLang?: string; cleanerLang?: string | null; timezone?: string }) => {
     await api.patch('/users/org-settings', patch);
     queryClient.setQueryData(['org-settings'], (old: any) => ({ ...old, ...patch }));
@@ -743,6 +755,103 @@ export default function AdminSettings() {
             value={orgSettings?.timezone ?? 'Asia/Jerusalem'}
             onChange={tz => updateOrgSettings({ timezone: tz })}
           />
+        </div>
+      </div>
+
+      {/* ── Escalation & Mismatch Settings ── */}
+      <div className="rounded-2xl p-5 flex flex-col gap-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(239,68,68,0.15)' }}>
+        <h2 className="font-semibold text-white flex items-center gap-2">
+          <AlertCircle size={16} style={{ color: '#ef4444' }} />
+          {t('admin.settings.escalationTitle')}
+        </h2>
+
+        {/* Mismatch threshold */}
+        <div className="flex flex-col gap-2">
+          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.mismatchTitle')}</div>
+          <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.mismatchDesc')}</div>
+          <div className="flex gap-2 flex-wrap">
+            {[5, 10, 15, 20, 25, 30].map(m => (
+              <button key={m}
+                onClick={() => updateEscalation({ mismatchThresholdMinutes: m })}
+                className="px-3 py-1.5 rounded-lg text-sm transition-all"
+                style={{
+                  background: (escConfig?.mismatchThresholdMinutes ?? 10) === m ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${(escConfig?.mismatchThresholdMinutes ?? 10) === m ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                  color: (escConfig?.mismatchThresholdMinutes ?? 10) === m ? '#ef4444' : 'var(--color-text-secondary)',
+                }}>
+                {m} {t('common.minutes')}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+
+        {/* Escalation levels */}
+        <div className="flex flex-col gap-2">
+          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.escalationLevelsTitle')}</div>
+          <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.escalationLevelsDesc')}</div>
+          <div className="flex gap-2 flex-wrap items-center">
+            {(escConfig?.escalationLevels ?? [5, 10, 15]).map((lvl: number, i: number) => (
+              <div key={i} className="flex items-center gap-1">
+                <span className="text-xs font-bold" style={{ color: '#f59e0b' }}>{t('admin.settings.level')} {i + 1}:</span>
+                <select
+                  value={lvl}
+                  onChange={e => {
+                    const newLevels = [...(escConfig?.escalationLevels ?? [5, 10, 15])];
+                    newLevels[i] = parseInt(e.target.value);
+                    updateEscalation({ escalationLevels: newLevels.sort((a, b) => a - b) });
+                  }}
+                  className="px-2 py-1 rounded-lg text-sm outline-none"
+                  style={{ background: '#0a0e1a', border: '1px solid rgba(245,158,11,0.3)', color: 'white', minWidth: 70 }}
+                >
+                  {Array.from({ length: 24 }, (_, i) => (i + 1) * 5).map(v => (
+                    <option key={v} value={v}>{v} {t('common.minutes')}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+            {(escConfig?.escalationLevels ?? [5, 10, 15]).length < 6 && (
+              <button
+                onClick={() => {
+                  const levels = escConfig?.escalationLevels ?? [5, 10, 15];
+                  const last = levels[levels.length - 1] ?? 15;
+                  updateEscalation({ escalationLevels: [...levels, last + 5] });
+                }}
+                className="px-2 py-1 rounded-lg text-xs"
+                style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}>
+                + {t('admin.settings.addLevel')}
+              </button>
+            )}
+            {(escConfig?.escalationLevels ?? [5, 10, 15]).length > 1 && (
+              <button
+                onClick={() => {
+                  const levels = escConfig?.escalationLevels ?? [5, 10, 15];
+                  updateEscalation({ escalationLevels: levels.slice(0, -1) });
+                }}
+                className="px-2 py-1 rounded-lg text-xs"
+                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
+                - {t('admin.settings.removeLevel')}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+
+        {/* Escalation enabled/disabled */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => updateEscalation({ escalationEnabled: !(escConfig?.escalationEnabled ?? true) })}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+            style={{
+              background: (escConfig?.escalationEnabled ?? true) ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.1)',
+              border: `1px solid ${(escConfig?.escalationEnabled ?? true) ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.3)'}`,
+              color: (escConfig?.escalationEnabled ?? true) ? '#22c55e' : '#ef4444',
+            }}>
+            {(escConfig?.escalationEnabled ?? true) ? t('admin.settings.escalationOn') : t('admin.settings.escalationOff')}
+          </button>
+          <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.escalationToggleHint')}</span>
         </div>
       </div>
 

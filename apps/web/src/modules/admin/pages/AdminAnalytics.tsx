@@ -1,14 +1,11 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   RadialBarChart, RadialBar, PolarAngleAxis,
 } from 'recharts';
 import api from '../../../lib/api';
-import toast from 'react-hot-toast';
-import ConfirmDialog from '../../../components/ConfirmDialog';
-import { Trash2 } from 'lucide-react';
 
 const CYAN = '#00e5cc';
 const AMBER = '#f59e0b';
@@ -48,30 +45,11 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-type DeleteDialog = { scope: 'resolved' | 'older' | 'all'; olderThanDays?: number } | null;
-
 export default function AdminAnalytics() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(7);
   const [slaTarget, setSlaTarget] = useState(15);
-  const [deleteDialog, setDeleteDialog] = useState<DeleteDialog>(null);
-  const qc = useQueryClient();
-
-  const handleDelete = async () => {
-    if (!deleteDialog) return;
-    const params = new URLSearchParams({ scope: deleteDialog.scope });
-    if (deleteDialog.olderThanDays) params.set('olderThanDays', String(deleteDialog.olderThanDays));
-    const { data } = await api.delete(`/incidents/bulk?${params}`);
-    toast.success(t('admin.incidents.deletedCount', { count: data.deleted }));
-    qc.invalidateQueries({ queryKey: ['incidents'] });
-    qc.invalidateQueries({ queryKey: ['freq'] });
-    qc.invalidateQueries({ queryKey: ['sla'] });
-    qc.invalidateQueries({ queryKey: ['dow'] });
-    qc.invalidateQueries({ queryKey: ['patterns'] });
-    qc.invalidateQueries({ queryKey: ['cleaners'] });
-  };
-
   const q = (key: string, url: string) => useQuery({
     queryKey: [key, days],
     queryFn: async () => (await api.get(url)).data,
@@ -86,60 +64,30 @@ export default function AdminAnalytics() {
 
   const slaColor = !sla ? CYAN : sla.slaPercent >= 80 ? GREEN : sla.slaPercent >= 50 ? AMBER : RED;
 
-  const deleteDialogContent = deleteDialog ? {
-    resolved: { title: t('admin.incidents.deleteResolvedTitle'), desc: t('admin.incidents.deleteResolvedDesc') },
-    older:    { title: t('admin.incidents.deleteOlderTitle'),    desc: t('admin.incidents.deleteOlderDesc') },
-    all:      { title: t('admin.incidents.deleteAllTitle'),      desc: t('admin.incidents.deleteAllDesc') },
-  }[deleteDialog.scope] : null;
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{t('admin.analytics.title')}</h1>
         <div className="flex gap-2 flex-wrap items-center">
-          {[7, 30, 90].map((d) => (
-            <button key={d} onClick={() => setDays(d)}
+          {[
+            { label: t('admin.analytics.lastDay'), value: 1 },
+            { label: t('admin.analytics.last2Days'), value: 2 },
+            { label: t('admin.analytics.lastWeek'), value: 7 },
+            { label: t('admin.analytics.lastMonth'), value: 30 },
+            { label: t('admin.analytics.last2Months'), value: 60 },
+          ].map(({ label, value }) => (
+            <button key={value} onClick={() => setDays(value)}
               className="px-3 py-1.5 rounded-lg text-sm transition-all"
               style={{
-                background: days === d ? 'rgba(0,229,204,0.15)' : 'var(--color-card)',
-                border: `1px solid ${days === d ? CYAN : 'rgba(255,255,255,0.08)'}`,
-                color: days === d ? CYAN : 'var(--color-text-secondary)',
+                background: days === value ? 'rgba(0,229,204,0.15)' : 'var(--color-card)',
+                border: `1px solid ${days === value ? CYAN : 'rgba(255,255,255,0.08)'}`,
+                color: days === value ? CYAN : 'var(--color-text-secondary)',
               }}>
-              {d} {t('common.days')}
+              {label}
             </button>
           ))}
-
-          <div className="w-px h-5 mx-1" style={{ background: 'rgba(255,255,255,0.1)' }} />
-          <div className="flex gap-1">
-            <button onClick={() => setDeleteDialog({ scope: 'resolved' })}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all"
-              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
-              <Trash2 size={12} /> {t('admin.analytics.deleteResolved')}
-            </button>
-            <button onClick={() => setDeleteDialog({ scope: 'older', olderThanDays: 30 })}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all"
-              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
-              <Trash2 size={12} /> {t('admin.analytics.deleteOlder')}
-            </button>
-            <button onClick={() => setDeleteDialog({ scope: 'all' })}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all"
-              style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444' }}>
-              <Trash2 size={12} /> {t('admin.analytics.deleteAll')}
-            </button>
-          </div>
         </div>
       </div>
-
-      {deleteDialog && deleteDialogContent && (
-        <ConfirmDialog
-          title={deleteDialogContent.title}
-          description={deleteDialogContent.desc}
-          confirmLabel={t('admin.incidents.deleteConfirmLabel')}
-          requireType={deleteDialog.scope === 'all' ? t('admin.incidents.deleteAllRequireType') : undefined}
-          onConfirm={handleDelete}
-          onClose={() => setDeleteDialog(null)}
-        />
-      )}
 
       {/* ── SLA ── */}
       <Card title={t('admin.analytics.slaTitle')}>

@@ -16,6 +16,7 @@ type Step =
   | 'action'
   | 'tasks'
   | 'arrived'
+  | 'checkout_done'
   // Admin-only steps
   | 'admin_action'
   | 'admin_building'
@@ -103,6 +104,19 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
     }
   };
 
+  const handleCheckout = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.post('/users/checkout', { cleanerIdNumber: idNumber });
+      setCleaner(data.cleaner);
+      setStep('checkout_done' as Step);
+    } catch {
+      setError('שגיאה בדיווח יציאה');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleResolve = async (incidentId: string) => {
     try {
       await api.patch(`/incidents/${incidentId}/resolve`, { cleanerIdNumber: idNumber });
@@ -159,7 +173,7 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
     resetCountdown();
     const adminSteps: Step[] = ['admin_action', 'admin_building', 'admin_floor', 'admin_restroom'];
     if (adminSteps.includes(step)) { setStep('login'); setIdNumber(''); setError(''); return; }
-    if (step === 'action' || step === 'arrived') { setStep('login'); setIdNumber(''); setError(''); return; }
+    if (step === 'action' || step === 'arrived' || step === 'checkout_done') { setStep('login'); setIdNumber(''); setError(''); return; }
     onBack();
   };
 
@@ -250,6 +264,14 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
             </span>
           </button>
 
+          <button onClick={handleCheckout} disabled={loading}
+            className="w-full max-w-sm py-6 rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-95"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1.5px solid rgba(239,68,68,0.35)', boxShadow: '0 0 20px rgba(239,68,68,0.08)' }}>
+            <span className="text-4xl">🏁</span>
+            <span className="text-lg font-bold" style={{ color: '#ef4444' }}>סיום משמרת</span>
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>דיווח יציאה מעבודה</span>
+          </button>
+
           {error && <p className="text-red-400 text-sm">{error}</p>}
         </div>
       )}
@@ -279,6 +301,24 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
           )}
           <button onClick={onBack}
             className="w-full max-w-xs py-3 rounded-2xl text-sm mt-1"
+            style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>
+            חזרה לקיוסק
+          </button>
+        </div>
+      )}
+
+      {/* ── CLEANER: checkout confirmation ── */}
+      {step === 'checkout_done' && (
+        <div className="flex-1 flex flex-col items-center justify-center px-6 gap-4">
+          <div className="text-6xl animate-bounce">🏁</div>
+          <h2 className="text-2xl font-bold text-white text-center">
+            {cleaner?.name ? `${cleaner.name} — ` : ''}יציאה נרשמה!
+          </h2>
+          <p className="text-sm text-center" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            {new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+          </p>
+          <button onClick={onBack}
+            className="w-full max-w-xs py-3 rounded-2xl text-sm mt-4"
             style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>
             חזרה לקיוסק
           </button>

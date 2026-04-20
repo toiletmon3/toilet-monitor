@@ -70,7 +70,13 @@
     "allRestrooms": "All restrooms",
     "all": "All",
     "myTasks": "My tasks",
-    "waitingQueue": "Waiting"
+    "waitingQueue": "Waiting",
+    "positiveFeedback": "Positive feedback today",
+    "positiveFeedbackLabel": "Great job / Positive feedback"
+  },
+  "supervisor": {
+    "title": "Shift Supervisor",
+    "badge": "Supervisor"
   },
   "admin": {
     "title": "Dashboard",
@@ -145,7 +151,9 @@
       "actionAcknowledged": "Acknowledged",
       "actionResolved": "Resolved",
       "actionEscalated": "Escalated",
-      "reportedAt": "Reported"
+      "reportedAt": "Reported",
+      "urgentSection": "Urgent Alerts",
+      "escalationLevel": "Level"
     },
     "analytics": {
       "title": "Analytics",
@@ -176,9 +184,11 @@
       "avgLabel": "avg",
       "reports": "reports",
       "noData": "No data",
-      "deleteResolved": "Delete resolved",
-      "deleteOlder": "Older than 30 days",
-      "deleteAll": "Delete all"
+      "lastDay": "Last day",
+      "last2Days": "2 days",
+      "lastWeek": "Week",
+      "lastMonth": "Month",
+      "last2Months": "2 months"
     },
     "devices": {
       "title": "Devices",
@@ -194,7 +204,8 @@
       "filteredBy": "Filtered by",
       "clearFilter": "Clear filter",
       "offlineDevices": "Offline Tablets",
-      "lastSeen": "Last seen"
+      "lastSeen": "Last seen",
+      "urgentAlerts": "Urgent Alerts"
     },
     "cleaners": {
       "onShift": "Currently on shift",
@@ -249,7 +260,11 @@
       "idWarning": "⚠ ID not set — edit to add",
       "addAdmin": "Add Admin",
       "newAdmin": "New Admin",
-      "adminIdPlaceholder": "ID number (for kiosk login)"
+      "adminIdPlaceholder": "ID number (for kiosk login)",
+      "shiftSupervisor": "Shift Supervisor",
+      "mismatchTitle": "Mismatch Alerts",
+      "mismatchDesc": "Workers who checked in but haven't performed any cleaning actions",
+      "checkedInAgo": "Checked in {{n}} min ago"
     },
     "kiosk": {
       "title": "Kiosk Templates",
@@ -306,6 +321,8 @@
       "adminInterfaceSub": "Login with email and password",
       "workerInterface": "Worker Interface",
       "workerInterfaceSub": "Login with ID number",
+      "supervisorInterface": "Supervisor Interface",
+      "supervisorInterfaceSub": "Login with ID number",
       "kioskSection": "Kiosks — URL per tablet",
       "kioskHint": "Open in tablet browser ✦ Add to home screen",
       "noTablets": "No tablets registered — add devices in the building tree",
@@ -320,7 +337,18 @@
       "kioskLangDesc": "All kiosks will display in this language",
       "cleanerLangTitle": "🧹 Worker Language",
       "cleanerLangDesc": "\"Per worker\" keeps each worker's personal language. Selecting a language here overrides all workers.",
-      "cleanerLangPerWorker": "👤 Per Worker"
+      "cleanerLangPerWorker": "👤 Per Worker",
+      "escalationTitle": "⚡ Escalation & Alerts",
+      "mismatchTitle": "⏱ Mismatch Threshold (min)",
+      "mismatchDesc": "After how many minutes from check-in without action — show alert",
+      "escalationLevelsTitle": "📢 Escalation Levels",
+      "escalationLevelsDesc": "After how many minutes an open incident escalates — each level = extra alert",
+      "level": "Level",
+      "addLevel": "Add level",
+      "removeLevel": "Remove last",
+      "escalationOn": "Escalation active",
+      "escalationOff": "Escalation off",
+      "escalationToggleHint": "Enable/disable automatic escalation"
     }
   },
   "common": {
