@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>סיכום פרויקט — בחירת יחידת תצוגה ומגע למערכת ToiletMon</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 18mm;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #fff;
+      padding: 40px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 26px;
+      color: #1a365d;
+      border-bottom: 3px solid #2b6cb0;
+      padding-bottom: 12px;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: #4a5568;
+      margin-bottom: 8px;
+    }
+
+    .date {
+      font-size: 13px;
+      color: #718096;
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      font-size: 20px;
+      color: #2b6cb0;
+      margin-top: 36px;
+      margin-bottom: 14px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    h3 {
+      font-size: 16px;
+      color: #2d3748;
+      margin-top: 22px;
+      margin-bottom: 10px;
+    }
+
+    p {
+      margin-bottom: 12px;
+    }
+
+    .executive-summary {
+      background: #f7fafc;
+      border: 2px solid #2b6cb0;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin: 20px 0 30px;
+    }
+
+    .executive-summary h2 {
+      margin-top: 0;
+      border-bottom: none;
+      color: #1a365d;
+    }
+
+    .decision-box {
+      background: linear-gradient(135deg, #ebf8ff 0%, #f0fff4 100%);
+      border: 2px solid #2b6cb0;
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin: 24px 0;
+      text-align: center;
+    }
+
+    .decision-box h2 {
+      margin-top: 0;
+      border-bottom: none;
+      font-size: 18px;
+      color: #2b6cb0;
+    }
+
+    .decision-box .product-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a365d;
+      margin: 10px 0;
+    }
+
+    .decision-box .product-desc {
+      font-size: 14px;
+      color: #4a5568;
+    }
+
+    .process-note {
+      background: #fefcbf;
+      border-right: 4px solid #d69e2e;
+      padding: 14px 18px;
+      margin: 18px 0;
+      border-radius: 0 8px 8px 0;
+      font-size: 13.5px;
+      color: #744210;
+    }
+
+    .advantage-card {
+      border: 1px solid #c6f6d5;
+      background: #f0fff4;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 12px 0;
+    }
+
+    .advantage-card .advantage-title {
+      font-weight: 700;
+      color: #276749;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .advantage-card .advantage-text {
+      color: #2d3748;
+      font-size: 13.5px;
+    }
+
+    .price-box {
+      background: #fff;
+      border: 2px solid #2b6cb0;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin: 20px 0;
+    }
+
+    .price-box h2 {
+      margin-top: 0;
+      border-bottom: none;
+    }
+
+    .price-highlight {
+      font-size: 22px;
+      font-weight: 700;
+      color: #2b6cb0;
+      text-align: center;
+      margin: 10px 0;
+    }
+
+    .price-note {
+      font-size: 13px;
+      color: #718096;
+      text-align: center;
+    }
+
+    .visual-box {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin: 20px 0;
+    }
+
+    .visual-box p {
+      color: #4a5568;
+      font-size: 13.5px;
+    }
+
+    .quote-box {
+      background: #1a365d;
+      color: #fff;
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin: 30px 0;
+      font-size: 15px;
+      line-height: 1.8;
+    }
+
+    .quote-box .quote-label {
+      font-size: 12px;
+      color: #90cdf4;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      font-size: 13.5px;
+    }
+
+    thead th {
+      background: #2b6cb0;
+      color: #fff;
+      font-weight: 600;
+      padding: 10px 14px;
+      text-align: right;
+    }
+
+    tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f7fafc;
+    }
+
+    ol, ul {
+      margin: 8px 20px 14px 0;
+      padding-right: 18px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 2px solid #e2e8f0;
+      margin: 32px 0;
+    }
+
+    .spec-badge {
+      display: inline-block;
+      background: #ebf8ff;
+      color: #2b6cb0;
+      border: 1px solid #bee3f8;
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      margin: 2px;
+    }
+
+    a {
+      color: #2b6cb0;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .icon-yes {
+      color: #38a169;
+      font-weight: bold;
+    }
+
+    .icon-no {
+      color: #e53e3e;
+      font-weight: bold;
+    }
+
+    .footer-note {
+      margin-top: 30px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 12px;
+      color: #a0aec0;
+      text-align: center;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        font-size: 12px;
+      }
+
+      h1 { font-size: 22px; }
+      h2 { font-size: 17px; }
+      h3 { font-size: 14px; }
+
+      .decision-box,
+      .quote-box,
+      .executive-summary {
+        break-inside: avoid;
+      }
+
+      table {
+        font-size: 11.5px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>סיכום פרויקט — בחירת יחידת תצוגה ומגע</h1>
+  <div class="subtitle">מערכת ToiletMon — ניטור שירותים חכם</div>
+  <div class="date">אפריל 2026</div>
+
+  <!-- תקציר -->
+  <div class="executive-summary">
+    <h2>רקע</h2>
+    <p>לאחר תהליך בדיקה מעמיק מול Gemini וניתוח הדו"ח הטכני של Claude, הגענו להחלטה על המוצר האופטימלי.</p>
+    <p>ירדנו מה-Echo Show של Amazon בגלל מגבלות תוכנה (<strong>"מערכת סגורה"</strong>), ובחרנו במוצר שמציע את השילוב המושלם בין <strong>נראות פרימיום</strong> ל<strong>חופש פעולה טכנולוגי</strong>.</p>
+  </div>
+
+  <!-- המוצר הנבחר -->
+  <div class="decision-box">
+    <h2>המוצר הנבחר</h2>
+    <div class="product-name">טאבלט קיוסק תעשייתי 13.3"</div>
+    <div class="product-desc">Industrial Android Tablet — No Battery</div>
+    <div style="margin-top: 12px;">
+      <span class="spec-badge">13.3 אינץ' Full HD</span>
+      <span class="spec-badge">אנדרואיד פתוח</span>
+      <span class="spec-badge">ללא סוללה</span>
+      <span class="spec-badge">VESA Mount</span>
+      <span class="spec-badge">RK3566</span>
+    </div>
+  </div>
+
+  <p>זהו המכשיר שיהווה את ה"לב" בתוך תבנית הפלסטיק. הוא מיועד לעבודה מאומצת במיקומים ציבוריים.</p>
+
+  <hr class="section-divider">
+
+  <!-- יתרונות -->
+  <h2>למה זה המוצר הנכון עבורנו?</h2>
+
+  <div class="advantage-card">
+    <div class="advantage-title">אמינות שנים קדימה (ללא סוללה)</div>
+    <div class="advantage-text">סעיף קריטי. המכשיר פועל על חשמל ישיר בלבד. בתוך תבנית פלסטיק סגורה, טאבלט רגיל יתחמם והסוללה שלו תתנפח תוך שנה. המכשיר הזה בנוי לעבוד 24/7 לאורך שנים ללא תחזוקה.</div>
+  </div>
+
+  <div class="advantage-card">
+    <div class="advantage-title">תאימות מלאה ל-ToiletMon</div>
+    <div class="advantage-text">מדובר במערכת אנדרואיד פתוחה. ניתן להטמיע את הקוד בקלות, והמכשיר ישתלב מושלם עם חיישני ה-ESP32 לספירת אנשים שהוגדרו בדו"ח הטכני.</div>
+  </div>
+
+  <div class="advantage-card">
+    <div class="advantage-title">רזולוציה וגודל (13.3 אינץ')</div>
+    <div class="advantage-text">מסך IPS איכותי ב-Full HD. גדול מספיק כדי להיראות מרשים בתוך ה-Housing, ומספק חדות גבוהה ל-8 כפתורי השליטה.</div>
+  </div>
+
+  <div class="advantage-card">
+    <div class="advantage-title">עיצוב ייעודי לתבנית</div>
+    <div class="advantage-text">המכשיר דק, סימטרי וכולל הברגות VESA מובנות בגב. זה מאפשר להבריג אותו פיזית לתבנית הפלסטיק בצורה יציבה ומקצועית.</div>
+  </div>
+
+  <div class="advantage-card">
+    <div class="advantage-title">מולטימדיה</div>
+    <div class="advantage-text">כולל רמקול מובנה לחיווי קולי (צליל לחיצה) ומצלמה שיכולה לשמש לזיהוי נוכחות.</div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- השוואה -->
+  <h2>השוואה — למה לא Echo Show 15?</h2>
+
+  <table>
+    <thead>
+      <tr><th>קריטריון</th><th>Echo Show 15</th><th>טאבלט תעשייתי 13.3"</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>מערכת הפעלה</td>
+        <td><span class="icon-no">✗</span> סגורה (Fire OS)</td>
+        <td><span class="icon-yes">✓</span> אנדרואיד פתוח</td>
+      </tr>
+      <tr>
+        <td>התקנת אפליקציות</td>
+        <td><span class="icon-no">✗</span> חסומה מ-2023</td>
+        <td><span class="icon-yes">✓</span> חופשית לחלוטין</td>
+      </tr>
+      <tr>
+        <td>מצב קיוסק</td>
+        <td><span class="icon-no">✗</span> לא קיים</td>
+        <td><span class="icon-yes">✓</span> Fully Kiosk Browser</td>
+      </tr>
+      <tr>
+        <td>עבודה ללא סוללה</td>
+        <td><span class="icon-no">✗</span> כולל סוללה</td>
+        <td><span class="icon-yes">✓</span> חשמל ישיר בלבד</td>
+      </tr>
+      <tr>
+        <td>התאמה לתבנית פלסטיק</td>
+        <td><span class="icon-no">✗</span> עיצוב צרכני, לא מתאים</td>
+        <td><span class="icon-yes">✓</span> דק + VESA Mount</td>
+      </tr>
+      <tr>
+        <td>ספירת אנשים (ESP32)</td>
+        <td><span class="icon-no">✗</span> API מוגבל</td>
+        <td><span class="icon-yes">✓</span> תאימות מלאה</td>
+      </tr>
+      <tr>
+        <td>שליחת נתונים ל-ToiletMon</td>
+        <td><span class="icon-no">✗</span> אין דרך ישירה</td>
+        <td><span class="icon-yes">✓</span> Wi-Fi ישיר</td>
+      </tr>
+      <tr>
+        <td>תלות בספק חיצוני</td>
+        <td><span class="icon-no">✗</span> Amazon שולטת</td>
+        <td><span class="icon-yes">✓</span> שליטה מלאה שלנו</td>
+      </tr>
+      <tr>
+        <td>עמידות לטווח ארוך</td>
+        <td>צרכני — לא מיועד ל-24/7</td>
+        <td><span class="icon-yes">✓</span> תעשייתי — בנוי לשנים</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr class="section-divider">
+
+  <!-- מחיר -->
+  <div class="price-box">
+    <h2>מחיר ורכישה</h2>
+    <div class="price-highlight">$180 – $210 (כ-680 עד 800 ש"ח)</div>
+    <div class="price-note">מעט מעל התקציב המקורי (500 ש"ח), אך חוסך החלפת מכשירים מקולקלים מדי שנה</div>
+
+    <table style="margin-top: 18px;">
+      <thead>
+        <tr><th>פרט</th><th>המלצה</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>מקור רכישה</td><td>AliExpress — טאבלט קיוסק 13.3 אינץ' ללא סוללה</td></tr>
+        <tr><td>מעבד מומלץ</td><td>RK3566</td></tr>
+        <tr><td>זיכרון מינימלי</td><td>2GB RAM / 16GB אחסון ומעלה</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- מראה -->
+  <div class="visual-box">
+    <h3>איך זה ייראה?</h3>
+    <p>המכשיר נראה כמו מסך מגע נקי, ללא כפתורי בית בחזית, מה שמאפשר לתבנית הפלסטיק "להלביש" אותו ולהשאיר רק את שטח התצוגה גלוי.</p>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- סיכום לשותפים -->
+  <div class="quote-box">
+    <div class="quote-label">סיכום קצר לשותפים</div>
+    "עשיתי בדיקה מעמיקה מול Gemini ועל בסיס הדו"ח של Claude. האקו שואו יפה אבל יגביל אותנו בתוכנה. המוצר שבחרתי (טאבלט תעשייתי 13.3") נותן לנו את המראה היוקרי שרצינו בתוך התבנית, אבל הוא 'סוס עבודה' בלי סוללה שמתאים ב-100% לקוד של המערכת ולחיישני הספירה שלנו. זו ההשקעה הכי נכונה לטווח ארוך."
+  </div>
+
+  <!-- הערת שוליים -->
+  <div class="footer-note">
+    מסמך זה מבוסס על דו"ח טכני של Claude (אפריל 2026) ותהליך בדיקה מול Gemini.<br>
+    ראו גם: <a href="ECHO_SHOW_15_RESEARCH.html">דו"ח טכני מלא — Echo Show 15</a>
+  </div>
+
+</body>
+</html>
