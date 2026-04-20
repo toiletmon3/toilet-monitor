@@ -43,18 +43,31 @@ export class IncidentsService {
     });
     if (existing) return existing;
 
-    // Rate limiting: prevent duplicate reports per issue type per restroom within 5 min
-    const recentSame = await this.prisma.incident.findFirst({
+    // Rate limiting: prevent duplicates, but allow re-reporting once IN_PROGRESS for 5+ min
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+    // Block if OPEN and reported within the last 5 min
+    const recentOpen = await this.prisma.incident.findFirst({
       where: {
         restroomId: dto.restroomId,
         issueTypeId: dto.issueTypeId,
-        status: { in: ['OPEN', 'IN_PROGRESS'] },
-        reportedAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
+        status: 'OPEN',
+        reportedAt: { gte: fiveMinAgo },
       },
     });
-    if (recentSame) {
-      throw new ConflictException('A recent report for this issue already exists');
-    }
+    if (recentOpen) throw new ConflictException('A recent report for this issue already exists');
+
+    // Block if IN_PROGRESS and acknowledged within the last 5 min (team just dispatched)
+    const recentInProgress = await this.prisma.incident.findFirst({
+      where: {
+        restroomId: dto.restroomId,
+        issueTypeId: dto.issueTypeId,
+        status: 'IN_PROGRESS',
+        acknowledgedAt: { gte: fiveMinAgo },
+      },
+    });
+    if (recentInProgress) throw new ConflictException('A team member is already handling this');
+    // If IN_PROGRESS but 5+ min have passed — allow new report (issue may have recurred)
 
     // Check if this is positive feedback — auto-resolve immediately (no action needed)
     const issueType = await this.prisma.issueType.findUnique({ where: { id: dto.issueTypeId } });
@@ -379,6 +392,7 @@ export class IncidentsService {
       });
     }
 
+    // Resolve the primary incident
     const incident = await this.prisma.incident.update({
       where: { id: incidentId },
       data: {
@@ -400,6 +414,49 @@ export class IncidentsService {
     const orgId = incident.restroom.floor.building.orgId;
     this.events.broadcastToOrg(orgId, 'incident:resolved', incident);
     this.events.broadcastToRestroom(incident.restroomId, 'incident:resolved', incident);
+
+    // Resolve all other open/in-progress incidents of the same type in the same restroom
+    const siblings = await this.prisma.incident.findMany({
+      where: {
+        id: { not: incidentId },
+        restroomId: incident.restroomId,
+        issueTypeId: incident.issueTypeId,
+        status: { in: ['OPEN', 'IN_PROGRESS'] },
+      },
+      select: { id: true },
+    });
+
+    if (siblings.length > 0) {
+      const now = new Date();
+      for (const sib of siblings) {
+        await this.prisma.incident.update({
+          where: { id: sib.id },
+          data: {
+            status: 'RESOLVED',
+            resolvedAt: now,
+            assignedCleanerId: cleaner.id,
+            actions: {
+              create: {
+                actionType: 'RESOLVED',
+                userId: cleaner.id,
+                notes: notes ?? 'resolved with parent incident',
+                performedAt: now,
+              },
+            },
+          },
+        });
+      }
+      // Broadcast removal of sibling incidents
+      const resolved = await this.prisma.incident.findMany({
+        where: { id: { in: siblings.map(s => s.id) } },
+        include: INCIDENT_INCLUDE,
+      });
+      for (const r of resolved) {
+        this.events.broadcastToOrg(orgId, 'incident:resolved', r);
+        this.events.broadcastToRestroom(r.restroomId, 'incident:resolved', r);
+      }
+    }
+
     return incident;
   }
 }
