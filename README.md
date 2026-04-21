@@ -1,9 +1,9 @@
 # 🚾 ToiletMon — Smart Restroom Monitoring System
 
-מערכת ניטור שירותים חכמה עם 3 ממשקים: **קיוסק טאבלט**, **אפליקציית עובד**, ו**לוח בקרה למנהל**.
+מערכת ניטור שירותים חכמה עם 4 ממשקים: **קיוסק טאבלט**, **אפליקציית עובד**, **ממשק אחראי משמרת** ו**לוח בקרה למנהל**.
 בנויה עם NestJS + React PWA + PostgreSQL, עם deploy אוטומטי לענן.
 
-**גרסה נוכחית:** [`v1.0.9`](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.9) — Shift supervisor · Escalation alerts · Mismatch detection · 60-day retention · Analytics filters
+**גרסה נוכחית:** [`v1.0.10`](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.10) — Re-report after 5min · Bulk-resolve siblings · Building filter · Mismatch always visible · Countdown fix · Workers nav rename
 
 ---
 
@@ -14,6 +14,7 @@
 |------|-------|
 | 🖥️ **Admin** | [https://toiletcleanpro.duckdns.org/admin](https://toiletcleanpro.duckdns.org/admin) |
 | 👷 **Worker** | [https://toiletcleanpro.duckdns.org/cleaner](https://toiletcleanpro.duckdns.org/cleaner) |
+| 🛡️ **Supervisor** | [https://toiletcleanpro.duckdns.org/supervisor](https://toiletcleanpro.duckdns.org/supervisor) |
 | 🔌 **API** | [https://toiletcleanpro.duckdns.org/api](https://toiletcleanpro.duckdns.org/api) |
 
 > **Kiosk** — כל טאבלט עובד עם URL ייחודי לפי קוד המכשיר: `/kiosk/{deviceCode}`
@@ -24,10 +25,11 @@
 |------|-------|
 | 🖥️ **Admin** | [http://188.166.163.75/admin](http://188.166.163.75/admin) |
 | 👷 **Worker** | [http://188.166.163.75/cleaner](http://188.166.163.75/cleaner) |
+| 🛡️ **Supervisor** | [http://188.166.163.75/supervisor](http://188.166.163.75/supervisor) |
 | 🔌 **API** | [http://188.166.163.75/api](http://188.166.163.75/api) |
 
 > **Admin** — כניסה עם מייל + סיסמה
-> **Worker** — כניסה עם ת.ז בלבד
+> **Worker / Supervisor** — כניסה עם ת.ז בלבד
 > **Kiosk** — כל טאבלט מוגדר ישירות ע"י מנהל (דרך מצב "צוות" בקיוסק)
 
 ---
@@ -38,7 +40,7 @@
 |------|--------|
 | Admin | `admin@demo.com` / `Admin123!` |
 | Worker | ת.ז: `123456789` · `234567890` · `345678901` |
-| Supervisor | ת.ז — נוצר דרך Admin → Workers → Add Admin (Shift Supervisor) |
+| Supervisor | ת.ז — נוצר דרך Admin → **עובדים** → הוסף מנהל → Shift Supervisor |
 | Kiosk | `/kiosk/{deviceCode}` — מוגדר ע"י מנהל דרך מצב "צוות" |
 
 ---
@@ -55,7 +57,7 @@ apps/
   server/   → NestJS REST API + WebSocket (Socket.io)
               ├── Auth (JWT + Refresh Tokens · Kiosk device auth)
               ├── Buildings / Floors / Restrooms / Devices (online/offline tracking)
-              ├── Incidents (תקלות + סטטוס + הקצאה + אסקלציה)
+              ├── Incidents (תקלות + סטטוס + הקצאה + אסקלציה + bulk-resolve)
               ├── Analytics (SLA · דפוסים · עומסים · ביצועי עובדים)
               ├── Users (עובדים · מנהלים · אחראי משמרת · check-in/checkout · mismatch)
               ├── Scheduler (אסקלציה אוטומטית · מחיקה יומית 60 יום)
@@ -83,21 +85,25 @@ packages/
 - **בחירת שפה בולטת בראש הדף** (עברית / English)
 - **שעון חי + תאריך** בכותרת — לפי אזור זמן ארגוני, מתעדכן אוטומטית
 - **אייקונים וטקסט גדולים** למילוי אופטימלי של הכפתורים
-- כניסת צוות ניקוי דרך הקיוסק (ת.ז מוצגת כמספרים) + סגירה אוטומטית אחרי 20 שניות
+- כניסת צוות ניקוי דרך הקיוסק (ת.ז מוצגת כמספרים) + **Check-in / Check-out**
 - **שגיאה ברורה** אם ת.ז לא קיימת בעת check-in
 - **"שלום [שם]"** אחרי כניסה — מציג שם אמיתי של העובד
 - משוב חיובי — נשמר בלוג ללא יצירת משימה
 - סטטיסטיקות אמיתיות: כמות דיווחים שבועית + זמן תגובה ממוצע
-- **מסך "כבר בטיפול"** לדיווחים חוזרים (rate limiting)
+- **מסך "כבר בטיפול"** לדיווחים חוזרים (rate limiting 5 דקות)
+- **דיווח חוזר מותר** — אחרי 5 דקות שהתקלה "בטיפול" אפשר לדווח עליה שוב
 - Offline mode — שמירה ב-IndexedDB, סנכרון אוטומטי
+- **ספירה לאחור (5 שניות)** עם אנימציה נכונה לאחר דיווח
 - **תואם לגמרי ל-iPad Safari / iOS** (Dynamic Viewport Height)
 
 ### 👷 Worker (עובד)
-- **ממשק בשם ניטרלי "עובד"**
+- **ממשק בשם "עובד"** — ניווט Admin מציג "עובדים" (לא "מנקים")
 - כניסה עם ת.ז בלבד (הצג/הסתר ספרות)
 - שעון חי + תאריך בכותרת — **לפי אזור זמן ארגוני**
 - רשימת משימות פתוחות עם כפתור "סיימתי" ישיר
-- **סקציית משובים חיוביים** — עובדים רואים פידבק חיובי של היום
+- **בטיפול בתקלה → נסגרות אוטומטית כל הדיווחים הכפולים** מאותו סוג באותם שירותים
+- **צ'ק-אין אוטומטי** — אם עובד פתר תקלה ללא check-in קודם, הכניסה נרשמת אוטומטית
+- **סקציית משובים חיוביים** — עובדים רואים פידבק חיובי רק כל עוד יש משימות פתוחות; נעלמת כשהכל מטופל
 - Check-in / Check-out — **רק מהטאבלט הפיזי (קיוסק)**
 - עדכונים בזמן אמת (WebSocket)
 - עובדים רואים רק תקלות של הבניין שלהם
@@ -109,35 +115,38 @@ packages/
 - **ממשק ייעודי** (`/supervisor`) — אותה פונקציונליות כמו עובד
 - **תגית "אחראי משמרת"** סגולה ליד שם המשתמש
 - כניסה עם ת.ז (כמו עובד)
-- נוצר דרך ממשק ניהול (Admin → Workers → Add Admin → Shift Supervisor)
+- נוצר דרך ממשק ניהול: **Admin → עובדים → הוסף מנהל → Shift Supervisor**
+- קישור ישיר לממשק זמין בדף העובדים (כפתור 🛡️ "פתח ממשק אחראי משמרת")
 
 ### 🖥️ Admin (מנהל)
 - **ממשק מתורגם לחלוטין** — עברית / אנגלית בכל שדה, כפתור ו-toast
 - שעון חי + תאריך — **לפי אזור זמן ארגוני**
 - **ממשק רספונסיבי מלא** — sidebar מתקפל בדסקטופ, drawer במובייל
-- **ניהול מנהלים:** רשימה לפי מייל · הוספת מנהל חדש · עריכת שם/מייל/ת.ז · שינוי סיסמה עצמית בלבד
+- **ניהול עובדים** (`עובדים` בניווט):
+  - **פילטר לפי בניין** — בנפרד לרשימת עובדים ולרשימת מנהלים/אחראי משמרת
+  - הוספה · עריכה (שם/ת.ז/טלפון) · השבתה/הפעלה · מחיקה
+  - שיוך לבניין + שפה מועדפת
+- **ניהול מנהלים ואחראי משמרת** — רשימה לפי מייל · הוספה בתפקיד (מנהל / אחראי משמרת) · עריכת שם/מייל/ת.ז · שינוי סיסמה עצמית בלבד
 - **ת.ז למנהל** — מאפשרת אימות בקיוסק להגדרת מיקום טאבלט
 - **פאנל "כרגע בעבודה"** — מי עשה check-in היום
+- **טבלת התראות אי-התאמה (Mismatch)** — תמיד מוצגת; מציגה עובדים שנכנסו ללא פעולת ניקוי לאחר X דקות; ריקה = ✅ "כל העובדים תקינים"
 - Dashboard עם סיכום תקלות פעילות + **רשימת טאבלטים לא מחוברים**
 - **סינון לפי בניין** בדשבורד
 - תקלות מחולקות לסקציות: **בטיפול** / **ממתין** / **טופלו** / **משובים חיוביים**
 - עדכונים בזמן אמת (WebSocket) + toast לתקלה חדשה
 - Analytics מלא: SLA · תדירות · דפוסים · עומסים שעתיים · לפי יום · ביצועי עובדים
-- **סטטיסטיקות עם פילטרים חדשים** — יום, יומיים, שבוע, חודש, חודשיים
+- **סטטיסטיקות עם פילטרים** — יום, יומיים, שבוע, חודש, חודשיים
 - **התראות דחופות (Urgent Alerts)** — בדשבורד ובדף בקשות, עם רמות אסקלציה
-- **התראת אי-התאמה (Mismatch)** — עובד שדיווח כניסה ללא ביצוע פעולה
 - **אסקלציה אוטומטית** — רמות בקפיצות 5 דקות (ניתן לקונפיגורציה)
 - **מחיקה אוטומטית** — כל הנתונים (תקלות + הגעות) נשמרים 60 יום; מחיקה אוטומטית יומית
-- **ניהול אחראי משמרת** — הוספת תפקיד SHIFT_SUPERVISOR עם ממשק ייעודי
-- **עריכת פרטי עובד** (שם · ת.ז · טלפון) דרך modal
-- **השבתה/הפעלה של עובד** — חוסם כניסה למערכת
 - ניהול בניינים / קומות / שירותים / מכשירים (inline editing)
 - **מעקב מצב טאבלטים** — online/offline + זמן heartbeat אחרון
 - **Kiosk Templates** — Classic ו-Neon מובנים + יצירת תבניות מותאמות
 - **הגדרות שפה ואזור זמן ארגוני:**
   - שפת קיוסק גלובלית / שפת עובדים (גלובלי או פר-עובד)
   - **אזור זמן** (21 מדינות) — משפיע על שעון המנהל, העובד והקיוסק
-- **כתובות URL לכל הממשקים** + העתקה בלחיצה
+- **הסבר מפורט לסף אי-התאמה** — 3 שלבים ברורים בתוך כרטיס הגדרות האסקלציה
+- **כתובות URL לכל הממשקים** (כולל supervisor) + העתקה בלחיצה
 - Dark / Light mode
 
 ---
@@ -196,11 +205,12 @@ git checkout main
 
 ### יצירת גרסה חדשה
 ```bash
-git tag -a v1.0.6 -m "תיאור הגרסה"
-git push origin v1.0.6
+git tag -a v1.0.11 -m "תיאור הגרסה"
+git push origin v1.0.11
 ```
 
 ### גרסאות קיימות
+- **[v1.0.10](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.10)** — Re-report after 5min in-progress · Bulk-resolve same-restroom siblings · Building filter for workers & managers · Mismatch table always visible (empty state) · Auto check-in on resolve · Countdown fix (5s) · Positive feedback hides when no open tasks · Workers nav rename (מנקים→עובדים) · Mismatch detailed 3-step explanation · Supervisor interface link in workers page
 - **[v1.0.9](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.9)** — Shift supervisor role + UI · Automatic escalation (configurable levels) · Mismatch alerts · 60-day data retention · Analytics date filters (1d/2d/7d/30d/60d) · Remove manual delete · Positive feedback in worker app · Check-in/out kiosk-only · Scroll fix
 - **[v1.0.8](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.8)** — Client pricing document (HTML + MD) with infrastructure costs, SSL explanation, and pilot example
 - **[v1.0.7](https://github.com/OriAha/toilet-monitor/releases/tag/v1.0.7)** — Live clock in kiosk · Critical timezone persistence fix (NestJS route order bug) · Kiosks auto-pickup timezone changes every 5 min
@@ -257,7 +267,7 @@ pm2 logs           # לוגים
 | **DB credentials** | 📁 ב-`.env.production` בשרת (לא ב-git) |
 | **JWT secrets** | 📁 ב-`.env.production` בשרת (לא ב-git) |
 | **SSL/TLS** | ✅ Let's Encrypt מ-end-to-end |
-| **Rate limiting** | ✅ על דיווחים כפולים (409 Conflict) |
+| **Rate limiting** | ✅ על דיווחים כפולים (409 Conflict) · אחרי 5 דקות IN_PROGRESS מאפשר דיווח חוזר |
 | **Admin permissions** | ✅ מנהל יכול לשנות רק את הסיסמה שלו עצמו |
 
 ### המלצות
@@ -280,7 +290,7 @@ pm2 logs           # לוגים
 2. לחץ **"צוות"** → הכנס ת.ז של מנהל → בחר "הגדר שירותים לטאבלט זה"
 3. בחר בניין / קומה / שירותים → שמור
 
-> ת.ז של מנהלים מוגדרת תחת **Admin → Workers → Admins → Edit**
+> ת.ז של מנהלים מוגדרת תחת **Admin → עובדים → Admins → Edit**
 
 ### שלב 2 — נעילת המכשיר
 
@@ -333,17 +343,18 @@ Toilet/
 │   ├── server/                    — NestJS backend
 │   │   ├── src/
 │   │   │   ├── modules/
-│   │   │   │   ├── auth/          — JWT · kiosk device auth · cleaner login
-│   │   │   │   ├── users/         — עובדים · מנהלים · check-in/out · שפות · timezone
+│   │   │   │   ├── auth/          — JWT · kiosk device auth · cleaner/supervisor login
+│   │   │   │   ├── users/         — עובדים · מנהלים · אחראי משמרת · check-in/out · mismatch
 │   │   │   │   ├── buildings/     — בניינים · מכשירים · offline detection · templates
-│   │   │   │   ├── incidents/     — תקלות + bulk delete
+│   │   │   │   ├── incidents/     — תקלות · bulk-resolve · escalation · positive feedback
+│   │   │   │   ├── scheduler/     — אסקלציה אוטומטית · מחיקת נתונים 60 יום
 │   │   │   │   └── analytics/     — SLA · patterns · kiosk stats · i18n data
 │   │   │   └── main.ts
 │   │   └── prisma/schema.prisma   — schema DB
 │   └── web/                       — React frontend
 │       └── src/modules/
 │           ├── kiosk/             — /kiosk/{deviceCode}
-│           ├── cleaner/           — /cleaner (עובד)
+│           ├── cleaner/           — /cleaner (עובד) + /supervisor (אחראי משמרת)
 │           └── admin/             — /admin
 ├── packages/shared-types/         — TypeScript משותפים
 ├── scripts/deploy.sh              — production deploy
@@ -358,10 +369,11 @@ Toilet/
 - [x] **v1.0.1–v1.0.4** — UX fixes · templates · analytics · dashboard filters
 - [x] **v1.0.5–v1.0.8** — Full i18n · timezone · admin permissions · device management · kiosk clock · client docs
 - [x] **v1.0.9** — Shift supervisor · Escalation · Mismatch · Retention · Analytics filters
-- [ ] v1.1.0 — משוב חוזר והיסטוריית עובד
-- [ ] v1.2.0 — התראות push לעובדים (FCM)
-- [ ] v1.3.0 — דוחות PDF/CSV לייצוא
-- [ ] v2.0.0 — תמיכה ב-multi-tenant (כמה ארגונים)
+- [x] **v1.0.10** — Re-report logic · Bulk-resolve · Building filters · UX fixes · Workers rename
+- [ ] **v1.1.0** — Push notifications (Web Push / PWA) לעובדים בטלפון הפרטי
+- [ ] **v1.2.0** — דוחות PDF/CSV לייצוא
+- [ ] **v1.3.0** — Capacitor app (Google Play / App Store)
+- [ ] **v2.0.0** — תמיכה ב-multi-tenant (כמה ארגונים)
 
 ---
 
