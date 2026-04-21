@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
+import { PushService } from '../push/push.service';
 import { IncidentStatus } from '@prisma/client';
 
 const INCIDENT_INCLUDE = {
@@ -27,6 +28,7 @@ export class IncidentsService {
   constructor(
     private prisma: PrismaService,
     private events: EventsGateway,
+    private push: PushService,
   ) {}
 
   async create(dto: {
@@ -96,7 +98,24 @@ export class IncidentsService {
 
     // Get orgId from restroom hierarchy for WebSocket broadcasting
     const orgId = incident.restroom.floor.building.orgId;
-    // Positive feedback — don't create a task, just log it (no incident:created broadcast to task lists)
+    const buildingId = incident.restroom.floor.buildingId;
+    const issueName = incident.issueType?.nameI18n as any;
+    const issueLabel = issueName?.he ?? issueName?.en ?? 'תקלה חדשה';
+    const issueIcon = (incident.issueType as any)?.icon ?? '📋';
+    const location = [
+      incident.restroom.floor.building.name,
+      incident.restroom.floor.name,
+      incident.restroom.name,
+    ].filter(Boolean).join(' › ');
+
+    // Push notification to workers & supervisors in this building (fire-and-forget)
+    this.push.sendToBuilding(orgId, buildingId, {
+      title: isPositiveFeedback ? '😊 משוב חיובי' : '🚾 ToiletMon — תקלה חדשה',
+      body: `${issueIcon} ${issueLabel} — ${location}`,
+      url: '/cleaner',
+      tag: isPositiveFeedback ? 'positive-feedback' : `incident-${incident.id}`,
+    }).catch(() => {}); // never block the response
+
     if (!isPositiveFeedback) {
       this.events.broadcastToOrg(orgId, 'incident:created', incident);
       this.events.broadcastToRestroom(dto.restroomId, 'incident:created', incident);

@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LogOut, RefreshCw, ChevronDown } from 'lucide-react';
 import api from '../../lib/api';
 import { getSocket, joinOrg } from '../../lib/socket';
+import { registerPush, unregisterPush } from '../../lib/push';
 import toast from 'react-hot-toast';
 
 function IncidentCard({ inc, lang, onResolve }: {
@@ -83,8 +84,10 @@ export default function CleanerPage() {
   const [showFilter, setShowFilter] = useState(false);
 
   useEffect(() => {
-    if (!localStorage.getItem('accessToken')) navigate('/cleaner/login');
-  }, [navigate]);
+    if (!localStorage.getItem('accessToken')) { navigate('/cleaner/login'); return; }
+    // Register push subscription after confirming user is logged in
+    if (user?.id && user?.orgId) registerPush(user.id, user.orgId);
+  }, [navigate, user?.id, user?.orgId]);
 
   // Fetch building structure for floor/restroom filter (only if cleaner has a building)
   const { data: structure } = useQuery({
@@ -160,6 +163,7 @@ export default function CleanerPage() {
   };
 
   const handleLogout = () => {
+    unregisterPush().catch(() => {});
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');

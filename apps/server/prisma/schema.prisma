@@ -149,9 +149,24 @@ model User {
   incidentActions   IncidentAction[]
   assignedIncidents Incident[]       @relation("AssignedCleaner")
   arrivals          CleanerArrival[]
+  pushSubscriptions PushSubscription[]
 
   @@unique([orgId, idNumber])
   @@map("users")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  orgId     String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
 }
 
 // =============================================

@@ -9,11 +9,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
-      // Self-destroying SW — unregisters any existing service worker
-      // to fix stale caches from previous deploys (pre-DuckDNS).
-      selfDestroying: true,
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
       },
       manifest: {
