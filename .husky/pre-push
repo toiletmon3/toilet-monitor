@@ -9,7 +9,9 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "🔍 Checking TypeScript (web)..."
-cd ../web && npx tsc --noEmit
+# Use tsc -b (project references) — same as the real CI build.
+# tsc --noEmit alone misses errors caught only via project references.
+cd ../web && npx tsc -b
 if [ $? -ne 0 ]; then
   echo "❌ TypeScript errors in web — push blocked"
   exit 1

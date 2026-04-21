@@ -23,3 +23,65 @@ This triggers the GitHub Actions CI/CD pipeline which deploys to production auto
 # Then commit with -F flag
 git commit -F ".git\COMMIT_MSG_TMP.txt"
 ```
+
+---
+
+## ✅ Pre-push checklist — run BEFORE every push
+
+### 1. TypeScript — use `tsc -b`, not just `tsc --noEmit`
+
+```powershell
+cd apps/server; npx tsc --noEmit
+cd ../web; npx tsc -b   # <-- project references, same as the real build
+```
+
+`tsc --noEmit` passes locally even when `tsc -b` fails on the server.
+`tsc -b` respects `tsconfig.json` project references and catches errors
+that only appear in the actual build (e.g. conflicting lib settings).
+
+### 2. New npm packages → verify deploy.sh runs `pnpm install`
+
+When adding any new package (`pnpm add ...`), check that `scripts/deploy.sh`
+has `pnpm install --frozen-lockfile` BEFORE the build steps. If it's missing, add it.
+
+The server does NOT have local `node_modules` — it only installs what
+`deploy.sh` explicitly tells it to. Installing locally and pushing the
+lockfile is not enough without this step.
+
+### 3. Service workers (`sw.ts` or any `*.sw.ts`) → exclude from tsconfig.app.json
+
+Service worker files use `lib: WebWorker` types which conflict with
+`lib: DOM` in the main app tsconfig. Always add any SW file to
+`"exclude"` in `tsconfig.app.json`:
+
+```json
+"exclude": ["src/sw.ts"]
+```
+
+Vite PWA (injectManifest strategy) compiles service workers independently —
+they do NOT go through the main `tsc -b` pipeline.
+
+### 4. TypeScript 5 strict generics (`Uint8Array`, `ArrayBuffer`)
+
+TypeScript 5.6+ makes `Uint8Array` generic: `Uint8Array<ArrayBufferLike>`.
+Many Web APIs (PushSubscription, crypto, etc.) expect `ArrayBuffer` specifically.
+When converting byte arrays, always return `.buffer as ArrayBuffer`:
+
+```typescript
+// ✅ correct
+return output.buffer as ArrayBuffer;
+
+// ❌ wrong — fails on server with stricter TS
+return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+```
+
+---
+
+## Summary — root causes of past CI failures
+
+| Failure | Root cause | Prevention |
+|---------|-----------|------------|
+| `Cannot find module 'web-push'` | deploy.sh had no `pnpm install` | Always check deploy.sh after adding packages |
+| `sw.ts` ServiceWorker type errors | SW file included in DOM-lib tsconfig | Exclude all `*.sw.ts` from tsconfig.app.json |
+| `Uint8Array<ArrayBufferLike>` | TS5 strict generics, local version more lenient | Use `tsc -b` pre-push; cast `.buffer as ArrayBuffer` |
+| Unused variable `qc` | `tsc --noEmit` passed locally, `tsc -b` would have caught it | Use `tsc -b` pre-push |
