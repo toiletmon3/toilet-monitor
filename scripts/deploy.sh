@@ -22,6 +22,10 @@ else
   done
 fi
 
+# Install / update dependencies (picks up any new packages from pnpm-lock.yaml)
+cd /opt/toilet-monitor
+pnpm install --frozen-lockfile
+
 # Apply DB schema changes + regenerate Prisma client
 cd /opt/toilet-monitor/apps/server
 pnpm exec prisma db push --accept-data-loss
