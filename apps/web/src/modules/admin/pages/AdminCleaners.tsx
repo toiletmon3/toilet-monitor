@@ -656,31 +656,46 @@ export default function AdminCleaners() {
 
       {/* ── Admins & Managers ── */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(139,92,246,0.2)' }}>
-        <div className="px-5 py-4 flex items-center gap-2 flex-wrap border-b" style={{ borderColor: 'rgba(139,92,246,0.15)' }}>
+        {/* Title row */}
+        <div className="px-5 py-3 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(139,92,246,0.15)' }}>
           <ShieldCheck size={16} style={{ color: '#8b5cf6' }} />
           <h2 className="font-semibold text-white">{t('admin.cleaners.adminsSection')}</h2>
           <span className="text-xs px-2 py-0.5 rounded-full ms-1" style={{ background: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>
-            {admins.length}
+            {allAdmins.length}
           </span>
-          <select
-            value={filterBuildingAdmins}
-            onChange={e => setFilterBuildingAdmins(e.target.value)}
-            className="px-3 py-1.5 rounded-lg text-xs outline-none"
-            style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.3)', color: filterBuildingAdmins ? '#a78bfa' : 'rgba(167,139,250,0.5)' }}
-          >
-            <option value="">{t('admin.cleaners.allBuildings')}</option>
-            {buildings.map((b: any) => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
+          <div className="ms-auto flex items-center gap-2">
+            <select
+              value={filterBuildingAdmins}
+              onChange={e => setFilterBuildingAdmins(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-xs outline-none"
+              style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.3)', color: filterBuildingAdmins ? '#a78bfa' : 'rgba(167,139,250,0.5)' }}
+            >
+              <option value="">{t('admin.cleaners.allBuildings')}</option>
+              {buildings.map((b: any) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {/* Action row */}
+        <div className="px-5 py-2.5 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(139,92,246,0.08)', background: 'rgba(139,92,246,0.03)' }}>
           <button
             onClick={() => setShowAdminForm(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ms-auto transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
             style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)', color: '#a78bfa' }}
           >
             <UserPlus size={13} />
             {t('admin.cleaners.addAdmin')}
           </button>
+          <a
+            href="/supervisor/login"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+            style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}
+          >
+            🛡️ {t('admin.cleaners.openSupervisorInterface')}
+          </a>
         </div>
 
         {/* ── Add admin form ── */}

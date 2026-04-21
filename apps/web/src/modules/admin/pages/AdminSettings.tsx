@@ -768,7 +768,16 @@ export default function AdminSettings() {
         {/* Mismatch threshold */}
         <div className="flex flex-col gap-2">
           <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.mismatchTitle')}</div>
-          <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.mismatchDesc')}</div>
+          <div className="rounded-xl p-3 flex flex-col gap-1.5 mb-1"
+            style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.12)' }}>
+            {(['mismatchExplain1', 'mismatchExplain2', 'mismatchExplain3'] as const).map((key, i) => (
+              <div key={key} className="flex items-start gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                <span className="font-bold flex-shrink-0" style={{ color: '#ef4444' }}>{i + 1}.</span>
+                <span>{t(`admin.settings.${key}`)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.mismatchDesc')}</div>
           <div className="flex gap-2 flex-wrap">
             {[5, 10, 15, 20, 25, 30].map(m => (
               <button key={m}
