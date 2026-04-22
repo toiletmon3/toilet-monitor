@@ -4,6 +4,7 @@
  */
 
 const VAPID_PUBLIC_KEY = 'BJ5sC-Xbm4p2tZ3uxkeQqgTDL4kCGvlu8MocKQ9TtbzB-FJBF8rPxkkNPhvSqniHlCTEVWNfwA1fMtO9pAr-C5Q';
+const PUSH_APPROVED_KEY = 'push-approved';
 
 function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -12,6 +13,11 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   const output = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
   return output.buffer as ArrayBuffer;
+}
+
+/** True if the user has approved push at least once on this device. */
+export function wasPushApproved(): boolean {
+  return localStorage.getItem(PUSH_APPROVED_KEY) === '1';
 }
 
 /**
@@ -24,13 +30,11 @@ export async function registerPush(userId: string, orgId: string): Promise<void>
   try {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-    // Ask for permission (no-op if already granted/denied)
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') return;
 
     const reg = await navigator.serviceWorker.ready;
 
-    // Re-use existing subscription or create a new one
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
       sub = await reg.pushManager.subscribe({
@@ -39,19 +43,23 @@ export async function registerPush(userId: string, orgId: string): Promise<void>
       });
     }
 
-    // Register with our backend
     await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, orgId, subscription: sub.toJSON() }),
     });
+
+    localStorage.setItem(PUSH_APPROVED_KEY, '1');
   } catch (err) {
-    // Push is non-critical — never block the UI
     console.warn('[push] registration failed:', err);
   }
 }
 
-/** Unsubscribe from push (call on logout) */
+/**
+ * Remove server-side subscription on logout.
+ * Keeps the browser push subscription alive so re-login doesn't
+ * need a new permission prompt.
+ */
 export async function unregisterPush(): Promise<void> {
   try {
     if (!('serviceWorker' in navigator)) return;
@@ -63,7 +71,6 @@ export async function unregisterPush(): Promise<void> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ endpoint: sub.endpoint }),
     });
-    await sub.unsubscribe();
   } catch (err) {
     console.warn('[push] unregister failed:', err);
   }

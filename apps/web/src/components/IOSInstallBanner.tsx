@@ -34,21 +34,28 @@ export default function IOSInstallBanner({ userId, orgId }: Props) {
       setShowInstallGuide(true);
     }
 
-    if (isPushSupported()) {
-      const perm = (Notification as any).permission as NotificationPermission;
+    if (!isPushSupported() || !userId || !orgId) return;
+
+    const perm = (Notification as any).permission as NotificationPermission;
+
+    if (perm === 'granted' || perm === 'denied') {
+      setNotifState(perm);
+    }
+
+    import('../lib/push').then(({ registerPush, wasPushApproved }) => {
       if (perm === 'granted') {
-        setNotifState('granted');
-        if (userId && orgId) {
-          import('../lib/push').then(({ registerPush }) =>
-            registerPush(userId, orgId),
-          ).catch(() => {});
-        }
-      } else if (perm === 'denied') {
-        setNotifState('denied');
+        registerPush(userId, orgId).catch(() => {});
+      } else if (wasPushApproved()) {
+        registerPush(userId, orgId)
+          .then(() => {
+            const updated = (Notification as any).permission as NotificationPermission;
+            setNotifState(updated === 'granted' ? 'granted' : 'denied');
+          })
+          .catch(() => {});
       } else {
         setNotifState('prompt');
       }
-    }
+    });
   }, [userId, orgId]);
 
   const handleEnableNotifications = async () => {
@@ -101,7 +108,7 @@ export default function IOSInstallBanner({ userId, orgId }: Props) {
         </div>
       )}
 
-      {/* ── Notification button — always visible ── */}
+      {/* First-time prompt — only shown if user never approved on this device */}
       {notifState === 'prompt' && (
         <button
           onClick={handleEnableNotifications}
@@ -118,8 +125,6 @@ export default function IOSInstallBanner({ userId, orgId }: Props) {
           <span className="text-xs ms-auto" style={{ color: 'var(--color-text-secondary)' }}>לחץ לאישור</span>
         </button>
       )}
-
-      {/* granted — no banner; push re-registers silently in useEffect */}
 
       {notifState === 'denied' && (
         <button
