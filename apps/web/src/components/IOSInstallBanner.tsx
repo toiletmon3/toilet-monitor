@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Bell, BellOff, BellRing } from 'lucide-react';
+import { X, Bell, BellOff } from 'lucide-react';
 
 const DISMISSED_KEY = 'ios-install-banner-dismissed-v3';
 
@@ -119,22 +119,7 @@ export default function IOSInstallBanner({ userId, orgId }: Props) {
         </button>
       )}
 
-      {notifState === 'granted' && (
-        <button
-          onClick={handleEnableNotifications}
-          className="w-full flex items-center gap-3 px-4 py-2 text-xs"
-          style={{
-            background: 'rgba(34,197,94,0.05)',
-            borderBottom: '1px solid rgba(34,197,94,0.15)',
-            color: '#22c55e',
-            direction: 'rtl',
-          }}
-        >
-          <BellRing size={14} />
-          <span>התראות פעילות</span>
-          <span className="ms-auto" style={{ color: 'var(--color-text-secondary)' }}>לחץ לרענון</span>
-        </button>
-      )}
+      {/* granted — no banner; push re-registers silently in useEffect */}
 
       {notifState === 'denied' && (
         <button
