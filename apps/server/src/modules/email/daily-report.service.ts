@@ -49,7 +49,7 @@ export class DailyReportService {
     const admins = await this.prisma.user.findMany({
       where: {
         orgId: org.id,
-        role: { in: ['ORG_ADMIN', 'MANAGER', 'SUPER_ADMIN'] },
+        role: { in: ['ORG_ADMIN', 'SUPER_ADMIN'] },
         isActive: true,
         email: { not: null },
       },
