@@ -22,8 +22,9 @@ export default defineConfig({
         description: 'Smart restroom monitoring system',
         theme_color: '#00e5cc',
         background_color: '#0a0e1a',
-        display: 'fullscreen',
+        display: 'standalone',
         orientation: 'portrait',
+        start_url: '/cleaner',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
