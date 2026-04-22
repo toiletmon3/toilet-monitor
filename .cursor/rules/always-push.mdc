@@ -11,6 +11,20 @@ After completing ANY code change in this project — always:
 2. `git commit -F` (write message to a temp file, then use `-F`, since PowerShell doesn't support heredoc)
 3. `git pull --rebase origin main` (in case remote has new commits)
 4. `git push origin main`
+5. `git push company main` (push to company repo as well)
+
+## Dual remotes (temporary setup)
+
+- **origin** = `https://github.com/OriAha/toilet-monitor.git` (personal)
+- **company** = `https://github.com/toiletmon3/toilet-monitor.git` (company)
+
+Both remotes must be kept in sync. Push to **both** after every change.
+When the user says to disconnect the personal repo, run:
+```powershell
+git remote remove origin
+git remote rename company origin
+```
+Then update this rule to remove the dual-remote section.
 
 This triggers the GitHub Actions CI/CD pipeline which deploys to production automatically.
 

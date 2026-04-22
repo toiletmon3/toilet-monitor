@@ -9,7 +9,8 @@ Smart restroom monitoring system with 4 interfaces: kiosk tablet, worker app, sh
 
 ## Repository
 
-- **Original remote (personal):** `https://github.com/OriAha/toilet-monitor.git`
+- **origin (personal):** `https://github.com/OriAha/toilet-monitor.git`
+- **company:** `https://github.com/toiletmon3/toilet-monitor.git`
 - **Git user:** Ori Aharoni <ori.aha1@gmail.com>
 - **Current version:** v1.0.10 (tags v1.0.0 through v1.0.8 exist)
 - **Branches:** `main` (production), `stable`, `feature/hardware-sensor-device`
