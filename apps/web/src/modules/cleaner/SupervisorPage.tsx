@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LogOut, RefreshCw, ChevronDown } from 'lucide-react';
 import api from '../../lib/api';
 import { getSocket, joinOrg } from '../../lib/socket';
-import { registerPush, unregisterPush } from '../../lib/push';
+import { unregisterPush } from '../../lib/push';
 import IOSInstallBanner from '../../components/IOSInstallBanner';
 import toast from 'react-hot-toast';
 
@@ -86,8 +86,7 @@ export default function SupervisorPage() {
 
   useEffect(() => {
     if (!localStorage.getItem('accessToken')) { navigate('/supervisor/login'); return; }
-    if (user?.id && user?.orgId) registerPush(user.id, user.orgId);
-  }, [navigate, user?.id, user?.orgId]);
+  }, [navigate]);
 
   // Fetch building structure for floor/restroom filter (only if cleaner has a building)
   const { data: structure } = useQuery({
@@ -187,8 +186,8 @@ export default function SupervisorPage() {
 
   return (
     <div style={{ height: '100dvh', overflow: 'hidden', background: 'var(--color-bg)', display: 'flex', flexDirection: 'column' }}>
-      {/* iOS install banner — only shown on iPhone/iPad when not installed as PWA */}
-      <IOSInstallBanner />
+      {/* iOS install guide / notification enable button */}
+      <IOSInstallBanner userId={user?.id} orgId={user?.orgId} />
 
       {/* Header */}
       <div
