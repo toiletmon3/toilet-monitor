@@ -36,18 +36,26 @@ export default function IOSInstallBanner({ userId, orgId }: Props) {
       return;
     }
 
-    // Inside standalone (or non-iOS): show notification button if needed
+    // Inside standalone (or non-iOS): check notification permission
     if (isPushSupported()) {
       const perm = (Notification as any).permission as NotificationPermission;
       if (perm === 'granted') {
         setNotifState('granted');
+        // Auto-renew subscription silently (no permission prompt needed).
+        // Covers: Android Chrome, installed PWA, or any browser where
+        // permission was already granted in a previous session.
+        if (userId && orgId) {
+          import('../lib/push').then(({ registerPush }) =>
+            registerPush(userId, orgId),
+          ).catch(() => {});
+        }
       } else if (perm === 'denied') {
         setNotifState('denied');
       } else {
         setNotifState('prompt');
       }
     }
-  }, []);
+  }, [userId, orgId]);
 
   const handleEnableNotifications = async () => {
     if (!isPushSupported() || !userId || !orgId) return;
@@ -125,7 +133,10 @@ export default function IOSInstallBanner({ userId, orgId }: Props) {
       <div className="flex items-center gap-3 px-4 py-2.5 text-xs"
         style={{ background: 'rgba(239,68,68,0.06)', borderBottom: '1px solid rgba(239,68,68,0.15)', color: '#f87171', direction: 'rtl' }}>
         <BellOff size={14} />
-        <span>התראות חסומות — פתח הגדרות iOS ← Safari ← התראות ← אפשר</span>
+        <span>{isIOS()
+          ? 'התראות חסומות — פתח הגדרות iOS ← Safari ← התראות ← אפשר'
+          : 'התראות חסומות — פתח הגדרות האתר בדפדפן ← הרשאות ← התראות ← אפשר'
+        }</span>
       </div>
     );
   }
