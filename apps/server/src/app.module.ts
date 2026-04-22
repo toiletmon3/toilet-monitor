@@ -14,7 +14,16 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      // In production the env file lives next to the repo root.
+      // In dev it falls back to apps/server/.env as usual.
+      envFilePath: [
+        '/opt/toilet-monitor/.env.production',
+        '.env.production',
+        '.env',
+      ],
+    }),
     PrismaModule,
     AuthModule,
     BuildingsModule,

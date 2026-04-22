@@ -43,8 +43,9 @@ cd /opt/toilet-monitor
 # Build server (prisma generate runs automatically after db push)
 pnpm --filter=@toilet/server build
 
-# Restart backend
-pm2 restart toilet-server
+# Restart backend — --update-env ensures new env vars (e.g. VAPID keys) are
+# picked up by the running process, not just inherited from the saved PM2 config.
+pm2 restart toilet-server --update-env
 pm2 save
 
 # Build frontend
