@@ -22,6 +22,15 @@ else
   done
 fi
 
+# Inject VAPID keys from CI environment into .env.production (idempotent)
+if [ -n "$VAPID_PUBLIC_KEY" ] && [ -n "$VAPID_PRIVATE_KEY" ]; then
+  grep -q "VAPID_PUBLIC_KEY" "$ENV_FILE" 2>/dev/null \
+    || echo "VAPID_PUBLIC_KEY=$VAPID_PUBLIC_KEY" >> "$ENV_FILE"
+  grep -q "VAPID_PRIVATE_KEY" "$ENV_FILE" 2>/dev/null \
+    || echo "VAPID_PRIVATE_KEY=$VAPID_PRIVATE_KEY" >> "$ENV_FILE"
+  echo "VAPID keys ensured in $ENV_FILE"
+fi
+
 # Install / update dependencies (picks up any new packages from pnpm-lock.yaml)
 cd /opt/toilet-monitor
 pnpm install --frozen-lockfile
