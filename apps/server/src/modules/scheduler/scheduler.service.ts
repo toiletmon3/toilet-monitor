@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
+import { PushService } from '../push/push.service';
 
 @Injectable()
 export class SchedulerService implements OnModuleInit, OnModuleDestroy {
@@ -11,6 +12,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private prisma: PrismaService,
     private events: EventsGateway,
+    private push: PushService,
   ) {}
 
   onModuleInit() {
@@ -75,6 +77,24 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
                 escalationLevel: level,
                 escalationMinutes: levels[i],
               });
+
+              // Push to shift supervisors on escalation
+              const issueName = (incident.issueType?.nameI18n as any);
+              const issueLabel = issueName?.he ?? issueName?.en ?? 'תקלה';
+              const location = [
+                incident.restroom.floor.building.name,
+                incident.restroom.floor.name,
+                incident.restroom.name,
+              ].filter(Boolean).join(' › ');
+              const buildingId = incident.restroom.floor.buildingId;
+
+              this.push.sendToBuilding(org.id, buildingId, {
+                title: `⚠️ אסקלציה שלב ${level} — ${levels[i]} דק'`,
+                body: `${(incident.issueType as any)?.icon ?? '📋'} ${issueLabel} — ${location}`,
+                url: '/supervisor',
+                tag: `escalation-${incident.id}-${level}`,
+              }, ['SHIFT_SUPERVISOR']).catch(() => {});
+
               this.logger.log(`Escalated incident ${incident.id} to level ${level} (${levels[i]}min)`);
             }
           }

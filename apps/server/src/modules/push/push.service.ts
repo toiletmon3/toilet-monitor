@@ -41,18 +41,22 @@ export class PushService implements OnModuleInit {
   }
 
   /**
-   * Send a push notification to all workers & supervisors in the given org
-   * that belong to buildingId (or have no building assigned → see everything).
+   * Send a push notification to users in a building.
+   * @param roles — which roles to target (default: CLEANER only)
    */
-  async sendToBuilding(orgId: string, buildingId: string | null, payload: PushPayload) {
-    if (!process.env.VAPID_PUBLIC_KEY) return; // push not configured
+  async sendToBuilding(
+    orgId: string,
+    buildingId: string | null,
+    payload: PushPayload,
+    roles: string[] = ['CLEANER'],
+  ) {
+    if (!process.env.VAPID_PUBLIC_KEY) return;
 
-    // Find eligible users: workers/supervisors in this building OR org-wide (no building)
     const users = await this.prisma.user.findMany({
       where: {
         orgId,
         isActive: true,
-        role: { in: ['CLEANER', 'SHIFT_SUPERVISOR'] },
+        role: { in: roles as any },
         OR: [
           { buildingId: buildingId ?? undefined },
           { buildingId: null },

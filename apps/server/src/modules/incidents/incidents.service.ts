@@ -108,13 +108,13 @@ export class IncidentsService {
       incident.restroom.name,
     ].filter(Boolean).join(' › ');
 
-    // Push notification to workers & supervisors in this building (fire-and-forget)
+    // Push to CLEANERs only — SHIFT_SUPERVISORs get notified via escalation
     this.push.sendToBuilding(orgId, buildingId, {
       title: isPositiveFeedback ? '😊 משוב חיובי' : '🚾 ToiletMon — תקלה חדשה',
       body: `${issueIcon} ${issueLabel} — ${location}`,
       url: '/cleaner',
       tag: isPositiveFeedback ? 'positive-feedback' : `incident-${incident.id}`,
-    }).catch(() => {}); // never block the response
+    }, ['CLEANER']).catch(() => {});
 
     if (!isPositiveFeedback) {
       this.events.broadcastToOrg(orgId, 'incident:created', incident);
