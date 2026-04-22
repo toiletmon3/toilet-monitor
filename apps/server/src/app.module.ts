@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -10,20 +11,20 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { EventsModule } from './modules/events/events.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { PushModule } from './modules/push/push.module';
+import { EmailModule } from './modules/email/email.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      // In production the env file lives next to the repo root.
-      // In dev it falls back to apps/server/.env as usual.
       envFilePath: [
         '/opt/toilet-monitor/.env.production',
         '.env.production',
         '.env',
       ],
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     BuildingsModule,
@@ -33,6 +34,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     EventsModule,
     SchedulerModule,
     PushModule,
+    EmailModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
