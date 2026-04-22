@@ -1,0 +1,166 @@
+---
+description: Full project context — architecture, stack, deployment, secrets, DB schema, and conventions
+alwaysApply: true
+---
+
+# ToiletMon — Project Context
+
+Smart restroom monitoring system with 4 interfaces: kiosk tablet, worker app, shift supervisor, admin dashboard.
+
+## Repository
+
+- **Original remote (personal):** `https://github.com/OriAha/toilet-monitor.git`
+- **Git user:** Ori Aharoni <ori.aha1@gmail.com>
+- **Current version:** v1.0.10 (tags v1.0.0 through v1.0.8 exist)
+- **Branches:** `main` (production), `stable`, `feature/hardware-sensor-device`
+- **CI/CD:** Push to `main` triggers GitHub Actions → SSH deploy to DigitalOcean VPS
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Monorepo | **pnpm** workspaces (pnpm 9, lockfileVersion 9.0) |
+| Frontend | **React 19**, **Vite 6**, **Tailwind CSS v4**, React Router 7, TanStack Query 5, Zustand, i18next, Recharts, Socket.io client, Lucide React |
+| Backend | **NestJS 11**, Express, Socket.io (WebSocket gateway), Passport + JWT auth, bcrypt |
+| Database | **PostgreSQL 16** (Docker), **Prisma 5** ORM |
+| Cache | Redis 7 (Docker) — ioredis in deps, not fully wired yet |
+| PWA | vite-plugin-pwa (injectManifest strategy), Workbox, Web Push (VAPID) |
+| Process | **PM2** (production), **nginx** reverse proxy |
+| Hosting | **DigitalOcean** droplet (Ubuntu 22.04), IP `188.166.163.75` |
+| Domain | **toiletcleanpro.duckdns.org** (DuckDNS), Let's Encrypt SSL |
+
+---
+
+## Monorepo Structure
+
+```
+/
+├── apps/
+│   ├── web/          — React PWA (Vite), src/modules/{kiosk,cleaner,admin}
+│   └── server/       — NestJS API, prisma/, Dockerfile
+├── packages/
+│   └── shared-types/ — Shared TS enums/types (src/index.ts, no tsconfig)
+├── scripts/
+│   ├── deploy.sh     — Production deploy (pnpm install, prisma db push, build, PM2, nginx)
+│   ├── server-setup.sh — One-time server bootstrap (Node 22, pnpm, PM2, nginx)
+│   └── generate-icons.mjs
+├── nginx/
+│   └── nginx.conf    — Used by docker-compose.prod.yml (SSL, proxy /api/ and /socket.io/)
+├── docs/             — BACKUP_AND_ACCESS.md, PRICING.md, ECHO_SHOW_15_RESEARCH.md, HTML/PDF docs
+├── docker-compose.yml           — Dev: Postgres + Redis
+├── docker-compose.databases.yml — Prod DBs only (app runs via PM2)
+├── docker-compose.prod.yml      — Full stack: Postgres, Redis, server, nginx, backup sidecar
+├── .github/workflows/deploy.yml — CI/CD
+├── .husky/                      — pre-push: tsc --noEmit (server) + tsc -b (web)
+├── .env.example                 — Template for all env vars
+└── README.md                    — Product docs, changelog, deploy instructions
+```
+
+---
+
+## Key Scripts
+
+- **Root `package.json`:**
+  - `dev` — parallel dev all packages
+  - `build` — shared-types first, then parallel apps build
+  - `db:migrate`, `db:seed`, `db:studio` — delegate to server
+
+- **Web:** `tsc -b && vite build`
+- **Server:** `nest build`
+- **Vite dev proxy:** `/api` → `localhost:3001`
+
+---
+
+## Database Schema (Prisma)
+
+**Models:** Organization → Building → Floor → Restroom → Device, User (with roles), Incident → IncidentAction, IssueType, KioskTemplate, CleanerArrival, PushSubscription
+
+**Enums:** Gender (MALE/FEMALE/UNISEX), RestroomStatus (ACTIVE/INACTIVE/MAINTENANCE), DeviceType (KIOSK/SENSOR), UserRole (SUPER_ADMIN/ORG_ADMIN/MANAGER/SHIFT_SUPERVISOR/CLEANER), IncidentStatus (OPEN/IN_PROGRESS/RESOLVED), ActionType (REPORTED/ACKNOWLEDGED/RESOLVED/ESCALATED)
+
+**Key relations:**
+- Multi-tenant: Organization → Buildings → Floors → Restrooms → Devices
+- User belongs to Organization, optionally assigned to Building
+- Incident links Restroom + IssueType + Device + optional AssignedCleaner
+- PushSubscription per user for Web Push notifications
+
+---
+
+## CI/CD Pipeline
+
+### GitHub Actions (`deploy.yml`)
+- **Trigger:** push to `main`
+- **Action:** `appleboy/ssh-action@v1.0.3` — SSHs to server, runs `scripts/deploy.sh`
+- **Passes env:** VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY
+
+### GitHub Secrets (5 required)
+1. `SSH_HOST` — server IP/hostname
+2. `SSH_USER` — SSH username
+3. `SSH_PRIVATE_KEY` — SSH private key
+4. `VAPID_PUBLIC_KEY` — Web Push public key
+5. `VAPID_PRIVATE_KEY` — Web Push private key
+
+### deploy.sh Flow
+1. `cd /opt/toilet-monitor && git pull`
+2. Source `/opt/toilet-monitor/.env.production`
+3. Inject VAPID keys from CI env if not already in .env.production
+4. `pnpm install --frozen-lockfile`
+5. `prisma db push --accept-data-loss` (NOT migrate deploy)
+6. `pnpm --filter=@toilet/server build` → `pm2 restart toilet-server --update-env`
+7. `pnpm --filter=@toilet/web build` → copy dist to nginx root → reload nginx
+
+---
+
+## Environment Variables (.env.example)
+
+```
+POSTGRES_PASSWORD, DATABASE_URL (postgresql://...)
+REDIS_URL (redis://localhost:6379)
+JWT_SECRET, JWT_REFRESH_SECRET, JWT_EXPIRES_IN (15m), JWT_REFRESH_EXPIRES_IN (7d)
+NODE_ENV, PORT (3001), FRONTEND_URL
+ADMIN_EMAIL, ADMIN_PASSWORD (seed defaults)
+VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY
+```
+
+Server loads env from: `/opt/toilet-monitor/.env.production` → `.env.production` → `.env`
+
+---
+
+## Server Infrastructure
+
+- **VPS:** DigitalOcean Ubuntu 22.04, ~2 vCPU / 2GB
+- **IP:** 188.166.163.75
+- **Domain:** toiletcleanpro.duckdns.org (DuckDNS)
+- **SSL:** Let's Encrypt (auto-renew via certbot)
+- **App path on server:** `/opt/toilet-monitor`
+- **PM2 process name:** `toilet-server`
+- **nginx:** serves static from web dist, proxies `/api/` and `/socket.io/` to `localhost:3001`
+
+---
+
+## TypeScript Configuration
+
+- **Web:** project references (tsconfig.json → tsconfig.app.json + tsconfig.node.json), `tsc -b` for builds
+- **Server:** CommonJS, decorators enabled, outDir ./dist
+- **Web TS version:** ~6.0.2 | **Server TS:** ^5.7.3 | **Root:** ^5.7.2
+- **IMPORTANT:** `src/sw.ts` excluded from tsconfig.app.json (uses WebWorker lib, not DOM)
+
+---
+
+## PWA Configuration
+
+- **Strategy:** injectManifest (custom SW at `apps/web/src/sw.ts`)
+- **Features:** precache, push notifications (VAPID), notification click handling
+- **Manifest:** start_url `/cleaner`, standalone, portrait
+- **VAPID public key:** hardcoded in `apps/web/src/lib/push.ts` (client-side)
+
+---
+
+## Conventions
+
+- **Commit style:** conventional commits (`feat:`, `fix:`, `chore:`, `docs:`)
+- **Language:** Hebrew UI with i18n (he/en), code in English
+- **Push after every change** (see always-push.mdc rule)
+- **Pre-push checks:** tsc --noEmit (server) + tsc -b (web) via Husky
+- **PowerShell:** Use `-F` flag for commits (no heredoc support)
