@@ -152,7 +152,10 @@ export default function AdminLayout() {
       <div className={`flex items-center mb-6 px-1 ${collapsed && !mobile ? 'justify-center' : 'justify-between'}`}>
         {(!collapsed || mobile) && (
           <div>
-            <div className="text-lg font-bold leading-tight" style={{ color: 'var(--color-accent)' }}>🚾 ToiletMon</div>
+            <div className="flex items-center gap-2 text-lg font-bold leading-tight" style={{ color: 'var(--color-accent)' }}>
+              <img src="/icon-192.png" alt="" className="w-7 h-7 rounded-lg object-cover" />
+              ToiletMon
+            </div>
             <div className="text-xs mt-0.5 truncate max-w-[140px]" style={{ color: 'var(--color-text-secondary)' }}>{user.name}</div>
           </div>
         )}
@@ -314,7 +317,10 @@ export default function AdminLayout() {
           >
             <Menu size={22} />
           </button>
-          <span className="text-base font-bold" style={{ color: 'var(--color-accent)' }}>🚾 ToiletMon</span>
+          <span className="flex items-center gap-2 text-base font-bold" style={{ color: 'var(--color-accent)' }}>
+            <img src="/icon-192.png" alt="" className="w-6 h-6 rounded-md object-cover" />
+            ToiletMon
+          </span>
           <div className="text-sm font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>
             {now.toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit' })}
           </div>
