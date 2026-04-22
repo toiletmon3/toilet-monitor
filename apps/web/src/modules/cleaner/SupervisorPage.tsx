@@ -6,6 +6,7 @@ import { LogOut, RefreshCw, ChevronDown } from 'lucide-react';
 import api from '../../lib/api';
 import { getSocket, joinOrg } from '../../lib/socket';
 import { registerPush, unregisterPush } from '../../lib/push';
+import IOSInstallBanner from '../../components/IOSInstallBanner';
 import toast from 'react-hot-toast';
 
 function IncidentCard({ inc, lang, onResolve }: {
@@ -186,6 +187,9 @@ export default function SupervisorPage() {
 
   return (
     <div style={{ height: '100dvh', overflow: 'hidden', background: 'var(--color-bg)', display: 'flex', flexDirection: 'column' }}>
+      {/* iOS install banner — only shown on iPhone/iPad when not installed as PWA */}
+      <IOSInstallBanner />
+
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-4 sticky top-0 z-10"

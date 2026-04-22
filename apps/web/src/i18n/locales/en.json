@@ -376,6 +376,10 @@
     "confirm": "Confirm",
     "typeToConfirm": "Type <1>{{text}}</1> to confirm",
     "expandMenu": "Expand menu",
-    "collapseMenu": "Collapse menu"
+    "collapseMenu": "Collapse menu",
+    "iosInstall": {
+      "title": "Get notifications — install the app",
+      "body": "On iPhone: tap ⬆️ Share → 'Add to Home Screen' → open from the icon. Push notifications only work from the installed app."
+    }
   }
 }
