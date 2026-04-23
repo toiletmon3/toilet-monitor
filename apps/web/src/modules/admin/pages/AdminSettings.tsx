@@ -839,7 +839,16 @@ export default function AdminSettings() {
         {/* Escalation levels */}
         <div className="flex flex-col gap-2">
           <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.escalationLevelsTitle')}</div>
-          <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.escalationLevelsDesc')}</div>
+          <div className="rounded-xl p-3 flex flex-col gap-1.5 mb-1"
+            style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.12)' }}>
+            {(['escalationExplain1', 'escalationExplain2', 'escalationExplain3'] as const).map((key, i) => (
+              <div key={key} className="flex items-start gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                <span className="font-bold flex-shrink-0" style={{ color: '#f59e0b' }}>{i + 1}.</span>
+                <span>{t(`admin.settings.${key}`)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.escalationLevelsDesc')}</div>
           <div className="flex gap-2 flex-wrap items-center">
             {(escConfig?.escalationLevels ?? [5, 10, 15]).map((lvl: number, i: number) => (
               <div key={i} className="flex items-center gap-1">
