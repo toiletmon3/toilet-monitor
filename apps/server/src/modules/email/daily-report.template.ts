@@ -1,6 +1,6 @@
 export interface DailyReportData {
   orgName: string;
-  date: string; // formatted date string
+  date: string;
   totalIncidents: number;
   resolvedIncidents: number;
   openIncidents: number;
@@ -11,6 +11,7 @@ export interface DailyReportData {
   topIssues: { icon: string; name: string; count: number }[];
   hotspots: { location: string; count: number }[];
   cleaners: { name: string; resolved: number; avgMinutes: number }[];
+  idleCleaners: { name: string; minutes: number }[];
 }
 
 function statCard(label: string, value: string | number, color: string): string {
@@ -123,6 +124,27 @@ export function buildDailyReportHtml(data: DailyReportData): string {
             <th style="padding:10px 8px;color:#64748b;font-size:11px;font-weight:normal;text-align:center;">זמן ממוצע</th>
           </tr>
           ${cleanerRows}
+        </table>
+      </td></tr>
+    </table>` : ''}
+
+    <!-- Idle Cleaners -->
+    ${data.idleCleaners.length > 0 ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      ${sectionTitle('⚠️ נכחו ולא טיפלו (30+ דק׳)')}
+      <tr><td>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#0f172a;border-radius:10px;overflow:hidden;">
+          <tr style="border-bottom:1px solid #1e293b;">
+            <th style="padding:10px 8px;color:#64748b;font-size:11px;font-weight:normal;text-align:right;">שם</th>
+            <th style="padding:10px 8px;color:#64748b;font-size:11px;font-weight:normal;text-align:center;">זמן נוכחות</th>
+            <th style="padding:10px 8px;color:#64748b;font-size:11px;font-weight:normal;text-align:center;">טיפולים</th>
+          </tr>
+          ${data.idleCleaners.map(c => `
+          <tr style="border-bottom:1px solid #1e293b;">
+            <td style="padding:10px 8px;color:#e2e8f0;font-size:13px;">${c.name}</td>
+            <td style="padding:10px 8px;color:#f59e0b;font-size:13px;text-align:center;">${c.minutes} דק'</td>
+            <td style="padding:10px 8px;color:#ef4444;font-weight:bold;font-size:14px;text-align:center;">0</td>
+          </tr>`).join('')}
         </table>
       </td></tr>
     </table>` : ''}

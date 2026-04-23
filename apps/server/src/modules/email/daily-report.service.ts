@@ -155,6 +155,7 @@ export class DailyReportService {
     const cleaners = await this.prisma.user.findMany({
       where: { orgId, role: 'CLEANER', isActive: true },
       select: {
+        id: true,
         name: true,
         incidentActions: {
           where: { actionType: 'RESOLVED', performedAt: { gte: from, lt: to } },
@@ -181,6 +182,40 @@ export class DailyReportService {
       .filter(c => c.resolved > 0)
       .sort((a, b) => b.resolved - a.resolved);
 
+    const arrivals = await this.prisma.cleanerArrival.findMany({
+      where: {
+        user: { orgId, role: 'CLEANER' },
+        arrivedAt: { gte: from, lt: to },
+      },
+      select: {
+        userId: true,
+        arrivedAt: true,
+        leftAt: true,
+        user: { select: { name: true } },
+      },
+    });
+
+    const resolvedUserIds = new Set(
+      cleaners.filter(c => c.incidentActions.length > 0).map(c => c.id),
+    );
+
+    const arrivalsByUser = new Map<string, { name: string; totalMinutes: number }>();
+    for (const a of arrivals) {
+      const end = a.leftAt ?? to;
+      const minutes = Math.round((end.getTime() - a.arrivedAt.getTime()) / 60000);
+      const existing = arrivalsByUser.get(a.userId);
+      if (existing) {
+        existing.totalMinutes += minutes;
+      } else {
+        arrivalsByUser.set(a.userId, { name: a.user.name, totalMinutes: minutes });
+      }
+    }
+
+    const idleCleaners = [...arrivalsByUser.entries()]
+      .filter(([userId, data]) => data.totalMinutes >= 30 && !resolvedUserIds.has(userId))
+      .map(([, data]) => ({ name: data.name, minutes: data.totalMinutes }))
+      .sort((a, b) => b.minutes - a.minutes);
+
     const dateStr = yesterdayStart.toLocaleDateString('he-IL', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     });
@@ -198,6 +233,7 @@ export class DailyReportService {
       topIssues,
       hotspots,
       cleaners: cleanerData,
+      idleCleaners,
     };
   }
 }
