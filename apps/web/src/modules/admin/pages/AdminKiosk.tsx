@@ -22,6 +22,12 @@ function useThemes() {
       desc: t('admin.kiosk.themeNeonDesc'),
       preview: { bg: '#000000', border: '#00E5FF', glow: 'rgba(0,229,255,0.5)' },
     },
+    {
+      id: 'neon-pro',
+      title: t('admin.kiosk.themeNeonPro'),
+      desc: t('admin.kiosk.themeNeonProDesc'),
+      preview: { bg: 'radial-gradient(ellipse at top, #0a1416 0%, #020608 100%)', border: '#7CF6E8', glow: 'rgba(124,246,232,0.5)' },
+    },
   ];
 }
 
@@ -29,7 +35,7 @@ function ThemePicker({ current, onChange }: { current: string; onChange: (id: st
   const { t } = useTranslation();
   const themes = useThemes();
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
       {themes.map(theme => {
         const active = current === theme.id;
         return (

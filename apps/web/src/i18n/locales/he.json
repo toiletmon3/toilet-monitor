@@ -281,8 +281,8 @@
       "themeUpdated": "עיצוב עודכן",
       "noTemplates": "אין טמפלטים עדיין — צור אחד חדש",
       "active": "פעיל",
-      "design": "עיצוב:",
-      "kioskDesign": "עיצוב הקיוסק",
+      "design": "טפט:",
+      "kioskDesign": "טפט הקיוסק",
       "buttons": "כפתורים",
       "tablets": "טאבלטים",
       "assignBuilding": "שיוך טמפלט לבניין",
@@ -294,7 +294,9 @@
       "themeClassic": "קלאסי",
       "themeClassicDesc": "זכוכית עם צבעים שונים לכל כפתור",
       "themeNeon": "ניאון",
-      "themeNeonDesc": "רקע שחור עם מסגרות ציאן בוהקות"
+      "themeNeonDesc": "רקע שחור עם מסגרות ציאן בוהקות",
+      "themeNeonPro": "ניאון פרו",
+      "themeNeonProDesc": "אייקוני ניקיון מצוירים בסגנון ניאון"
     },
     "settings": {
       "addBuilding": "הוסף בניין",

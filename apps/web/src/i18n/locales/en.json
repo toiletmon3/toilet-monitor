@@ -281,8 +281,8 @@
       "themeUpdated": "Design updated",
       "noTemplates": "No templates yet — create one",
       "active": "Active",
-      "design": "Design:",
-      "kioskDesign": "Kiosk Design",
+      "design": "Wallpaper:",
+      "kioskDesign": "Kiosk Wallpaper",
       "buttons": "Buttons",
       "tablets": "tablets",
       "assignBuilding": "Assign Template to Building",
@@ -294,7 +294,9 @@
       "themeClassic": "Classic",
       "themeClassicDesc": "Glass with different colors per button",
       "themeNeon": "Neon",
-      "themeNeonDesc": "Black background with bright cyan borders"
+      "themeNeonDesc": "Black background with bright cyan borders",
+      "themeNeonPro": "Neon Pro",
+      "themeNeonProDesc": "Hand-drawn cleaning icons in neon style"
     },
     "settings": {
       "addBuilding": "Add Building",

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import api from '../../lib/api';
 import KioskPage from './KioskPage';
 import KioskPageNeon from './templates/neon/KioskPageNeon';
+import KioskPageNeonPro from './templates/neonpro/KioskPageNeonPro';
 
 /**
  * Reads the kiosk template (theme + buttons) assigned to this device and renders
@@ -29,5 +30,7 @@ export default function KioskDispatcher() {
     return <div style={{ background: '#000', width: '100%', height: '100dvh' }} />;
   }
 
-  return theme === 'neon' ? <KioskPageNeon /> : <KioskPage />;
+  if (theme === 'neon') return <KioskPageNeon />;
+  if (theme === 'neon-pro') return <KioskPageNeonPro />;
+  return <KioskPage />;
 }
