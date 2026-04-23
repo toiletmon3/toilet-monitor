@@ -264,9 +264,9 @@ export default function AdminIncidents() {
                       <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
                         ⏱ {inc.minutesOpen} {t('common.minutes')}
                       </span>
-                      {inc.escalationLevel > 0 && (
+                      {inc.escalationRound > 0 && (
                         <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
-                          {t('admin.incidents.escalationLevel')} {inc.escalationLevel}
+                          ⚠️ ×{inc.escalationRound}
                         </span>
                       )}
                     </div>

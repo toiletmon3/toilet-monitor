@@ -680,7 +680,7 @@ export default function AdminSettings() {
     queryFn: async () => (await api.get('/users/escalation-config')).data,
   });
 
-  const updateEscalation = async (patch: { escalationEnabled?: boolean; escalationLevels?: number[]; mismatchThresholdMinutes?: number }) => {
+  const updateEscalation = async (patch: { escalationEnabled?: boolean; escalationIntervalMinutes?: number; mismatchThresholdMinutes?: number }) => {
     await api.patch('/users/escalation-config', patch);
     queryClient.setQueryData(['escalation-config'], (old: any) => ({ ...old, ...patch }));
     toast.success(t('common.updated'));
@@ -836,9 +836,9 @@ export default function AdminSettings() {
 
         <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
-        {/* Escalation levels */}
+        {/* Escalation interval */}
         <div className="flex flex-col gap-2">
-          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.escalationLevelsTitle')}</div>
+          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.escalationIntervalTitle')}</div>
           <div className="rounded-xl p-3 flex flex-col gap-1.5 mb-1"
             style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.12)' }}>
             {(['escalationExplain1', 'escalationExplain2', 'escalationExplain3'] as const).map((key, i) => (
@@ -848,50 +848,20 @@ export default function AdminSettings() {
               </div>
             ))}
           </div>
-          <div className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.escalationLevelsDesc')}</div>
-          <div className="flex gap-2 flex-wrap items-center">
-            {(escConfig?.escalationLevels ?? [5, 10, 15]).map((lvl: number, i: number) => (
-              <div key={i} className="flex items-center gap-1">
-                <span className="text-xs font-bold" style={{ color: '#f59e0b' }}>{t('admin.settings.level')} {i + 1}:</span>
-                <select
-                  value={lvl}
-                  onChange={e => {
-                    const newLevels = [...(escConfig?.escalationLevels ?? [5, 10, 15])];
-                    newLevels[i] = parseInt(e.target.value);
-                    updateEscalation({ escalationLevels: newLevels.sort((a, b) => a - b) });
-                  }}
-                  className="px-2 py-1 rounded-lg text-sm outline-none"
-                  style={{ background: '#0a0e1a', border: '1px solid rgba(245,158,11,0.3)', color: 'white', minWidth: 70 }}
-                >
-                  {Array.from({ length: 24 }, (_, i) => (i + 1) * 5).map(v => (
-                    <option key={v} value={v}>{v} {t('common.minutes')}</option>
-                  ))}
-                </select>
-              </div>
+          <div className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.escalationIntervalDesc')}</div>
+          <div className="flex gap-2 flex-wrap">
+            {[3, 5, 7, 10, 15, 20].map(m => (
+              <button key={m}
+                onClick={() => updateEscalation({ escalationIntervalMinutes: m })}
+                className="px-3 py-1.5 rounded-lg text-sm transition-all"
+                style={{
+                  background: (escConfig?.escalationIntervalMinutes ?? 5) === m ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${(escConfig?.escalationIntervalMinutes ?? 5) === m ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                  color: (escConfig?.escalationIntervalMinutes ?? 5) === m ? '#f59e0b' : 'var(--color-text-secondary)',
+                }}>
+                {m} {t('common.minutes')}
+              </button>
             ))}
-            {(escConfig?.escalationLevels ?? [5, 10, 15]).length < 6 && (
-              <button
-                onClick={() => {
-                  const levels = escConfig?.escalationLevels ?? [5, 10, 15];
-                  const last = levels[levels.length - 1] ?? 15;
-                  updateEscalation({ escalationLevels: [...levels, last + 5] });
-                }}
-                className="px-2 py-1 rounded-lg text-xs"
-                style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}>
-                + {t('admin.settings.addLevel')}
-              </button>
-            )}
-            {(escConfig?.escalationLevels ?? [5, 10, 15]).length > 1 && (
-              <button
-                onClick={() => {
-                  const levels = escConfig?.escalationLevels ?? [5, 10, 15];
-                  updateEscalation({ escalationLevels: levels.slice(0, -1) });
-                }}
-                className="px-2 py-1 rounded-lg text-xs"
-                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
-                - {t('admin.settings.removeLevel')}
-              </button>
-            )}
           </div>
         </div>
 

@@ -34,8 +34,8 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       for (const org of orgs) {
         const s = (org.settings ?? {}) as any;
         if (s.escalationEnabled === false) continue;
-        const levels: number[] = s.escalationLevels ?? [5, 10, 15];
-        if (levels.length === 0) continue;
+        const interval: number = s.escalationIntervalMinutes ?? 5;
+        if (interval <= 0) continue;
 
         const openIncidents = await this.prisma.incident.findMany({
           where: {
@@ -43,61 +43,53 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
             status: { in: ['OPEN', 'IN_PROGRESS'] },
           },
           include: {
-            actions: { select: { actionType: true, notes: true } },
+            actions: { select: { actionType: true } },
             restroom: { include: { floor: { include: { building: true } } } },
             issueType: true,
-            assignedCleaner: { select: { id: true, name: true } },
           },
         });
 
         for (const incident of openIncidents) {
           const minutesOpen = (Date.now() - incident.reportedAt.getTime()) / 60000;
-          const existingEscalations = incident.actions
-            .filter(a => a.actionType === 'ESCALATED')
-            .map(a => {
-              const match = a.notes?.match(/level:(\d+)/);
-              return match ? parseInt(match[1]) : 0;
-            });
-          const maxEscalated = existingEscalations.length > 0 ? Math.max(...existingEscalations) : 0;
+          const escalationsSent = incident.actions.filter(a => a.actionType === 'ESCALATED').length;
+          const nextEscalationAt = interval * (escalationsSent + 1);
 
-          for (let i = 0; i < levels.length; i++) {
-            const level = i + 1;
-            if (level <= maxEscalated) continue;
-            if (minutesOpen >= levels[i]) {
-              await this.prisma.incidentAction.create({
-                data: {
-                  incidentId: incident.id,
-                  actionType: 'ESCALATED',
-                  notes: `level:${level} — ${levels[i]} min`,
-                  performedAt: new Date(),
-                },
-              });
-              this.events.broadcastToOrg(org.id, 'incident:escalated', {
-                ...incident,
-                escalationLevel: level,
-                escalationMinutes: levels[i],
-              });
+          if (minutesOpen < nextEscalationAt) continue;
 
-              // Push to shift supervisors on escalation
-              const issueName = (incident.issueType?.nameI18n as any);
-              const issueLabel = issueName?.he ?? issueName?.en ?? 'תקלה';
-              const location = [
-                incident.restroom.floor.building.name,
-                incident.restroom.floor.name,
-                incident.restroom.name,
-              ].filter(Boolean).join(' › ');
-              const buildingId = incident.restroom.floor.buildingId;
+          const round = escalationsSent + 1;
 
-              this.push.sendToBuilding(org.id, buildingId, {
-                title: `⚠️ אסקלציה שלב ${level} — ${levels[i]} דק'`,
-                body: `${(incident.issueType as any)?.icon ?? '📋'} ${issueLabel} — ${location}`,
-                url: '/cleaner',
-                tag: `escalation-${incident.id}-${level}`,
-              }, ['CLEANER', 'SHIFT_SUPERVISOR']).catch(() => {});
+          await this.prisma.incidentAction.create({
+            data: {
+              incidentId: incident.id,
+              actionType: 'ESCALATED',
+              notes: `round:${round} — ${nextEscalationAt} min`,
+              performedAt: new Date(),
+            },
+          });
 
-              this.logger.log(`Escalated incident ${incident.id} to level ${level} (${levels[i]}min)`);
-            }
-          }
+          this.events.broadcastToOrg(org.id, 'incident:escalated', {
+            ...incident,
+            escalationRound: round,
+            escalationMinutes: nextEscalationAt,
+          });
+
+          const issueName = (incident.issueType?.nameI18n as any);
+          const issueLabel = issueName?.he ?? issueName?.en ?? 'תקלה';
+          const location = [
+            incident.restroom.floor.building.name,
+            incident.restroom.floor.name,
+            incident.restroom.name,
+          ].filter(Boolean).join(' › ');
+          const buildingId = incident.restroom.floor.buildingId;
+
+          this.push.sendToBuilding(org.id, buildingId, {
+            title: `⚠️ תזכורת #${round} — ${nextEscalationAt} דק'`,
+            body: `${(incident.issueType as any)?.icon ?? '📋'} ${issueLabel} — ${location}`,
+            url: '/cleaner',
+            tag: `escalation-${incident.id}-${round}`,
+          }, ['CLEANER', 'SHIFT_SUPERVISOR']).catch(() => {});
+
+          this.logger.log(`Escalation round ${round} for incident ${incident.id} (${nextEscalationAt}min)`);
         }
       }
     } catch (err) {
