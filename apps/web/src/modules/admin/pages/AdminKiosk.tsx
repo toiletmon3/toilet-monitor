@@ -141,8 +141,13 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
 
   const deleteMut = useMutation({
     mutationFn: () => api.delete(`/buildings/kiosk-templates/${template.id}`),
-    onSuccess: () => { onRefresh(); toast.success(t('admin.kiosk.deleted')); },
+    onSuccess: () => { setConfirmDelete(false); onRefresh(); toast.success(t('admin.kiosk.deleted')); },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message ?? err?.message ?? t('common.error');
+      toast.error(typeof msg === 'string' ? msg : t('common.error'));
+    },
   });
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const assignedBuildings = buildings.filter(b => b.kioskTemplateId === template.id);
   const assignedDevices = devices.filter(d => d.kioskTemplateId === template.id);
@@ -195,13 +200,28 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
                 <X size={15} />
               </button>
             </>
+          ) : confirmDelete ? (
+            <>
+              <span className="text-xs" style={{ color: 'rgba(239,68,68,0.85)' }}>
+                {t('common.delete')} {template.name}?
+              </span>
+              <button onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}
+                className="px-2 py-1 rounded-lg text-xs font-bold"
+                style={{ background: 'rgba(239,68,68,0.18)', border: '1px solid rgba(239,68,68,0.6)', color: '#f87171' }}>
+                {deleteMut.isPending ? '...' : t('common.delete')}
+              </button>
+              <button onClick={() => setConfirmDelete(false)}
+                className="p-1.5 rounded-lg hover:bg-white/10 transition-all" style={{ color: 'var(--color-text-secondary)' }}>
+                <X size={15} />
+              </button>
+            </>
           ) : (
             <>
               <button onClick={() => setEditing(true)}
                 className="p-1.5 rounded-lg hover:bg-white/10 transition-all" style={{ color: 'var(--color-text-secondary)' }}>
                 <Pencil size={14} />
               </button>
-              <button onClick={() => { if (window.confirm(`${t('common.delete')} ${template.name}?`)) deleteMut.mutate(); }}
+              <button onClick={() => setConfirmDelete(true)}
                 className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all" style={{ color: 'rgba(239,68,68,0.6)' }}>
                 <Trash2 size={14} />
               </button>

@@ -1,11 +1,12 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EventsGateway } from '../events/events.gateway';
 
 const OFFLINE_AFTER_MS = 90_000; // mark offline if no heartbeat for 90s (1.5× the 60s interval)
 
 @Injectable()
 export class BuildingsService implements OnModuleInit, OnModuleDestroy {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private events: EventsGateway) {}
 
   private _offlineTimer: NodeJS.Timeout | null = null;
 
@@ -111,19 +112,26 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
       select: { id: true, name: true, theme: true },
     });
     const buttons = this.defaultButtons() as any;
+
+    // Always rename legacy Hebrew-named builtin templates to English so
+    // the UI shows consistent names regardless of when they were created.
     for (const tpl of this.BUILTIN_TEMPLATES) {
-      // Rename legacy Hebrew-named builtin templates to English
       const hebrewRecord = existing.find(e => e.name === tpl.heAlias && e.theme === tpl.theme);
       if (hebrewRecord) {
         await this.prisma.kioskTemplate.update({
           where: { id: hebrewRecord.id },
           data: { name: tpl.name },
         });
-        continue;
       }
-      // Create if neither the English nor Hebrew variant exists for this theme
-      const already = existing.some(e => (e.name === tpl.name || e.name === tpl.heAlias) && e.theme === tpl.theme);
-      if (!already) {
+    }
+
+    // Only seed the built-in templates the FIRST time an org accesses the
+    // page (when they have zero templates). Re-seeding on every fetch means
+    // admins can't permanently delete built-ins, which is the bug we're
+    // fixing here. Once an admin has at least one template we never
+    // resurrect deleted built-ins.
+    if (existing.length === 0) {
+      for (const tpl of this.BUILTIN_TEMPLATES) {
         await this.prisma.kioskTemplate.create({
           data: {
             orgId,
@@ -149,21 +157,76 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async updateTemplate(templateId: string, dto: { name?: string; buttons?: any[]; theme?: string }) {
-    return this.prisma.kioskTemplate.update({ where: { id: templateId }, data: dto });
+    const template = await this.prisma.kioskTemplate.update({ where: { id: templateId }, data: dto });
+    await this.notifyKiosksOfTemplate(templateId);
+    return template;
   }
 
   async deleteTemplate(templateId: string) {
+    // Notify kiosks BEFORE we wipe the link, so we can reach the affected devices.
+    await this.notifyKiosksOfTemplate(templateId);
     await this.prisma.building.updateMany({ where: { kioskTemplateId: templateId }, data: { kioskTemplateId: null } });
     await this.prisma.device.updateMany({ where: { kioskTemplateId: templateId }, data: { kioskTemplateId: null } });
     return this.prisma.kioskTemplate.delete({ where: { id: templateId } });
   }
 
   async assignTemplate(buildingId: string, templateId: string | null) {
-    return this.prisma.building.update({ where: { id: buildingId }, data: { kioskTemplateId: templateId } });
+    const result = await this.prisma.building.update({ where: { id: buildingId }, data: { kioskTemplateId: templateId } });
+    await this.notifyKiosksOfBuilding(buildingId);
+    return result;
   }
 
   async assignTemplateToDevice(deviceId: string, templateId: string | null) {
-    return this.prisma.device.update({ where: { id: deviceId }, data: { kioskTemplateId: templateId } });
+    const result = await this.prisma.device.update({ where: { id: deviceId }, data: { kioskTemplateId: templateId } });
+    await this.notifyKiosksOfDevice(deviceId);
+    return result;
+  }
+
+  /** Tell every kiosk currently using `templateId` (directly or via its building) to reload. */
+  private async notifyKiosksOfTemplate(templateId: string) {
+    const directDevices = await this.prisma.device.findMany({
+      where: { kioskTemplateId: templateId },
+      select: { restroomId: true, deviceCode: true },
+    });
+    const buildings = await this.prisma.building.findMany({
+      where: { kioskTemplateId: templateId },
+      select: { floors: { select: { restrooms: { select: { devices: { select: { restroomId: true, deviceCode: true } } } } } } },
+    });
+    const restroomIds = new Set<string>();
+    const deviceCodes = new Set<string>();
+    for (const d of directDevices) {
+      restroomIds.add(d.restroomId);
+      deviceCodes.add(d.deviceCode);
+    }
+    for (const b of buildings) {
+      for (const f of b.floors) {
+        for (const r of f.restrooms) {
+          for (const d of r.devices) {
+            restroomIds.add(d.restroomId);
+            deviceCodes.add(d.deviceCode);
+          }
+        }
+      }
+    }
+    for (const id of restroomIds) this.events.broadcastToRestroom(id, 'kiosk:config-changed', { deviceCodes: [...deviceCodes] });
+  }
+
+  private async notifyKiosksOfBuilding(buildingId: string) {
+    const devices = await this.prisma.device.findMany({
+      where: { restroom: { floor: { buildingId } } },
+      select: { restroomId: true, deviceCode: true },
+    });
+    for (const d of devices) {
+      this.events.broadcastToRestroom(d.restroomId, 'kiosk:config-changed', { deviceCodes: [d.deviceCode] });
+    }
+  }
+
+  private async notifyKiosksOfDevice(deviceId: string) {
+    const device = await this.prisma.device.findUnique({
+      where: { id: deviceId },
+      select: { restroomId: true, deviceCode: true },
+    });
+    if (device) this.events.broadcastToRestroom(device.restroomId, 'kiosk:config-changed', { deviceCodes: [device.deviceCode] });
   }
 
   /**
