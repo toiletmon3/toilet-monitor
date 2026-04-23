@@ -288,6 +288,7 @@
       "assignBuilding": "שיוך טמפלט לבניין",
       "assignBuildingHint": "ברירת מחדל לכל הטאבלטים בבניין",
       "defaultOption": "— ברירת מחדל —",
+      "defaultBadge": "ברירת מחדל",
       "assignDevice": "שיוך טמפלט לטאבלט",
       "assignDeviceHint": "דורס את הגדרת הבניין עבור טאבלט ספציפי",
       "fromBuilding": "— מהבניין —",

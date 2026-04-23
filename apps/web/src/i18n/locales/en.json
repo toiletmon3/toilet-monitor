@@ -288,6 +288,7 @@
       "assignBuilding": "Assign Template to Building",
       "assignBuildingHint": "Default for all tablets in the building",
       "defaultOption": "— Default —",
+      "defaultBadge": "Default",
       "assignDevice": "Assign Template to Tablet",
       "assignDeviceHint": "Overrides the building setting for a specific tablet",
       "fromBuilding": "— From Building —",

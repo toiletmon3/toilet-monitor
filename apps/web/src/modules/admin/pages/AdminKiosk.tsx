@@ -177,6 +177,12 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
           >
             {themeMeta.title}
           </span>
+          {template.isDefault && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+              style={{ background: 'rgba(168,85,247,0.15)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.4)' }}>
+              {t('admin.kiosk.defaultBadge')}
+            </span>
+          )}
           {assignedBuildings.length > 0 && (
             <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
               {assignedBuildings.map((b: any) => b.name).join(', ')}
