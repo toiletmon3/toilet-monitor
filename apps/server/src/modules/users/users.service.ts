@@ -15,10 +15,11 @@ export class UsersService {
       kioskTheme: s.kioskTheme ?? 'default',
       timezone: s.timezone ?? 'Asia/Jerusalem',
       dailyReportHour: s.dailyReportHour ?? 7,
+      dailyReportEnabled: s.dailyReportEnabled ?? true,
     };
   }
 
-  async updateOrgSettings(orgId: string, patch: { kioskLang?: string; cleanerLang?: string | null; kioskTheme?: string; timezone?: string; dailyReportHour?: number }) {
+  async updateOrgSettings(orgId: string, patch: { kioskLang?: string; cleanerLang?: string | null; kioskTheme?: string; timezone?: string; dailyReportHour?: number; dailyReportEnabled?: boolean }) {
     const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
     const current = (org?.settings ?? {}) as any;
     const updated = { ...current, ...patch };
@@ -29,6 +30,7 @@ export class UsersService {
       kioskTheme: updated.kioskTheme ?? 'default',
       timezone: updated.timezone ?? 'Asia/Jerusalem',
       dailyReportHour: updated.dailyReportHour ?? 7,
+      dailyReportEnabled: updated.dailyReportEnabled ?? true,
     };
   }
 

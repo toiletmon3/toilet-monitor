@@ -686,7 +686,7 @@ export default function AdminSettings() {
     toast.success(t('common.updated'));
   };
 
-  const updateOrgSettings = async (patch: { kioskLang?: string; cleanerLang?: string | null; timezone?: string; dailyReportHour?: number }) => {
+  const updateOrgSettings = async (patch: { kioskLang?: string; cleanerLang?: string | null; timezone?: string; dailyReportHour?: number; dailyReportEnabled?: boolean }) => {
     await api.patch('/users/org-settings', patch);
     queryClient.setQueryData(['org-settings'], (old: any) => ({ ...old, ...patch }));
     // Notify AdminLayout immediately via custom event so the sidebar clock updates at once
@@ -760,28 +760,42 @@ export default function AdminSettings() {
 
       {/* ── Daily Report Settings ── */}
       <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: 'var(--color-card)', border: '1px solid rgba(139,92,246,0.15)' }}>
-        <h2 className="font-semibold text-white flex items-center gap-2">
-          <Mail size={16} style={{ color: '#8b5cf6' }} />
-          {t('admin.settings.dailyReportTitle')}
-        </h2>
-        <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.dailyReportDesc')}</div>
-        <div className="flex flex-col gap-2">
-          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.dailyReportHour')}</div>
-          <div className="flex gap-2 flex-wrap">
-            {[5, 6, 7, 8, 9, 10].map(h => (
-              <button key={h}
-                onClick={() => updateOrgSettings({ dailyReportHour: h })}
-                className="px-3 py-1.5 rounded-lg text-sm transition-all"
-                style={{
-                  background: (orgSettings?.dailyReportHour ?? 7) === h ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${(orgSettings?.dailyReportHour ?? 7) === h ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                  color: (orgSettings?.dailyReportHour ?? 7) === h ? '#8b5cf6' : 'var(--color-text-secondary)',
-                }}>
-                {String(h).padStart(2, '0')}:00
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-white flex items-center gap-2">
+            <Mail size={16} style={{ color: '#8b5cf6' }} />
+            {t('admin.settings.dailyReportTitle')}
+          </h2>
+          <button
+            onClick={() => updateOrgSettings({ dailyReportEnabled: !(orgSettings?.dailyReportEnabled ?? true) })}
+            className="px-4 py-1.5 rounded-xl text-sm font-medium transition-all"
+            style={{
+              background: (orgSettings?.dailyReportEnabled ?? true) ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.1)',
+              border: `1px solid ${(orgSettings?.dailyReportEnabled ?? true) ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.3)'}`,
+              color: (orgSettings?.dailyReportEnabled ?? true) ? '#22c55e' : '#ef4444',
+            }}>
+            {(orgSettings?.dailyReportEnabled ?? true) ? t('admin.settings.dailyReportOn') : t('admin.settings.dailyReportOff')}
+          </button>
         </div>
+        <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.dailyReportDesc')}</div>
+        {(orgSettings?.dailyReportEnabled ?? true) && (
+          <div className="flex flex-col gap-2">
+            <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.dailyReportHour')}</div>
+            <div className="flex gap-2 flex-wrap">
+              {[5, 6, 7, 8, 9, 10].map(h => (
+                <button key={h}
+                  onClick={() => updateOrgSettings({ dailyReportHour: h })}
+                  className="px-3 py-1.5 rounded-lg text-sm transition-all"
+                  style={{
+                    background: (orgSettings?.dailyReportHour ?? 7) === h ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${(orgSettings?.dailyReportHour ?? 7) === h ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                    color: (orgSettings?.dailyReportHour ?? 7) === h ? '#8b5cf6' : 'var(--color-text-secondary)',
+                  }}>
+                  {String(h).padStart(2, '0')}:00
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Escalation & Mismatch Settings ── */}

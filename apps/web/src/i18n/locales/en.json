@@ -345,6 +345,8 @@
       "dailyReportTitle": "📧 Daily Report for Admins",
       "dailyReportDesc": "Every morning, a summary email with yesterday's data will be sent to all admins with an email address",
       "dailyReportHour": "Send time",
+      "dailyReportOn": "✉️ Active",
+      "dailyReportOff": "✉️ Disabled",
       "escalationTitle": "⚡ Escalation & Alerts",
       "mismatchTitle": "⏱ Mismatch Threshold (min)",
       "mismatchDesc": "After how many minutes from check-in without action — show alert",

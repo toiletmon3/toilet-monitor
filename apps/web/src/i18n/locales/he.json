@@ -345,6 +345,8 @@
       "dailyReportTitle": "📧 דוח יומי למנהלים",
       "dailyReportDesc": "כל בוקר יישלח מייל סיכום עם נתוני אתמול לכל המנהלים שיש להם כתובת מייל",
       "dailyReportHour": "שעת שליחה",
+      "dailyReportOn": "✉️ פעיל",
+      "dailyReportOff": "✉️ כבוי",
       "escalationTitle": "⚡ אסקלציה והתראות",
       "mismatchTitle": "⏱ סף אי-התאמה (דקות)",
       "mismatchDesc": "אחרי כמה דקות מכניסה ללא פעולה — תוצג התראה",

@@ -34,6 +34,7 @@ export class DailyReportService {
 
   private async processOrg(org: { id: string; name: string; settings: any }) {
     const settings = (org.settings ?? {}) as Record<string, any>;
+    if (settings.dailyReportEnabled === false) return;
     const reportHour = settings.dailyReportHour ?? DEFAULT_REPORT_HOUR;
 
     const now = new Date();
