@@ -37,7 +37,7 @@ export class UsersController {
   }
 
   @Patch('org-settings')
-  updateOrgSettings(@CurrentUser() user: any, @Body() dto: { kioskLang?: string; cleanerLang?: string | null; timezone?: string }) {
+  updateOrgSettings(@CurrentUser() user: any, @Body() dto: { kioskLang?: string; cleanerLang?: string | null; timezone?: string; dailyReportHour?: number }) {
     return this.usersService.updateOrgSettings(user.orgId, dto);
   }
 
