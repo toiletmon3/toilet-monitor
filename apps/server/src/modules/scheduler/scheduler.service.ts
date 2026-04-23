@@ -91,9 +91,9 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
               this.push.sendToBuilding(org.id, buildingId, {
                 title: `⚠️ אסקלציה שלב ${level} — ${levels[i]} דק'`,
                 body: `${(incident.issueType as any)?.icon ?? '📋'} ${issueLabel} — ${location}`,
-                url: '/supervisor',
+                url: '/cleaner',
                 tag: `escalation-${incident.id}-${level}`,
-              }, ['SHIFT_SUPERVISOR']).catch(() => {});
+              }, ['CLEANER', 'SHIFT_SUPERVISOR']).catch(() => {});
 
               this.logger.log(`Escalated incident ${incident.id} to level ${level} (${levels[i]}min)`);
             }
