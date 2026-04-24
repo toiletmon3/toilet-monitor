@@ -281,20 +281,18 @@ export default function KioskPageNeonPro() {
               </span>
               <Clock className="w-4 h-4" strokeWidth={2} style={{ filter: `drop-shadow(0 0 4px ${NEON})` }} />
             </div>
-            {stats.avgResponseMinutes !== null && (
-              <div
-                className="flex items-center gap-2 px-4 py-1.5 rounded-full"
-                style={{
-                  color: NEON,
-                  border: `1px solid rgba(124,246,232,0.4)`,
-                  boxShadow: `0 0 10px rgba(124,246,232,0.2), inset 0 0 8px rgba(124,246,232,0.05)`,
-                  fontSize: 'clamp(0.95rem, 1.4vw, 1.1rem)',
-                }}
-              >
-                <span>{stats.avgResponseMinutes} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
-                <Timer className="w-4 h-4" strokeWidth={2} style={{ filter: `drop-shadow(0 0 4px ${NEON})` }} />
-              </div>
-            )}
+            <div
+              className="flex items-center gap-2 px-4 py-1.5 rounded-full"
+              style={{
+                color: NEON,
+                border: `1px solid rgba(124,246,232,0.4)`,
+                boxShadow: `0 0 10px rgba(124,246,232,0.2), inset 0 0 8px rgba(124,246,232,0.05)`,
+                fontSize: 'clamp(0.95rem, 1.4vw, 1.1rem)',
+              }}
+            >
+              <span>{stats.avgResponseMinutes ?? '—'} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
+              <Timer className="w-4 h-4" strokeWidth={2} style={{ filter: `drop-shadow(0 0 4px ${NEON})` }} />
+            </div>
           </div>
         )}
       </div>

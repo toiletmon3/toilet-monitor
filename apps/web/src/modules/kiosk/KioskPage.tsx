@@ -323,12 +323,10 @@ export default function KioskPage() {
                   : `${stats.dailyReports} ${t('kiosk.dailyUsers')}`}
               </span>
             </div>
-            {stats.avgResponseMinutes !== null && (
-              <div className="flex items-center gap-1">
-                <span style={{ color: 'rgba(0,229,204,0.6)' }}>◷</span>
-                <span>{stats.avgResponseMinutes} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1">
+              <span style={{ color: 'rgba(0,229,204,0.6)' }}>◷</span>
+              <span>{stats.avgResponseMinutes ?? '—'} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
+            </div>
           </div>
         )}
       </div>

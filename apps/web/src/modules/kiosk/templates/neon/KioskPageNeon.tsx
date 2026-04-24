@@ -256,12 +256,10 @@ export default function KioskPageNeon() {
                   : `${stats.dailyReports} ${t('kiosk.dailyUsers')}`}
               </span>
             </div>
-            {stats.avgResponseMinutes !== null && (
-              <div className="flex items-center gap-3">
-                <Timer className="w-6 h-6" strokeWidth={2.5} style={{ color: '#00E5FF', filter: 'drop-shadow(0 0 6px rgba(0,229,255,0.6))' }} />
-                <span className="text-white text-lg">{stats.avgResponseMinutes} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              <Timer className="w-6 h-6" strokeWidth={2.5} style={{ color: '#00E5FF', filter: 'drop-shadow(0 0 6px rgba(0,229,255,0.6))' }} />
+              <span className="text-white text-lg">{stats.avgResponseMinutes ?? '—'} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
+            </div>
           </div>
         )}
       </div>
