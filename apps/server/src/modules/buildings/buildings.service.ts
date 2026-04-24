@@ -231,7 +231,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Resolve the effective KioskTemplate for a device.
-   * Priority: device.kioskTemplate → building.kioskTemplate → null
+   * Priority: device.kioskTemplate → building.kioskTemplate → org's isDefault template
    */
   private async resolveTemplate(deviceCode: string) {
     const device = await this.prisma.device.findUnique({
@@ -242,7 +242,13 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
       },
     });
     if (!device) return null;
-    return device.kioskTemplate ?? device.restroom.floor.building.kioskTemplate ?? null;
+    const explicit = device.kioskTemplate ?? device.restroom.floor.building.kioskTemplate;
+    if (explicit) return explicit;
+
+    const orgId = device.restroom.floor.building.orgId;
+    return this.prisma.kioskTemplate.findFirst({
+      where: { orgId, isDefault: true },
+    });
   }
 
   async getKioskButtons(deviceCode: string) {
