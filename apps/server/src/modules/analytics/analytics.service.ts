@@ -264,16 +264,16 @@ export class AnalyticsService {
         where: {
           restroomId,
           status: 'RESOLVED',
-          acknowledgedAt: { not: null },
+          resolvedAt: { not: null },
           reportedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
         },
-        select: { reportedAt: true, acknowledgedAt: true },
+        select: { reportedAt: true, resolvedAt: true },
       }),
     ]);
 
     const avgResponseMinutes = resolvedWithTimes.length > 0
       ? resolvedWithTimes.reduce((sum, i) => {
-          return sum + (i.acknowledgedAt!.getTime() - i.reportedAt.getTime()) / 60000;
+          return sum + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000;
         }, 0) / resolvedWithTimes.length
       : null;
 
