@@ -680,7 +680,7 @@ export default function AdminSettings() {
     queryFn: async () => (await api.get('/users/escalation-config')).data,
   });
 
-  const updateEscalation = async (patch: { escalationEnabled?: boolean; escalationIntervalMinutes?: number; mismatchThresholdMinutes?: number }) => {
+  const updateEscalation = async (patch: { escalationEnabled?: boolean; cleanerReminderMinutes?: number; supervisorEscalationMinutes?: number; mismatchThresholdMinutes?: number }) => {
     await api.patch('/users/escalation-config', patch);
     queryClient.setQueryData(['escalation-config'], (old: any) => ({ ...old, ...patch }));
     toast.success(t('common.updated'));
@@ -836,28 +836,53 @@ export default function AdminSettings() {
 
         <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
-        {/* Escalation interval */}
+        {/* Escalation explanation */}
         <div className="flex flex-col gap-2">
-          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.escalationIntervalTitle')}</div>
+          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.escalationTitle')}</div>
           <div className="rounded-xl p-3 flex flex-col gap-1.5 mb-1"
             style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.12)' }}>
-            {(['escalationExplain1', 'escalationExplain2', 'escalationExplain3'] as const).map((key, i) => (
+            {(['escalationExplain1', 'escalationExplain2', 'escalationExplain3', 'escalationExplain4'] as const).map((key, i) => (
               <div key={key} className="flex items-start gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                 <span className="font-bold flex-shrink-0" style={{ color: '#f59e0b' }}>{i + 1}.</span>
                 <span>{t(`admin.settings.${key}`)}</span>
               </div>
             ))}
           </div>
-          <div className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.escalationIntervalDesc')}</div>
+        </div>
+
+        {/* Cleaner reminder interval */}
+        <div className="flex flex-col gap-2">
+          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>🔔 {t('admin.settings.cleanerReminderTitle')}</div>
+          <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.cleanerReminderDesc')}</div>
           <div className="flex gap-2 flex-wrap">
             {[3, 5, 7, 10, 15, 20].map(m => (
               <button key={m}
-                onClick={() => updateEscalation({ escalationIntervalMinutes: m })}
+                onClick={() => updateEscalation({ cleanerReminderMinutes: m })}
                 className="px-3 py-1.5 rounded-lg text-sm transition-all"
                 style={{
-                  background: (escConfig?.escalationIntervalMinutes ?? 5) === m ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${(escConfig?.escalationIntervalMinutes ?? 5) === m ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                  color: (escConfig?.escalationIntervalMinutes ?? 5) === m ? '#f59e0b' : 'var(--color-text-secondary)',
+                  background: (escConfig?.cleanerReminderMinutes ?? 5) === m ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${(escConfig?.cleanerReminderMinutes ?? 5) === m ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                  color: (escConfig?.cleanerReminderMinutes ?? 5) === m ? '#a78bfa' : 'var(--color-text-secondary)',
+                }}>
+                {m} {t('common.minutes')}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Supervisor escalation interval */}
+        <div className="flex flex-col gap-2">
+          <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>⚠️ {t('admin.settings.supervisorEscalationTitle')}</div>
+          <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.supervisorEscalationDesc')}</div>
+          <div className="flex gap-2 flex-wrap">
+            {[5, 7, 10, 15, 20, 30].map(m => (
+              <button key={m}
+                onClick={() => updateEscalation({ supervisorEscalationMinutes: m })}
+                className="px-3 py-1.5 rounded-lg text-sm transition-all"
+                style={{
+                  background: (escConfig?.supervisorEscalationMinutes ?? 10) === m ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${(escConfig?.supervisorEscalationMinutes ?? 10) === m ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                  color: (escConfig?.supervisorEscalationMinutes ?? 10) === m ? '#f59e0b' : 'var(--color-text-secondary)',
                 }}>
                 {m} {t('common.minutes')}
               </button>

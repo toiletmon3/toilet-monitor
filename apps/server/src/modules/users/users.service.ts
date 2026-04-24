@@ -270,19 +270,26 @@ export class UsersService {
     const s = (org?.settings ?? {}) as any;
     return {
       escalationEnabled: s.escalationEnabled ?? true,
-      escalationIntervalMinutes: s.escalationIntervalMinutes ?? 5,
+      cleanerReminderMinutes: s.cleanerReminderMinutes ?? 5,
+      supervisorEscalationMinutes: s.supervisorEscalationMinutes ?? 10,
       mismatchThresholdMinutes: s.mismatchThresholdMinutes ?? 10,
     };
   }
 
-  async updateEscalationConfig(orgId: string, patch: { escalationEnabled?: boolean; escalationIntervalMinutes?: number; mismatchThresholdMinutes?: number }) {
+  async updateEscalationConfig(orgId: string, patch: {
+    escalationEnabled?: boolean;
+    cleanerReminderMinutes?: number;
+    supervisorEscalationMinutes?: number;
+    mismatchThresholdMinutes?: number;
+  }) {
     const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
     const current = (org?.settings ?? {}) as any;
     const updated = { ...current, ...patch };
     await this.prisma.organization.update({ where: { id: orgId }, data: { settings: updated } });
     return {
       escalationEnabled: updated.escalationEnabled ?? true,
-      escalationIntervalMinutes: updated.escalationIntervalMinutes ?? 5,
+      cleanerReminderMinutes: updated.cleanerReminderMinutes ?? 5,
+      supervisorEscalationMinutes: updated.supervisorEscalationMinutes ?? 10,
       mismatchThresholdMinutes: updated.mismatchThresholdMinutes ?? 10,
     };
   }

@@ -364,7 +364,7 @@ export class IncidentsService {
   async getUrgent(orgId: string) {
     const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
     const s = (org?.settings ?? {}) as any;
-    const interval: number = s.escalationIntervalMinutes ?? 5;
+    const interval: number = s.cleanerReminderMinutes ?? 5;
 
     const incidents = await this.prisma.incident.findMany({
       where: {

@@ -57,7 +57,7 @@ export class UsersController {
   @Patch('escalation-config')
   updateEscalationConfig(
     @CurrentUser() user: any,
-    @Body() dto: { escalationEnabled?: boolean; escalationIntervalMinutes?: number; mismatchThresholdMinutes?: number },
+    @Body() dto: { escalationEnabled?: boolean; cleanerReminderMinutes?: number; supervisorEscalationMinutes?: number; mismatchThresholdMinutes?: number },
   ) {
     return this.usersService.updateEscalationConfig(user.orgId, dto);
   }

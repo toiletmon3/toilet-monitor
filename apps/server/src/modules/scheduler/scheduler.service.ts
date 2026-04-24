@@ -27,6 +27,18 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     if (this.cleanupTimer) clearInterval(this.cleanupTimer);
   }
 
+  /**
+   * Two-track reminder system:
+   *
+   * Track 1 — Cleaner reminders:
+   *   At t = cleanerInterval * 1, cleanerInterval * 2, … → push to CLEANER
+   *
+   * Track 2 — Supervisor escalation:
+   *   Starts only after the cleaner has received 2 total notifications
+   *   (the initial + 1 reminder). From that point:
+   *   At t = cleanerInterval + supervisorInterval * 1,
+   *          cleanerInterval + supervisorInterval * 2, … → push to SHIFT_SUPERVISOR
+   */
   private async runEscalation() {
     try {
       const orgs = await this.prisma.organization.findMany({ select: { id: true, settings: true } });
@@ -34,8 +46,8 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       for (const org of orgs) {
         const s = (org.settings ?? {}) as any;
         if (s.escalationEnabled === false) continue;
-        const interval: number = s.escalationIntervalMinutes ?? 5;
-        if (interval <= 0) continue;
+        const cleanerInterval: number = s.cleanerReminderMinutes ?? 5;
+        const supervisorInterval: number = s.supervisorEscalationMinutes ?? 10;
 
         const openIncidents = await this.prisma.incident.findMany({
           where: {
@@ -43,7 +55,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
             status: { in: ['OPEN', 'IN_PROGRESS'] },
           },
           include: {
-            actions: { select: { actionType: true } },
+            actions: { select: { actionType: true, notes: true } },
             restroom: { include: { floor: { include: { building: true } } } },
             issueType: true,
           },
@@ -51,27 +63,9 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
 
         for (const incident of openIncidents) {
           const minutesOpen = (Date.now() - incident.reportedAt.getTime()) / 60000;
-          const escalationsSent = incident.actions.filter(a => a.actionType === 'ESCALATED').length;
-          const nextEscalationAt = interval * (escalationsSent + 1);
-
-          if (minutesOpen < nextEscalationAt) continue;
-
-          const round = escalationsSent + 1;
-
-          await this.prisma.incidentAction.create({
-            data: {
-              incidentId: incident.id,
-              actionType: 'ESCALATED',
-              notes: `round:${round} — ${nextEscalationAt} min`,
-              performedAt: new Date(),
-            },
-          });
-
-          this.events.broadcastToOrg(org.id, 'incident:escalated', {
-            ...incident,
-            escalationRound: round,
-            escalationMinutes: nextEscalationAt,
-          });
+          const escalations = incident.actions.filter(a => a.actionType === 'ESCALATED');
+          const cleanerReminders = escalations.filter(a => a.notes?.startsWith('cleaner:')).length;
+          const supervisorReminders = escalations.filter(a => a.notes?.startsWith('supervisor:')).length;
 
           const issueName = (incident.issueType?.nameI18n as any);
           const issueLabel = issueName?.he ?? issueName?.en ?? 'תקלה';
@@ -82,14 +76,64 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
           ].filter(Boolean).join(' › ');
           const buildingId = incident.restroom.floor.buildingId;
 
-          this.push.sendToBuilding(org.id, buildingId, {
-            title: `⚠️ תזכורת #${round} — ${nextEscalationAt} דק'`,
-            body: `${(incident.issueType as any)?.icon ?? '📋'} ${issueLabel} — ${location}`,
-            url: '/cleaner',
-            tag: `escalation-${incident.id}-${round}`,
-          }, ['CLEANER', 'SHIFT_SUPERVISOR']).catch(() => {});
+          // ── Cleaner reminder track ──
+          if (cleanerInterval > 0) {
+            const nextCleanerAt = cleanerInterval * (cleanerReminders + 1);
+            if (minutesOpen >= nextCleanerAt) {
+              const round = cleanerReminders + 1;
+              await this.prisma.incidentAction.create({
+                data: {
+                  incidentId: incident.id,
+                  actionType: 'ESCALATED',
+                  notes: `cleaner:${round} — ${nextCleanerAt} min`,
+                  performedAt: new Date(),
+                },
+              });
 
-          this.logger.log(`Escalation round ${round} for incident ${incident.id} (${nextEscalationAt}min)`);
+              this.push.sendToBuilding(org.id, buildingId, {
+                title: `🔔 תזכורת #${round}`,
+                body: `${(incident.issueType as any)?.icon ?? '📋'} ${issueLabel} — ${location}`,
+                url: '/cleaner',
+                tag: `cleaner-reminder-${incident.id}-${round}`,
+              }, ['CLEANER']).catch(() => {});
+
+              this.events.broadcastToOrg(org.id, 'incident:escalated', {
+                ...incident, escalationType: 'cleaner', escalationRound: round,
+              });
+              this.logger.log(`Cleaner reminder #${round} for incident ${incident.id} (${nextCleanerAt}min)`);
+            }
+          }
+
+          // ── Supervisor escalation track ──
+          // Starts after cleaner got 2 total notifications (initial + 1 reminder)
+          const cleanerTotalNotifications = 1 + cleanerReminders; // 1 = initial on creation
+          if (supervisorInterval > 0 && cleanerTotalNotifications >= 2) {
+            const supervisorStartsAt = cleanerInterval; // = time of 1st cleaner reminder
+            const nextSupervisorAt = supervisorStartsAt + supervisorInterval * (supervisorReminders + 1);
+            if (minutesOpen >= nextSupervisorAt) {
+              const round = supervisorReminders + 1;
+              await this.prisma.incidentAction.create({
+                data: {
+                  incidentId: incident.id,
+                  actionType: 'ESCALATED',
+                  notes: `supervisor:${round} — ${nextSupervisorAt} min`,
+                  performedAt: new Date(),
+                },
+              });
+
+              this.push.sendToBuilding(org.id, buildingId, {
+                title: `⚠️ אסקלציה #${round}`,
+                body: `${(incident.issueType as any)?.icon ?? '📋'} ${issueLabel} — ${location}`,
+                url: '/supervisor',
+                tag: `supervisor-escalation-${incident.id}-${round}`,
+              }, ['SHIFT_SUPERVISOR']).catch(() => {});
+
+              this.events.broadcastToOrg(org.id, 'incident:escalated', {
+                ...incident, escalationType: 'supervisor', escalationRound: round,
+              });
+              this.logger.log(`Supervisor escalation #${round} for incident ${incident.id} (${nextSupervisorAt}min)`);
+            }
+          }
         }
       }
     } catch (err) {
