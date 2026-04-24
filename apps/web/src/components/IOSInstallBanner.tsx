@@ -124,34 +124,55 @@ export default function IOSInstallBanner({ userId, orgId }: Props) {
       )}
 
       {notifState === 'prompt' && (
-        <button
-          onClick={handleEnableNotifications}
-          className="w-full flex items-center gap-3 px-4 py-3 text-sm"
+        <div
           style={{
             background: 'rgba(0,229,204,0.07)',
             borderBottom: '1px solid rgba(0,229,204,0.2)',
-            color: 'var(--color-accent)',
             direction: 'rtl',
           }}
         >
-          <Bell size={16} />
-          <span className="font-medium">הפעל התראות לפלאפון</span>
-          <span className="text-xs ms-auto" style={{ color: 'var(--color-text-secondary)' }}>לחץ לאישור</span>
-        </button>
+          <button
+            onClick={handleEnableNotifications}
+            className="w-full flex items-center gap-3 px-4 py-3 text-sm"
+            style={{ color: 'var(--color-accent)' }}
+          >
+            <Bell size={16} />
+            <span className="font-medium">הפעל התראות לפלאפון</span>
+            <span className="text-xs ms-auto" style={{ color: 'var(--color-text-secondary)' }}>לחץ לאישור</span>
+          </button>
+          {isIOS() && (
+            <div className="px-4 pb-3 flex flex-col gap-1" style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+              <div className="font-bold" style={{ color: 'var(--color-accent)' }}>📱 לבעלי אייפון:</div>
+              <div>לאחר הלחיצה תופיע חלונית מערכת — לחצו <strong style={{ color: '#fff' }}>"אפשר" (Allow)</strong>.</div>
+              <div>אם ההתראות לא מגיעות, ודאו ש:</div>
+              <ol className="pr-4 flex flex-col gap-0.5" style={{ listStyleType: 'decimal' }}>
+                <li>האפליקציה נפתחת <strong style={{ color: '#fff' }}>מהאייקון במסך הבית</strong> ולא מ-Safari</li>
+                <li>הגדרות → התראות → האפליקציה הזו → <strong style={{ color: '#fff' }}>מופעל</strong></li>
+              </ol>
+            </div>
+          )}
+        </div>
       )}
 
       {notifState === 'denied' && (
-        <button
-          onClick={handleEnableNotifications}
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-xs"
-          style={{ background: 'rgba(239,68,68,0.06)', borderBottom: '1px solid rgba(239,68,68,0.15)', color: '#f87171', direction: 'rtl' }}
+        <div
+          style={{ background: 'rgba(239,68,68,0.06)', borderBottom: '1px solid rgba(239,68,68,0.15)', direction: 'rtl' }}
         >
-          <BellOff size={14} />
-          <span>{isIOS()
-            ? 'התראות חסומות — לחץ כאן לנסות שוב, או פתח הגדרות ← Safari ← התראות'
-            : 'התראות חסומות — לחץ כאן לנסות שוב, או פתח הגדרות האתר בדפדפן'
-          }</span>
-        </button>
+          <button
+            onClick={handleEnableNotifications}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-xs"
+            style={{ color: '#f87171' }}
+          >
+            <BellOff size={14} />
+            <span>התראות חסומות — לחץ כאן לנסות שוב</span>
+          </button>
+          {isIOS() && (
+            <div className="px-4 pb-2.5 flex flex-col gap-0.5" style={{ fontSize: 11, color: 'rgba(248,113,113,0.7)' }}>
+              <div>אם זה לא עוזר, פתחו <strong style={{ color: '#f87171' }}>הגדרות</strong> באייפון:</div>
+              <div className="pr-3">הגדרות → התראות → חפשו את האפליקציה → הפעילו התראות</div>
+            </div>
+          )}
+        </div>
       )}
     </>
   );
