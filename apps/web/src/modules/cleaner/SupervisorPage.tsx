@@ -132,11 +132,14 @@ export default function SupervisorPage() {
     refetchInterval: 30_000,
   });
 
-  const { data: positiveFeedback = [] } = useQuery({
+  const { data: rawPositiveFeedback = [] } = useQuery({
     queryKey: ['cleaner-positive-feedback'],
     queryFn: async () => (await api.get('/incidents/positive-feedback')).data,
     refetchInterval: 60_000,
   });
+
+  const [dismissedFeedbackIds, setDismissedFeedbackIds] = useState<Set<string>>(new Set());
+  const positiveFeedback = rawPositiveFeedback.filter((f: any) => !dismissedFeedbackIds.has(f.id));
 
   // Real-time updates
   useEffect(() => {
@@ -170,6 +173,18 @@ export default function SupervisorPage() {
   };
 
   const openIncidents = data?.open ?? [];
+
+  const prevOpenRef = useRef(openIncidents.length);
+  useEffect(() => {
+    if (prevOpenRef.current > 0 && openIncidents.length === 0 && positiveFeedback.length > 0) {
+      setDismissedFeedbackIds(prev => {
+        const next = new Set(prev);
+        for (const f of rawPositiveFeedback) next.add(f.id);
+        return next;
+      });
+    }
+    prevOpenRef.current = openIncidents.length;
+  }, [openIncidents.length]);
 
   const activeFiltersLabel = useMemo(() => {
     const parts: string[] = [];

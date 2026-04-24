@@ -132,11 +132,15 @@ export default function CleanerPage() {
     refetchInterval: 30_000,
   });
 
-  const { data: positiveFeedback = [] } = useQuery({
+  const { data: rawPositiveFeedback = [] } = useQuery({
     queryKey: ['cleaner-positive-feedback'],
     queryFn: async () => (await api.get('/incidents/positive-feedback')).data,
     refetchInterval: 60_000,
   });
+
+  // Track which positive feedback IDs have been "seen" (dismissed when all tasks were cleared)
+  const [dismissedFeedbackIds, setDismissedFeedbackIds] = useState<Set<string>>(new Set());
+  const positiveFeedback = rawPositiveFeedback.filter((f: any) => !dismissedFeedbackIds.has(f.id));
 
   // Real-time updates
   useEffect(() => {
@@ -170,6 +174,20 @@ export default function CleanerPage() {
   };
 
   const openIncidents = data?.open ?? [];
+
+  // When all tasks are cleared, dismiss any currently-visible positive feedback
+  // so it won't reappear when new tasks arrive.
+  const prevOpenRef = useRef(openIncidents.length);
+  useEffect(() => {
+    if (prevOpenRef.current > 0 && openIncidents.length === 0 && positiveFeedback.length > 0) {
+      setDismissedFeedbackIds(prev => {
+        const next = new Set(prev);
+        for (const f of rawPositiveFeedback) next.add(f.id);
+        return next;
+      });
+    }
+    prevOpenRef.current = openIncidents.length;
+  }, [openIncidents.length]);
 
   const activeFiltersLabel = useMemo(() => {
     const parts: string[] = [];
