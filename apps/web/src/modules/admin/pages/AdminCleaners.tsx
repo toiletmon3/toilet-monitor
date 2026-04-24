@@ -204,11 +204,15 @@ export default function AdminCleaners() {
   const [showAdminForm, setShowAdminForm] = useState(false);
   const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '', idNumber: '', role: 'MANAGER' });
   const [adminFormShow, setAdminFormShow] = useState(false);
+  const [supForm, setSupForm] = useState({ name: '', email: '', password: '', idNumber: '' });
+  const [supFormShow, setSupFormShow] = useState(false);
+  const [showSupForm, setShowSupForm] = useState(false);
   const [editWorker, setEditWorker] = useState<EditState | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [pwUser, setPwUser] = useState<{ id: string; name: string } | null>(null);
   const [editAdmin, setEditAdmin] = useState<any | null>(null);
   const [filterBuildingWorkers, setFilterBuildingWorkers] = useState('');
+  const [filterBuildingSupervisors, setFilterBuildingSupervisors] = useState('');
   const [filterBuildingAdmins, setFilterBuildingAdmins] = useState('');
 
   const { data: users } = useQuery({
@@ -226,7 +230,12 @@ export default function AdminCleaners() {
     ? allWorkers.filter((u: any) => u.buildingId === filterBuildingWorkers)
     : allWorkers;
 
-  const allAdmins = (users ?? []).filter((u: any) => u.role === 'ORG_ADMIN' || u.role === 'MANAGER' || u.role === 'SHIFT_SUPERVISOR');
+  const allSupervisors = (users ?? []).filter((u: any) => u.role === 'SHIFT_SUPERVISOR');
+  const supervisors = filterBuildingSupervisors
+    ? allSupervisors.filter((u: any) => u.buildingId === filterBuildingSupervisors)
+    : allSupervisors;
+
+  const allAdmins = (users ?? []).filter((u: any) => u.role === 'ORG_ADMIN' || u.role === 'MANAGER');
   const admins = filterBuildingAdmins
     ? allAdmins.filter((u: any) => u.buildingId === filterBuildingAdmins || u.role === 'ORG_ADMIN')
     : allAdmins;
@@ -260,6 +269,26 @@ export default function AdminCleaners() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowAdminForm(false);
       setAdminForm({ name: '', email: '', password: '', idNumber: '', role: 'MANAGER' });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? t('common.error'));
+    }
+  };
+
+  const handleCreateSupervisor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supForm.name.trim() || !supForm.email.trim() || supForm.password.length < 6) return;
+    try {
+      const payload: any = { name: supForm.name.trim(), email: supForm.email.trim(), password: supForm.password, role: 'SHIFT_SUPERVISOR' };
+      await api.post('/users/admins', payload);
+      if (supForm.idNumber.trim()) {
+        const { data: all } = await api.get('/users');
+        const created = all.find((u: any) => u.email === supForm.email.trim());
+        if (created) await api.patch(`/users/${created.id}/admin`, { idNumber: supForm.idNumber.trim() });
+      }
+      toast.success(t('admin.cleaners.adminAdded'));
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setShowSupForm(false);
+      setSupForm({ name: '', email: '', password: '', idNumber: '' });
     } catch (err: any) {
       toast.error(err.response?.data?.message ?? t('common.error'));
     }
@@ -654,6 +683,152 @@ export default function AdminCleaners() {
         </div>
       </div>
 
+      {/* ── Shift Supervisors ── */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(245,158,11,0.2)' }}>
+        <div className="px-5 py-3 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(245,158,11,0.15)' }}>
+          <ShieldCheck size={16} style={{ color: '#f59e0b' }} />
+          <h2 className="font-semibold text-white">{t('admin.cleaners.supervisorsSection')}</h2>
+          <span className="text-xs px-2 py-0.5 rounded-full ms-1" style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
+            {allSupervisors.length}
+          </span>
+          <div className="ms-auto flex items-center gap-2">
+            <select
+              value={filterBuildingSupervisors}
+              onChange={e => setFilterBuildingSupervisors(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-xs outline-none"
+              style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', color: filterBuildingSupervisors ? '#f59e0b' : 'rgba(245,158,11,0.5)' }}
+            >
+              <option value="">{t('admin.cleaners.allBuildings')}</option>
+              {buildings.map((b: any) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="px-5 py-2.5 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(245,158,11,0.08)', background: 'rgba(245,158,11,0.03)' }}>
+          <button
+            onClick={() => setShowSupForm(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+            style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.35)', color: '#f59e0b' }}
+          >
+            <UserPlus size={13} />
+            {t('admin.cleaners.addSupervisor')}
+          </button>
+          <a
+            href="/supervisor/login"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+            style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}
+          >
+            🛡️ {t('admin.cleaners.openSupervisorInterface')}
+          </a>
+        </div>
+
+        {showSupForm && (
+          <form onSubmit={handleCreateSupervisor}
+            className="px-5 py-4 flex flex-col gap-3 border-b"
+            style={{ borderColor: 'rgba(245,158,11,0.1)', background: 'rgba(245,158,11,0.04)' }}>
+            <h3 className="text-sm font-semibold" style={{ color: '#f59e0b' }}>
+              {t('admin.cleaners.newSupervisor')}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                value={supForm.name}
+                onChange={e => setSupForm(f => ({ ...f, name: e.target.value }))}
+                placeholder={t('admin.cleaners.fullName')}
+                required
+                className="px-4 py-2.5 rounded-xl outline-none text-sm"
+                style={{ background: '#0a0e1a', border: '1px solid rgba(245,158,11,0.3)', color: 'white' }}
+              />
+              <input
+                type="email"
+                value={supForm.email}
+                onChange={e => setSupForm(f => ({ ...f, email: e.target.value }))}
+                placeholder={t('admin.cleaners.adminEmail')}
+                required
+                className="px-4 py-2.5 rounded-xl outline-none text-sm"
+                style={{ background: '#0a0e1a', border: '1px solid rgba(245,158,11,0.3)', color: 'white' }}
+              />
+              <div className="relative">
+                <input
+                  type={supFormShow ? 'text' : 'password'}
+                  value={supForm.password}
+                  onChange={e => setSupForm(f => ({ ...f, password: e.target.value }))}
+                  placeholder={t('admin.cleaners.passwordMin')}
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-2.5 rounded-xl outline-none text-sm pr-10"
+                  style={{ background: '#0a0e1a', border: '1px solid rgba(245,158,11,0.3)', color: 'white' }}
+                />
+                <button type="button" onClick={() => setSupFormShow(v => !v)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-1 rounded"
+                  style={{ color: 'var(--color-text-secondary)' }}>
+                  {supFormShow ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+              <input
+                value={supForm.idNumber}
+                onChange={e => setSupForm(f => ({ ...f, idNumber: e.target.value }))}
+                placeholder={`${t('admin.cleaners.idNumber')} (${t('admin.cleaners.optional')})`}
+                className="px-4 py-2.5 rounded-xl outline-none text-sm"
+                style={{ background: '#0a0e1a', border: '1px solid rgba(245,158,11,0.3)', color: 'white' }}
+              />
+            </div>
+            <button type="submit"
+              className="self-start px-5 py-2 rounded-xl text-sm font-medium"
+              style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.35)', color: '#f59e0b' }}>
+              {t('admin.cleaners.addSupervisor')}
+            </button>
+          </form>
+        )}
+
+        <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+          {supervisors.map((a: any) => (
+            <div key={a.id} className="px-5 py-4 flex items-center gap-3 flex-wrap">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+                style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
+                {(a.name ?? '?').charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-white truncate">{a.name}</div>
+                <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
+                  {a.email}
+                  {' · '}
+                  <span style={{ color: '#f59e0b' }}>{t('admin.cleaners.shiftSupervisor')}</span>
+                </div>
+                {a.idNumber && a.idNumber !== a.email && (
+                  <div className="text-xs mt-0.5 font-mono" style={{ color: 'rgba(245,158,11,0.6)' }}>
+                    🪪 {a.idNumber}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setEditAdmin(a)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-secondary)' }}
+                >
+                  <Pencil size={12} /> {t('admin.cleaners.edit')}
+                </button>
+                <button
+                  onClick={() => handleDelete(a.id, a.name)}
+                  className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all"
+                  style={{ color: 'rgba(239,68,68,0.5)' }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
+          {supervisors.length === 0 && (
+            <div className="px-5 py-6 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              {t('admin.cleaners.noSupervisors')}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* ── Admins & Managers ── */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(139,92,246,0.2)' }}>
         {/* Title row */}
@@ -687,15 +862,6 @@ export default function AdminCleaners() {
             <UserPlus size={13} />
             {t('admin.cleaners.addAdmin')}
           </button>
-          <a
-            href="/supervisor/login"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-            style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}
-          >
-            🛡️ {t('admin.cleaners.openSupervisorInterface')}
-          </a>
         </div>
 
         {/* ── Add admin form ── */}
@@ -749,15 +915,7 @@ export default function AdminCleaners() {
                 className="px-4 py-2.5 rounded-xl outline-none text-sm font-mono"
                 style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.25)', color: 'white' }}
               />
-              <select
-                value={adminForm.role}
-                onChange={e => setAdminForm(f => ({ ...f, role: e.target.value }))}
-                className="px-4 py-2.5 rounded-xl outline-none text-sm"
-                style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.3)', color: 'white' }}
-              >
-                <option value="MANAGER">{t('admin.cleaners.manager')}</option>
-                <option value="SHIFT_SUPERVISOR">{t('admin.cleaners.shiftSupervisor')}</option>
-              </select>
+              {/* Role is fixed to MANAGER — shift supervisors have their own section */}
             </div>
             <div className="flex gap-2">
               <button type="submit"
@@ -791,8 +949,8 @@ export default function AdminCleaners() {
                   <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
                     {a.email}
                     {' · '}
-                    <span style={{ color: a.role === 'ORG_ADMIN' ? '#8b5cf6' : '#f59e0b' }}>
-                      {a.role === 'ORG_ADMIN' ? t('admin.cleaners.orgAdmin') : a.role === 'SHIFT_SUPERVISOR' ? t('admin.cleaners.shiftSupervisor') : t('admin.cleaners.manager')}
+                    <span style={{ color: a.role === 'ORG_ADMIN' ? '#8b5cf6' : '#a78bfa' }}>
+                      {a.role === 'ORG_ADMIN' ? t('admin.cleaners.orgAdmin') : t('admin.cleaners.manager')}
                     </span>
                   </div>
                   {/* Show ID number if set (not equal to email = legacy default) */}
