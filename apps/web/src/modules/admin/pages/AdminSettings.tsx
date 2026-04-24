@@ -143,6 +143,59 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+/**
+ * Free-form integer minutes input.
+ * Saves on blur or Enter. Empty / invalid values revert to the previous value.
+ */
+function MinutesInput({
+  value,
+  onSave,
+  color,
+  min = 1,
+  max = 1440,
+}: {
+  value: number;
+  onSave: (n: number) => void;
+  color: string;
+  min?: number;
+  max?: number;
+}) {
+  const { t } = useTranslation();
+  const [local, setLocal] = useState(String(value));
+  useEffect(() => { setLocal(String(value)); }, [value]);
+
+  const commit = () => {
+    const n = parseInt(local, 10);
+    if (Number.isFinite(n) && n >= min && n <= max && n !== value) {
+      onSave(n);
+    } else {
+      setLocal(String(value));
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2 max-w-xs">
+      <input
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        value={local}
+        onChange={e => setLocal(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        className="w-24 px-3 py-2 rounded-xl text-sm font-semibold text-white outline-none text-center"
+        style={{
+          background: '#0a0e1a',
+          border: `1px solid ${color}66`,
+          color,
+        }}
+      />
+      <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('common.minutes')}</span>
+    </div>
+  );
+}
+
 const inputCls = "w-full rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-cyan-400";
 const inputStyle = { background: '#0a0e1a', border: '1px solid rgba(255,255,255,0.1)' };
 const btnPrimary = "px-4 py-2 rounded-xl text-sm font-medium transition-all";
@@ -818,20 +871,11 @@ export default function AdminSettings() {
             ))}
           </div>
           <div className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.mismatchDesc')}</div>
-          <div className="flex gap-2 flex-wrap">
-            {[5, 10, 15, 20, 25, 30].map(m => (
-              <button key={m}
-                onClick={() => updateEscalation({ mismatchThresholdMinutes: m })}
-                className="px-3 py-1.5 rounded-lg text-sm transition-all"
-                style={{
-                  background: (escConfig?.mismatchThresholdMinutes ?? 10) === m ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${(escConfig?.mismatchThresholdMinutes ?? 10) === m ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                  color: (escConfig?.mismatchThresholdMinutes ?? 10) === m ? '#ef4444' : 'var(--color-text-secondary)',
-                }}>
-                {m} {t('common.minutes')}
-              </button>
-            ))}
-          </div>
+          <MinutesInput
+            value={escConfig?.mismatchThresholdMinutes ?? 10}
+            onSave={n => updateEscalation({ mismatchThresholdMinutes: n })}
+            color="#ef4444"
+          />
         </div>
 
         <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
@@ -854,40 +898,22 @@ export default function AdminSettings() {
         <div className="flex flex-col gap-2">
           <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>🔔 {t('admin.settings.cleanerReminderTitle')}</div>
           <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.cleanerReminderDesc')}</div>
-          <div className="flex gap-2 flex-wrap">
-            {[3, 5, 7, 10, 15, 20].map(m => (
-              <button key={m}
-                onClick={() => updateEscalation({ cleanerReminderMinutes: m })}
-                className="px-3 py-1.5 rounded-lg text-sm transition-all"
-                style={{
-                  background: (escConfig?.cleanerReminderMinutes ?? 5) === m ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${(escConfig?.cleanerReminderMinutes ?? 5) === m ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                  color: (escConfig?.cleanerReminderMinutes ?? 5) === m ? '#a78bfa' : 'var(--color-text-secondary)',
-                }}>
-                {m} {t('common.minutes')}
-              </button>
-            ))}
-          </div>
+          <MinutesInput
+            value={escConfig?.cleanerReminderMinutes ?? 5}
+            onSave={n => updateEscalation({ cleanerReminderMinutes: n })}
+            color="#a78bfa"
+          />
         </div>
 
         {/* Supervisor escalation interval */}
         <div className="flex flex-col gap-2">
           <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>⚠️ {t('admin.settings.supervisorEscalationTitle')}</div>
           <div className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.supervisorEscalationDesc')}</div>
-          <div className="flex gap-2 flex-wrap">
-            {[5, 7, 10, 15, 20, 30].map(m => (
-              <button key={m}
-                onClick={() => updateEscalation({ supervisorEscalationMinutes: m })}
-                className="px-3 py-1.5 rounded-lg text-sm transition-all"
-                style={{
-                  background: (escConfig?.supervisorEscalationMinutes ?? 10) === m ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${(escConfig?.supervisorEscalationMinutes ?? 10) === m ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                  color: (escConfig?.supervisorEscalationMinutes ?? 10) === m ? '#f59e0b' : 'var(--color-text-secondary)',
-                }}>
-                {m} {t('common.minutes')}
-              </button>
-            ))}
-          </div>
+          <MinutesInput
+            value={escConfig?.supervisorEscalationMinutes ?? 10}
+            onSave={n => updateEscalation({ supervisorEscalationMinutes: n })}
+            color="#f59e0b"
+          />
         </div>
 
         <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
