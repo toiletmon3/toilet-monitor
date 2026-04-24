@@ -88,9 +88,14 @@ export default function IOSInstallBanner({ userId, orgId }: Props) {
             </button>
           </div>
 
-          <ol className="px-5 pb-2 flex flex-col gap-1" style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>
+          <ol className="px-5 pb-2 flex flex-col gap-1.5" style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>
             <li>1. לחץ על <strong style={{ color: '#fff' }}>⬆️ שיתוף</strong> בתחתית Safari</li>
-            <li>2. בחר <strong style={{ color: '#fff' }}>"הוסף למסך הבית"</strong></li>
+            <li>
+              2. גלול מטה ובחר <strong style={{ color: '#fff' }}>"הוסף למסך הבית"</strong>
+              <div className="mt-0.5 pr-3 leading-snug" style={{ color: '#fbbf24', fontSize: 11 }}>
+                💡 לא רואה את האפשרות? גלול עד הסוף ולחץ על <strong style={{ color: '#fff' }}>"הצג עוד"</strong> (Edit Actions / More) כדי להציג את שאר הפעולות
+              </div>
+            </li>
             <li>3. פתח <strong style={{ color: '#fff' }}>מהאייקון</strong> — לא מ-Safari</li>
             <li>4. לחץ על <strong style={{ color: '#fff' }}>"הפעל התראות"</strong> שיופיע</li>
           </ol>
