@@ -138,8 +138,10 @@ export default function SupervisorPage() {
     refetchInterval: 60_000,
   });
 
-  const [dismissedFeedbackIds, setDismissedFeedbackIds] = useState<Set<string>>(new Set());
-  const positiveFeedback = rawPositiveFeedback.filter((f: any) => !dismissedFeedbackIds.has(f.id));
+  // Persistent cutoff per supervisor — see CleanerPage for full explanation.
+  const cutoffKey = `supervisor-pos-fb-cutoff:${user.id ?? 'anon'}`;
+  const [posFbCutoff, setPosFbCutoff] = useState<number>(() => Number(localStorage.getItem(cutoffKey) ?? '0'));
+  const positiveFeedback = rawPositiveFeedback.filter((f: any) => new Date(f.reportedAt).getTime() > posFbCutoff);
 
   // Real-time updates
   useEffect(() => {
@@ -176,15 +178,13 @@ export default function SupervisorPage() {
 
   const prevOpenRef = useRef(openIncidents.length);
   useEffect(() => {
-    if (prevOpenRef.current > 0 && openIncidents.length === 0 && positiveFeedback.length > 0) {
-      setDismissedFeedbackIds(prev => {
-        const next = new Set(prev);
-        for (const f of rawPositiveFeedback) next.add(f.id);
-        return next;
-      });
+    if (!isLoading && prevOpenRef.current > 0 && openIncidents.length === 0) {
+      const now = Date.now();
+      localStorage.setItem(cutoffKey, String(now));
+      setPosFbCutoff(now);
     }
     prevOpenRef.current = openIncidents.length;
-  }, [openIncidents.length]);
+  }, [openIncidents.length, isLoading, cutoffKey]);
 
   const activeFiltersLabel = useMemo(() => {
     const parts: string[] = [];

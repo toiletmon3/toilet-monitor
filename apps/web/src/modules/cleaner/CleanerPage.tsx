@@ -138,9 +138,12 @@ export default function CleanerPage() {
     refetchInterval: 60_000,
   });
 
-  // Track which positive feedback IDs have been "seen" (dismissed when all tasks were cleared)
-  const [dismissedFeedbackIds, setDismissedFeedbackIds] = useState<Set<string>>(new Set());
-  const positiveFeedback = rawPositiveFeedback.filter((f: any) => !dismissedFeedbackIds.has(f.id));
+  // Persistent cutoff: any positive feedback reported BEFORE this timestamp is hidden.
+  // Updated to "now" each time the cleaner reaches an empty queue (= all tasks cleared).
+  // Stored per-user in localStorage so it survives PWA reloads / app backgrounding.
+  const cutoffKey = `cleaner-pos-fb-cutoff:${user.id ?? 'anon'}`;
+  const [posFbCutoff, setPosFbCutoff] = useState<number>(() => Number(localStorage.getItem(cutoffKey) ?? '0'));
+  const positiveFeedback = rawPositiveFeedback.filter((f: any) => new Date(f.reportedAt).getTime() > posFbCutoff);
 
   // Real-time updates
   useEffect(() => {
@@ -175,19 +178,18 @@ export default function CleanerPage() {
 
   const openIncidents = data?.open ?? [];
 
-  // When all tasks are cleared, dismiss any currently-visible positive feedback
-  // so it won't reappear when new tasks arrive.
+  // Whenever the open queue empties, push the positive-feedback cutoff to "now".
+  // Hide all current feedback and ensure only feedback reported AFTER this moment
+  // will appear in future task batches. Persisted across reloads via localStorage.
   const prevOpenRef = useRef(openIncidents.length);
   useEffect(() => {
-    if (prevOpenRef.current > 0 && openIncidents.length === 0 && positiveFeedback.length > 0) {
-      setDismissedFeedbackIds(prev => {
-        const next = new Set(prev);
-        for (const f of rawPositiveFeedback) next.add(f.id);
-        return next;
-      });
+    if (!isLoading && prevOpenRef.current > 0 && openIncidents.length === 0) {
+      const now = Date.now();
+      localStorage.setItem(cutoffKey, String(now));
+      setPosFbCutoff(now);
     }
     prevOpenRef.current = openIncidents.length;
-  }, [openIncidents.length]);
+  }, [openIncidents.length, isLoading, cutoffKey]);
 
   const activeFiltersLabel = useMemo(() => {
     const parts: string[] = [];
