@@ -59,8 +59,14 @@ export default function KioskPageNeonPro() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('online');
   const [pendingCount, setPendingCount] = useState(0);
   const [showCleanerMode, setShowCleanerMode] = useState(false);
-  const [stats, setStats] = useState<{ weeklyReports: number; avgResponseMinutes: number | null } | null>(null);
+  const [stats, setStats] = useState<{ weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null } | null>(null);
+  const [statsView, setStatsView] = useState<'week' | 'today'>('week');
   const lang = i18n.language as 'he' | 'en';
+
+  useEffect(() => {
+    const id = setInterval(() => setStatsView(v => (v === 'week' ? 'today' : 'week')), 10_000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     async function init() {
@@ -157,6 +163,7 @@ export default function KioskPageNeonPro() {
       setPendingCount(count);
     }
     setConfirmed(issueCode);
+    setStats(s => s ? { ...s, weeklyReports: s.weeklyReports + 1, dailyReports: s.dailyReports + 1 } : s);
     setTimeout(() => setConfirmed(null), 5000);
   }, [deviceInfo, issueTypes]);
 
@@ -257,15 +264,21 @@ export default function KioskPageNeonPro() {
         {stats && (
           <div className="flex gap-6 justify-center flex-wrap">
             <div
+              key={statsView}
               className="flex items-center gap-2 px-4 py-1.5 rounded-full"
               style={{
                 color: NEON,
                 border: `1px solid rgba(124,246,232,0.4)`,
                 boxShadow: `0 0 10px rgba(124,246,232,0.2), inset 0 0 8px rgba(124,246,232,0.05)`,
                 fontSize: 'clamp(0.95rem, 1.4vw, 1.1rem)',
+                animation: 'kioskStatFade 0.5s ease',
               }}
             >
-              <span>{stats.weeklyReports} {t('kiosk.weeklyUsers')}</span>
+              <span>
+                {statsView === 'week'
+                  ? `${stats.weeklyReports} ${t('kiosk.weeklyUsers')}`
+                  : `${stats.dailyReports} ${t('kiosk.dailyUsers')}`}
+              </span>
               <Clock className="w-4 h-4" strokeWidth={2} style={{ filter: `drop-shadow(0 0 4px ${NEON})` }} />
             </div>
             {stats.avgResponseMinutes !== null && (

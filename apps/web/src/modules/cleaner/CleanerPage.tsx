@@ -62,7 +62,7 @@ function useClock() {
 function timeAgo(date: string, lang: string) {
   const diff = Math.floor((Date.now() - new Date(date).getTime()) / 60000);
   if (diff < 1) return lang === 'he' ? 'עכשיו' : 'just now';
-  if (diff < 60) return lang === 'he' ? `לפני ${diff} דק'` : `${diff}m ago`;
+  if (diff < 60) return lang === 'he' ? `לפני ${diff} דקות` : `${diff}m ago`;
   const h = Math.floor(diff / 60);
   return lang === 'he' ? `לפני ${h} שע'` : `${h}h ago`;
 }

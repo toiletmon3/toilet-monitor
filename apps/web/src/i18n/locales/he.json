@@ -2,6 +2,7 @@
   "kiosk": {
     "title": "!תודה על העזרה",
     "weeklyUsers": "משתמשים השבוע",
+    "dailyUsers": "משתמשים היום",
     "avgResponse": "זמן תגובה ממוצע",
     "minutes": "דקות",
     "positiveFeedback": "עבודה טובה / משוב חיובי",
@@ -144,7 +145,7 @@
       "deleteConfirmLabel": "מחק",
       "deleteAllRequireType": "מחק הכל",
       "deletedCount": "נמחקו {{count}} דיווחים",
-      "agoMinutes": "לפני {{n}} דק'",
+      "agoMinutes": "לפני {{n}} דקות",
       "agoHours": "לפני {{n}} שע'",
       "agoDays": "לפני {{n}} ימים",
       "actionReported": "דווח",
@@ -280,7 +281,7 @@
       "mismatchTitle": "התראת אי-התאמה",
       "mismatchDesc": "עובדים שדיווחו כניסה אך לא ביצעו פעולות ניקוי",
       "mismatchEmpty": "אין התראות כרגע — כל העובדים תקינים",
-      "checkedInAgo": "דיווח כניסה לפני {{n}} דק'"
+      "checkedInAgo": "דיווח כניסה לפני {{n}} דקות"
     },
     "kiosk": {
       "title": "טמפלטים לקיוסק",
@@ -391,7 +392,7 @@
     "cancel": "ביטול",
     "delete": "מחק",
     "edit": "ערוך",
-    "minutes": "דק'",
+    "minutes": "דקות",
     "hours": "שעות",
     "days": "ימים",
     "updated": "עודכן",

@@ -2,8 +2,9 @@
   "kiosk": {
     "title": "Thank you for your help!",
     "weeklyUsers": "Reports this week",
+    "dailyUsers": "Reports today",
     "avgResponse": "Avg response time",
-    "minutes": "min",
+    "minutes": "minutes",
     "positiveFeedback": "Great job / Positive feedback",
     "buttons": {
       "toilet_paper": "Toilet Paper",

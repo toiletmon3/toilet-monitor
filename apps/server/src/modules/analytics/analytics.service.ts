@@ -250,10 +250,15 @@ export class AnalyticsService {
 
   async getKioskStats(restroomId: string) {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-    const [weeklyCount, resolvedWithTimes] = await Promise.all([
+    const [weeklyCount, dailyCount, resolvedWithTimes] = await Promise.all([
       this.prisma.incident.count({
         where: { restroomId, reportedAt: { gte: weekAgo } },
+      }),
+      this.prisma.incident.count({
+        where: { restroomId, reportedAt: { gte: todayStart } },
       }),
       this.prisma.incident.findMany({
         where: {
@@ -274,6 +279,7 @@ export class AnalyticsService {
 
     return {
       weeklyReports: weeklyCount,
+      dailyReports: dailyCount,
       avgResponseMinutes: avgResponseMinutes !== null ? Math.round(avgResponseMinutes) : null,
     };
   }

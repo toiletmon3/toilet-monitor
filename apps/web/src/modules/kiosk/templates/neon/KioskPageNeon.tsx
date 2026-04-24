@@ -62,8 +62,14 @@ export default function KioskPageNeon() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('online');
   const [pendingCount, setPendingCount] = useState(0);
   const [showCleanerMode, setShowCleanerMode] = useState(false);
-  const [stats, setStats] = useState<{ weeklyReports: number; avgResponseMinutes: number | null } | null>(null);
+  const [stats, setStats] = useState<{ weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null } | null>(null);
+  const [statsView, setStatsView] = useState<'week' | 'today'>('week');
   const lang = i18n.language as 'he' | 'en';
+
+  useEffect(() => {
+    const id = setInterval(() => setStatsView(v => (v === 'week' ? 'today' : 'week')), 10_000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     async function init() {
@@ -160,6 +166,7 @@ export default function KioskPageNeon() {
       setPendingCount(count);
     }
     setConfirmed(issueCode);
+    setStats(s => s ? { ...s, weeklyReports: s.weeklyReports + 1, dailyReports: s.dailyReports + 1 } : s);
     setTimeout(() => setConfirmed(null), 5000);
   }, [deviceInfo, issueTypes]);
 
@@ -241,9 +248,13 @@ export default function KioskPageNeon() {
         </h1>
         {stats && (
           <div className="flex gap-8 flex-wrap">
-            <div className="flex items-center gap-3">
+            <div key={statsView} className="flex items-center gap-3" style={{ animation: 'kioskStatFade 0.5s ease' }}>
               <Clock className="w-6 h-6" strokeWidth={2.5} style={{ color: '#00E5FF', filter: 'drop-shadow(0 0 6px rgba(0,229,255,0.6))' }} />
-              <span className="text-white text-lg">{stats.weeklyReports} {t('kiosk.weeklyUsers')}</span>
+              <span className="text-white text-lg">
+                {statsView === 'week'
+                  ? `${stats.weeklyReports} ${t('kiosk.weeklyUsers')}`
+                  : `${stats.dailyReports} ${t('kiosk.dailyUsers')}`}
+              </span>
             </div>
             {stats.avgResponseMinutes !== null && (
               <div className="flex items-center gap-3">

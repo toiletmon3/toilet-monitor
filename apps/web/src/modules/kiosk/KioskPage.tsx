@@ -61,8 +61,14 @@ export default function KioskPage() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('online');
   const [pendingCount, setPendingCount] = useState(0);
   const [showCleanerMode, setShowCleanerMode] = useState(false);
-  const [stats, setStats] = useState<{ weeklyReports: number; avgResponseMinutes: number | null } | null>(null);
+  const [stats, setStats] = useState<{ weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null } | null>(null);
+  const [statsView, setStatsView] = useState<'week' | 'today'>('week');
   const lang = i18n.language as 'he' | 'en';
+
+  useEffect(() => {
+    const id = setInterval(() => setStatsView(v => (v === 'week' ? 'today' : 'week')), 10_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Load device info and issue types
   useEffect(() => {
@@ -208,6 +214,7 @@ export default function KioskPage() {
     }
 
     setConfirmed(issueCode);
+    setStats(s => s ? { ...s, weeklyReports: s.weeklyReports + 1, dailyReports: s.dailyReports + 1 } : s);
     setTimeout(() => setConfirmed(null), 5000);
   }, [deviceInfo, issueTypes]);
 
@@ -304,9 +311,17 @@ export default function KioskPage() {
 
         {stats && (
           <div className="flex gap-4 text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            <div className="flex items-center gap-1">
+            <div
+              key={statsView}
+              className="flex items-center gap-1"
+              style={{ animation: 'kioskStatFade 0.5s ease' }}
+            >
               <span style={{ color: 'rgba(0,229,204,0.6)' }}>✦</span>
-              <span>{stats.weeklyReports} {t('kiosk.weeklyUsers')}</span>
+              <span>
+                {statsView === 'week'
+                  ? `${stats.weeklyReports} ${t('kiosk.weeklyUsers')}`
+                  : `${stats.dailyReports} ${t('kiosk.dailyUsers')}`}
+              </span>
             </div>
             {stats.avgResponseMinutes !== null && (
               <div className="flex items-center gap-1">
