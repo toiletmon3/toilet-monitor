@@ -28,16 +28,14 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Two-track reminder system:
+   * Two-track reminder system — both tracks count from incident creation
+   * (reportedAt) and run independently:
    *
    * Track 1 — Cleaner reminders:
    *   At t = cleanerInterval * 1, cleanerInterval * 2, … → push to CLEANER
    *
    * Track 2 — Supervisor escalation:
-   *   Starts only after the cleaner has received 2 total notifications
-   *   (the initial + 1 reminder). From that point:
-   *   At t = cleanerInterval + supervisorInterval * 1,
-   *          cleanerInterval + supervisorInterval * 2, … → push to SHIFT_SUPERVISOR
+   *   At t = supervisorInterval * 1, supervisorInterval * 2, … → push to SHIFT_SUPERVISOR
    */
   private async runEscalation() {
     try {
@@ -105,11 +103,9 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
           }
 
           // ── Supervisor escalation track ──
-          // Starts after cleaner got 2 total notifications (initial + 1 reminder)
-          const cleanerTotalNotifications = 1 + cleanerReminders; // 1 = initial on creation
-          if (supervisorInterval > 0 && cleanerTotalNotifications >= 2) {
-            const supervisorStartsAt = cleanerInterval; // = time of 1st cleaner reminder
-            const nextSupervisorAt = supervisorStartsAt + supervisorInterval * (supervisorReminders + 1);
+          // Counts from incident creation, independent of the cleaner track.
+          if (supervisorInterval > 0) {
+            const nextSupervisorAt = supervisorInterval * (supervisorReminders + 1);
             if (minutesOpen >= nextSupervisorAt) {
               const round = supervisorReminders + 1;
               await this.prisma.incidentAction.create({
