@@ -92,12 +92,11 @@ export class AnalyticsService {
     };
   }
 
-  async getIssueFrequency(orgId: string, days = 30) {
-    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  async getIssueFrequency(orgId: string, from: Date, to: Date = new Date()) {
     const incidents = await this.prisma.incident.findMany({
       where: {
         restroom: { floor: { building: { orgId } } },
-        reportedAt: { gte: from },
+        reportedAt: { gte: from, lte: to },
       },
       select: { issueTypeId: true, issueType: true, reportedAt: true, resolvedAt: true },
     });
@@ -124,12 +123,11 @@ export class AnalyticsService {
     })).sort((a, b) => b.count - a.count);
   }
 
-  async getHourlyStats(orgId: string, days = 7) {
-    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  async getHourlyStats(orgId: string, from: Date, to: Date = new Date()) {
     const incidents = await this.prisma.incident.findMany({
       where: {
         restroom: { floor: { building: { orgId } } },
-        reportedAt: { gte: from },
+        reportedAt: { gte: from, lte: to },
       },
       select: { reportedAt: true },
     });
@@ -141,27 +139,25 @@ export class AnalyticsService {
     return hours;
   }
 
-  async getFloorHeatmap(orgId: string, days = 30) {
-    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  async getFloorHeatmap(orgId: string, from: Date, to: Date = new Date()) {
     return this.prisma.incident.groupBy({
       by: ['restroomId'],
       where: {
         restroom: { floor: { building: { orgId } } },
-        reportedAt: { gte: from },
+        reportedAt: { gte: from, lte: to },
       },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
     });
   }
 
-  async getSlaStats(orgId: string, days = 30, targetMinutes = 15) {
-    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  async getSlaStats(orgId: string, from: Date, to: Date = new Date(), targetMinutes = 15) {
     const resolved = await this.prisma.incident.findMany({
       where: {
         restroom: { floor: { building: { orgId } } },
         status: 'RESOLVED',
         resolvedAt: { not: null },
-        reportedAt: { gte: from },
+        reportedAt: { gte: from, lte: to },
       },
       select: { reportedAt: true, resolvedAt: true, acknowledgedAt: true },
     });
@@ -188,10 +184,9 @@ export class AnalyticsService {
     };
   }
 
-  async getDayOfWeekStats(orgId: string, days = 30) {
-    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  async getDayOfWeekStats(orgId: string, from: Date, to: Date = new Date()) {
     const incidents = await this.prisma.incident.findMany({
-      where: { restroom: { floor: { building: { orgId } } }, reportedAt: { gte: from } },
+      where: { restroom: { floor: { building: { orgId } } }, reportedAt: { gte: from, lte: to } },
       select: { reportedAt: true },
     });
 
@@ -202,10 +197,9 @@ export class AnalyticsService {
     return counts;
   }
 
-  async getPatterns(orgId: string, days = 30) {
-    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  async getPatterns(orgId: string, from: Date, to: Date = new Date()) {
     const incidents = await this.prisma.incident.findMany({
-      where: { restroom: { floor: { building: { orgId } } }, reportedAt: { gte: from } },
+      where: { restroom: { floor: { building: { orgId } } }, reportedAt: { gte: from, lte: to } },
       select: {
         issueTypeId: true,
         issueType: { select: { nameI18n: true, icon: true } },
@@ -284,18 +278,17 @@ export class AnalyticsService {
     };
   }
 
-  async getCleanerPerformance(orgId: string, days = 30) {
-    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  async getCleanerPerformance(orgId: string, from: Date, to: Date = new Date()) {
     const cleaners = await this.prisma.user.findMany({
       where: { orgId, role: 'CLEANER', isActive: true },
       select: {
         id: true, name: true, idNumber: true,
         incidentActions: {
-          where: { actionType: 'RESOLVED', performedAt: { gte: from } },
+          where: { actionType: 'RESOLVED', performedAt: { gte: from, lte: to } },
           select: { performedAt: true },
         },
         assignedIncidents: {
-          where: { reportedAt: { gte: from } },
+          where: { reportedAt: { gte: from, lte: to } },
           select: { reportedAt: true, resolvedAt: true, status: true },
         },
       },
