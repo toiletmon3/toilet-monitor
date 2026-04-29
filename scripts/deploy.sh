@@ -233,4 +233,14 @@ if [ -f "$WATCHDOG" ]; then
   echo "Nginx watchdog cron installed (every 5 min)"
 fi
 
+# --- Install daily DB backup cron (runs at 03:00) ---
+BACKUP_SCRIPT="/opt/toilet-monitor/scripts/backup.sh"
+if [ -f "$BACKUP_SCRIPT" ]; then
+  chmod +x "$BACKUP_SCRIPT"
+  mkdir -p /var/log/toilet
+  BACKUP_CRON="0 3 * * * $BACKUP_SCRIPT >> /var/log/toilet/backup.log 2>&1"
+  (crontab -l 2>/dev/null | grep -v "scripts/backup.sh" ; echo "$BACKUP_CRON") | crontab -
+  echo "Daily DB backup cron installed (03:00)"
+fi
+
 echo "Deploy complete"

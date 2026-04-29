@@ -9,7 +9,7 @@
 ## 1️⃣ GitHub (הקוד + CI/CD)
 
 ### מה יש שם
-- `OriAha/toilet-monitor` — כל הקוד (private)
+- `toiletmon3/toilet-monitor` — כל הקוד (company repo)
 - GitHub Actions — CI/CD workflow
 - Secrets: `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`
 
@@ -24,7 +24,7 @@
 ### פעולות חשובות
 ```bash
 # ליצור backup מלא של ה-repo (לא רק הקוד — גם issues, wiki, releases)
-gh repo clone OriAha/toilet-monitor
+gh repo clone toiletmon3/toilet-monitor
 # או שימוש ב-"Repository migration" בהגדרות GitHub
 ```
 
@@ -131,38 +131,63 @@ scp root@188.166.163.75:/opt/toilet-monitor/.env.production ~/Desktop/toilet-env
 - כל התקלות ומשובים היסטוריים
 - כל ה-check-in/check-out
 
-### גיבוי ידני עכשיו (חד-פעמי)
+### 🔄 גיבוי אוטומטי (מותקן אוטומטית!)
+
+המערכת כוללת **שלוש שכבות גיבוי** שפועלות אוטומטית:
+
+| שכבה | מה | מתי | שמירה | מיקום |
+|------|-----|------|-------|-------|
+| **Pre-deploy** | `deploy.sh` מגבה לפני כל migration | כל deploy | 20 אחרונים | `/var/log/toilet/backups/pre_deploy_*.sql` |
+| **Daily cron** | `scripts/backup.sh` via crontab | כל יום 03:00 | 30 יום | `/var/log/toilet/backups/daily_*.sql.gz` |
+| **Docker sidecar** | `docker-compose.databases.yml` backup service | כל 24 שעות | 30 יום | `./backups/backup_*.sql.gz` |
+
+ה-cron מותקן אוטומטית בכל deploy. אין צורך בהגדרה ידנית.
+
+### גיבוי ידני (חד-פעמי)
 ```bash
 ssh root@188.166.163.75
 
-# dump מלא של ה-DB
-docker exec toilet-postgres pg_dump -U postgres toilet_monitor > /root/backups/toilet-db-$(date +%Y%m%d).sql
+# הרצת הסקריפט ידנית
+bash /opt/toilet-monitor/scripts/backup.sh
+
+# או dump ישיר
+docker exec toilet_postgres pg_dump -U postgres toilet_monitor > /root/toilet-db-$(date +%Y%m%d).sql
 
 # הורד למחשב שלך
 exit
-scp root@188.166.163.75:/root/backups/toilet-db-*.sql ~/Desktop/
+scp root@188.166.163.75:/var/log/toilet/backups/daily_*.sql.gz ~/Desktop/
 ```
-
-### גיבוי אוטומטי (מומלץ!)
-
-הוסף cron job בשרת שיגבה את ה-DB כל יום:
-
-```bash
-ssh root@188.166.163.75
-
-mkdir -p /root/backups
-crontab -e
-
-# הוסף את השורה הזו
-0 3 * * * docker exec toilet-postgres pg_dump -U postgres toilet_monitor > /root/backups/toilet-db-$(date +\%Y\%m\%d).sql && find /root/backups -name "toilet-db-*.sql" -mtime +30 -delete
-```
-
-זה יריץ גיבוי כל יום ב-03:00 ושומר 30 ימים אחורה.
 
 ### שחזור מגיבוי
+
+**שיטה מומלצת — סקריפט אינטראקטיבי:**
 ```bash
-# בשרת (או במחשב מקומי)
-docker exec -i toilet-postgres psql -U postgres -d toilet_monitor < toilet-db-20260418.sql
+ssh root@188.166.163.75
+cd /opt/toilet-monitor
+bash scripts/backup-restore.sh
+```
+הסקריפט מציג רשימת גיבויים, מבצע גיבוי בטיחותי של המצב הנוכחי לפני השחזור, ומשחזר.
+
+**שחזור ישיר מקובץ:**
+```bash
+# קובץ דחוס
+gunzip -c /var/log/toilet/backups/daily_20260429_030000.sql.gz | \
+  docker exec -i toilet_postgres psql -U postgres -d toilet_monitor
+
+# קובץ רגיל
+docker exec -i toilet_postgres psql -U postgres -d toilet_monitor < backup.sql
+```
+
+### בדיקת תקינות הגיבויים
+```bash
+# הצגת כל הגיבויים + גודל
+ls -lh /var/log/toilet/backups/
+
+# בדיקת הלוג
+tail -20 /var/log/toilet/backup.log
+
+# בדיקה שה-cron מותקן
+crontab -l | grep backup
 ```
 
 ---
@@ -189,15 +214,24 @@ docker exec -i toilet-postgres psql -U postgres -d toilet_monitor < toilet-db-20
 
 ## 📋 Checklist מהיר — עשה עכשיו
 
+### אבטחת חשבונות
 - [ ] הפעל **2FA ב-GitHub** + שמור recovery codes
 - [ ] הפעל **2FA ב-DigitalOcean** + שמור recovery codes
-- [ ] צור **snapshot ראשון** של ה-Droplet (`toilet-v1.0.0-stable`)
-- [ ] שלוף את `.env.production` מהשרת ושמור במנהל סיסמאות
 - [ ] שמור את **DuckDNS token** במנהל סיסמאות
 - [ ] שמור עותק של **SSH private key** במנהל סיסמאות
-- [ ] הרץ **גיבוי DB ידני** אחד ושמור אצלך במחשב
-- [ ] הוסף **cron לגיבוי DB אוטומטי** (3 דקות)
+
+### גיבוי שרת
+- [ ] שלוף את `.env.production` מהשרת ושמור במנהל סיסמאות
+- [ ] צור **snapshot ראשון** של ה-Droplet (`toilet-v1.0.0-stable`)
 - [ ] שקול הפעלת **Weekly Backups** ב-DigitalOcean (~$2.4/חודש)
+
+### גיבוי מסד נתונים (✅ רובו אוטומטי!)
+- [x] ~~הוסף cron לגיבוי DB אוטומטי~~ — **מותקן אוטומטית ע"י `deploy.sh`**
+- [x] ~~גיבוי לפני כל deploy~~ — **מובנה ב-`deploy.sh`**
+- [x] ~~Docker backup sidecar~~ — **מובנה ב-`docker-compose.databases.yml`**
+- [ ] הרץ `bash scripts/backup.sh` ידנית פעם אחת לוודא שהכל עובד
+- [ ] הורד גיבוי אחד למחשב שלך: `scp root@188.166.163.75:/var/log/toilet/backups/daily_*.sql.gz ~/Desktop/`
+- [ ] בדוק שה-cron מותקן: `ssh root@188.166.163.75 crontab -l | grep backup`
 
 ---
 
@@ -209,13 +243,14 @@ docker exec -i toilet-postgres psql -U postgres -d toilet_monitor < toilet-db-20
 2. אם משתמש ב-snapshot: הכל עובד מיד, רק צריך לעדכן IP ב-DuckDNS
 3. אם בונה מאפס:
    - `ssh` לשרת החדש
-   - `git clone https://github.com/OriAha/toilet-monitor`
+   - `git clone https://github.com/toiletmon3/toilet-monitor`
    - העתק את `.env.production` למיקום `/opt/toilet-monitor/`
    - הרץ `bash scripts/server-setup.sh`
-   - שחזר DB: `docker exec -i toilet-postgres psql -U postgres -d toilet_monitor < backup.sql`
+   - שחזר DB: `bash scripts/backup-restore.sh /path/to/backup.sql.gz`
    - עדכן את IP ב-DuckDNS (עם הטוקן)
    - רץ certbot להוצאת SSL חדש
    - עדכן GitHub Secret `SSH_HOST` לכתובת החדשה
+   - הרץ deploy: `bash scripts/deploy.sh` (מתקין cron גיבוי אוטומטית)
 
 סה"כ — מ-zero לשרת עובד: כ-30 דקות עם כל הסודות בידיים.
 
@@ -225,7 +260,7 @@ docker exec -i toilet-postgres psql -U postgres -d toilet_monitor < toilet-db-20
 
 | שירות | URL | חיוב |
 |-------|-----|------|
-| [GitHub](https://github.com/OriAha/toilet-monitor) | Repo פרטי | חינם |
+| [GitHub](https://github.com/toiletmon3/toilet-monitor) | Company repo | חינם |
 | [DigitalOcean](https://cloud.digitalocean.com/droplets) | Droplet | ~$12/חודש |
 | [DuckDNS](https://www.duckdns.org) | Dynamic DNS | חינם |
 | [Let's Encrypt](https://letsencrypt.org) | SSL | חינם |

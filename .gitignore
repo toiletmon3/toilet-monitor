@@ -39,6 +39,9 @@ pids/
 postgres_data/
 redis_data/
 
+# Database backups (created by scripts/backup.sh and docker-compose sidecar)
+backups/
+
 # IDE
 .vscode/
 .idea/

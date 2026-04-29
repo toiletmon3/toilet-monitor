@@ -34,6 +34,33 @@ services:
       timeout: 5s
       retries: 5
 
+  # Automated daily backup (runs pg_dump every 24h, keeps 30 days)
+  backup:
+    image: postgres:16-alpine
+    container_name: toilet_backup
+    restart: always
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-Toilet2026!}
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      sh -c "while true; do
+        TIMESTAMP=$$(date +%Y%m%d_%H%M%S);
+        pg_dump -h postgres -U postgres toilet_monitor > /backups/backup_$$TIMESTAMP.sql 2>&1;
+        if [ $$? -eq 0 ] && [ -s /backups/backup_$$TIMESTAMP.sql ]; then
+          gzip /backups/backup_$$TIMESTAMP.sql;
+          echo \"Backup OK: $$TIMESTAMP\";
+        else
+          rm -f /backups/backup_$$TIMESTAMP.sql;
+          echo \"Backup FAILED: $$TIMESTAMP\";
+        fi;
+        find /backups -name 'backup_*.sql.gz' -mtime +30 -delete;
+        sleep 86400;
+      done"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   redis_data:
