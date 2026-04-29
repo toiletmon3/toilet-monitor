@@ -21,29 +21,28 @@ apt install -y nginx
 mkdir -p /var/www/toilet
 mkdir -p /var/log/toilet
 
-# Configure nginx
+# Configure nginx (HTTP-only for initial setup; deploy.sh adds SSL after certbot)
 cat > /etc/nginx/sites-available/toilet << 'EOF'
 server {
     listen 80;
-    server_name _;
+    server_name toiletcleanpro.duckdns.org;
 
     root /var/www/toilet;
     index index.html;
 
-    # Serve React app
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # Proxy API to NestJS
     location /api/ {
         proxy_pass http://localhost:3001;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Proxy WebSocket
     location /socket.io/ {
         proxy_pass http://localhost:3001;
         proxy_http_version 1.1;
@@ -52,7 +51,6 @@ server {
         proxy_set_header Host $host;
     }
 
-    # Cache static assets
     location ~* \.(js|css|png|svg|ico|woff2)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";

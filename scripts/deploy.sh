@@ -58,8 +58,61 @@ NGINX_ROOT="/var/www/toilet"
 
 mkdir -p "$NGINX_ROOT"
 
-# Write (or overwrite) the site config on every deploy
-cat > "$NGINX_CONF_DIR/toilet" << 'NGINXEOF'
+# Detect SSL cert paths (Let's Encrypt via certbot)
+SSL_CERT="/etc/letsencrypt/live/toiletcleanpro.duckdns.org/fullchain.pem"
+SSL_KEY="/etc/letsencrypt/live/toiletcleanpro.duckdns.org/privkey.pem"
+
+if [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
+  echo "SSL certs found — writing HTTPS nginx config"
+  cat > "$NGINX_CONF_DIR/toilet" << NGINXEOF
+server {
+    listen 80;
+    server_name toiletcleanpro.duckdns.org;
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name toiletcleanpro.duckdns.org;
+
+    ssl_certificate $SSL_CERT;
+    ssl_certificate_key $SSL_KEY;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    root /var/www/toilet;
+    index index.html;
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /socket.io/ {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+    }
+
+    location ~* \.(js|css|png|svg|ico|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+NGINXEOF
+else
+  echo "No SSL certs found — writing HTTP-only nginx config"
+  cat > "$NGINX_CONF_DIR/toilet" << 'NGINXEOF'
 server {
     listen 80;
     server_name _;
@@ -76,6 +129,8 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     location /socket.io/ {
@@ -92,10 +147,12 @@ server {
     }
 }
 NGINXEOF
+fi
 
-# Enable site, disable default (idempotent)
+# Enable site, disable ALL default configs (idempotent)
 ln -sf "$NGINX_CONF_DIR/toilet" "$NGINX_ENABLED_DIR/toilet"
 rm -f "$NGINX_ENABLED_DIR/default"
+rm -f /etc/nginx/conf.d/default.conf
 
 nginx -t
 
