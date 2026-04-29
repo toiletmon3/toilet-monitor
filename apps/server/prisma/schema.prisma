@@ -234,6 +234,28 @@ model IncidentAction {
 }
 
 // =============================================
+// STATISTICS ARCHIVE (preserves data after cleanup)
+// =============================================
+
+model MonthlyStats {
+  id             String   @id @default(uuid())
+  orgId          String
+  buildingId     String   @default("_all")
+  restroomId     String   @default("_all")
+  issueTypeId    String   @default("_all")
+  month          DateTime // first day of the month (e.g. 2026-04-01)
+  totalIncidents Int      @default(0)
+  resolvedCount  Int      @default(0)
+  avgResolutionMinutes Float @default(0)
+  totalArrivals  Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@unique([orgId, buildingId, restroomId, issueTypeId, month])
+  @@index([orgId, month])
+  @@map("monthly_stats")
+}
+
+// =============================================
 // ENUMS
 // =============================================
 

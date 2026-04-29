@@ -107,9 +107,11 @@ Smart restroom monitoring system with 4 interfaces: kiosk tablet, worker app, sh
 2. Source `/opt/toilet-monitor/.env.production`
 3. Inject VAPID keys from CI env if not already in .env.production
 4. `pnpm install --frozen-lockfile`
-5. `prisma db push --accept-data-loss` (NOT migrate deploy)
-6. `pnpm --filter=@toilet/server build` → `pm2 restart toilet-server --update-env`
-7. `pnpm --filter=@toilet/web build` → copy dist to nginx root → reload nginx
+5. Pre-migration DB backup (`pg_dump` to `/var/log/toilet/backups/`)
+6. `prisma migrate deploy` (safe — refuses destructive changes)
+7. `pnpm --filter=@toilet/server build` → `pm2 restart toilet-server --update-env`
+8. `pnpm --filter=@toilet/web build` → copy dist to nginx root → reload nginx
+9. Install daily backup cron (03:00)
 
 ---
 

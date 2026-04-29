@@ -11,12 +11,23 @@ export class AnalyticsService {
       : { floor: { building: { orgId } } };
     const incidentWhere = { restroom: buildingFilter };
 
-    const [total, resolved, open, inProgress] = await Promise.all([
+    const archiveWhere = buildingId
+      ? { orgId, buildingId }
+      : { orgId };
+
+    const [total, resolved, open, inProgress, archivedStats] = await Promise.all([
       this.prisma.incident.count({ where: incidentWhere }),
       this.prisma.incident.count({ where: { ...incidentWhere, status: 'RESOLVED' } }),
       this.prisma.incident.count({ where: { ...incidentWhere, status: 'OPEN' } }),
       this.prisma.incident.count({ where: { ...incidentWhere, status: 'IN_PROGRESS' } }),
+      this.prisma.monthlyStats.aggregate({
+        where: { ...archiveWhere, issueTypeId: { not: '_all' } },
+        _sum: { totalIncidents: true, resolvedCount: true },
+      }),
     ]);
+
+    const archivedTotal = archivedStats._sum.totalIncidents ?? 0;
+    const archivedResolved = archivedStats._sum.resolvedCount ?? 0;
 
     const resolved30d = await this.prisma.incident.findMany({
       where: {
@@ -38,7 +49,6 @@ export class AnalyticsService {
     todayStart.setHours(0, 0, 0, 0);
 
     const [activeCleaners, onlineDevices, offlineDevicesList] = await Promise.all([
-      // Count cleaners currently on shift (checked in today, not yet checked out)
       this.prisma.cleanerArrival.count({
         where: {
           user: { orgId },
@@ -80,8 +90,8 @@ export class AnalyticsService {
     }));
 
     return {
-      totalIncidents: total,
-      resolvedIncidents: resolved,
+      totalIncidents: total + archivedTotal,
+      resolvedIncidents: resolved + archivedResolved,
       openIncidents: open,
       inProgressIncidents: inProgress,
       avgResolutionMinutes: Math.round(avgMinutes),
@@ -282,6 +292,80 @@ export class AnalyticsService {
       dailyReports: dailyCount,
       avgResponseMinutes: avgResponseMinutes !== null ? Math.round(avgResponseMinutes) : null,
     };
+  }
+
+  async getHistoricalTrends(orgId: string, from: Date, to: Date = new Date(), buildingId?: string) {
+    const where: any = { orgId, month: { gte: from, lte: to }, issueTypeId: { not: '_all' } };
+    if (buildingId) where.buildingId = buildingId;
+
+    const archived = await this.prisma.monthlyStats.findMany({
+      where,
+      orderBy: { month: 'asc' },
+    });
+
+    // Group by month across all dimensions
+    const monthMap = new Map<string, {
+      month: string;
+      totalIncidents: number;
+      resolvedCount: number;
+      avgResolutionMinutes: number;
+      totalArrivals: number;
+      resolvedMinutesWeighted: number;
+    }>();
+
+    for (const row of archived) {
+      const key = row.month.toISOString().slice(0, 7);
+      const existing = monthMap.get(key) ?? {
+        month: key,
+        totalIncidents: 0,
+        resolvedCount: 0,
+        avgResolutionMinutes: 0,
+        totalArrivals: 0,
+        resolvedMinutesWeighted: 0,
+      };
+      existing.totalIncidents += row.totalIncidents;
+      existing.resolvedCount += row.resolvedCount;
+      existing.resolvedMinutesWeighted += row.avgResolutionMinutes * row.resolvedCount;
+      existing.totalArrivals += row.totalArrivals;
+      monthMap.set(key, existing);
+    }
+
+    // Also include live data for the current period
+    const liveIncidents = await this.prisma.incident.findMany({
+      where: {
+        restroom: { floor: { building: buildingId ? { id: buildingId } : { orgId } } },
+        reportedAt: { gte: from, lte: to },
+      },
+      select: { reportedAt: true, resolvedAt: true, status: true },
+    });
+
+    for (const inc of liveIncidents) {
+      const key = `${inc.reportedAt.getFullYear()}-${String(inc.reportedAt.getMonth() + 1).padStart(2, '0')}`;
+      const existing = monthMap.get(key) ?? {
+        month: key,
+        totalIncidents: 0,
+        resolvedCount: 0,
+        avgResolutionMinutes: 0,
+        totalArrivals: 0,
+        resolvedMinutesWeighted: 0,
+      };
+      existing.totalIncidents++;
+      if (inc.status === 'RESOLVED' && inc.resolvedAt) {
+        existing.resolvedCount++;
+        existing.resolvedMinutesWeighted += (inc.resolvedAt.getTime() - inc.reportedAt.getTime()) / 60000;
+      }
+      monthMap.set(key, existing);
+    }
+
+    return Array.from(monthMap.values())
+      .map(m => ({
+        month: m.month,
+        totalIncidents: m.totalIncidents,
+        resolvedCount: m.resolvedCount,
+        avgResolutionMinutes: m.resolvedCount > 0 ? Math.round(m.resolvedMinutesWeighted / m.resolvedCount) : 0,
+        totalArrivals: m.totalArrivals,
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
   }
 
   async getCleanerPerformance(orgId: string, from: Date, to: Date = new Date()) {

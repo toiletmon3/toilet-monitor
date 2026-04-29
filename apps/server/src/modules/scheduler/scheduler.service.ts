@@ -137,12 +137,173 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Archive statistics for a given month before deleting the underlying rows.
+   * Uses upsert so re-runs are idempotent.
+   */
+  private async archiveMonthlyStats(cutoff: Date) {
+    const incidents = await this.prisma.incident.findMany({
+      where: {
+        status: 'RESOLVED',
+        reportedAt: { lt: cutoff },
+      },
+      select: {
+        restroomId: true,
+        issueTypeId: true,
+        reportedAt: true,
+        resolvedAt: true,
+        restroom: {
+          select: {
+            floor: {
+              select: {
+                buildingId: true,
+                building: { select: { orgId: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Group by org + building + restroom + issueType + month
+    const buckets = new Map<string, {
+      orgId: string;
+      buildingId: string;
+      restroomId: string;
+      issueTypeId: string;
+      month: Date;
+      total: number;
+      resolved: number;
+      totalMinutes: number;
+    }>();
+
+    for (const inc of incidents) {
+      const orgId = inc.restroom.floor.building.orgId;
+      const buildingId = inc.restroom.floor.buildingId;
+      const monthStart = new Date(inc.reportedAt.getFullYear(), inc.reportedAt.getMonth(), 1);
+      const key = `${orgId}|${buildingId}|${inc.restroomId}|${inc.issueTypeId}|${monthStart.toISOString()}`;
+
+      const bucket = buckets.get(key) ?? {
+        orgId,
+        buildingId,
+        restroomId: inc.restroomId,
+        issueTypeId: inc.issueTypeId,
+        month: monthStart,
+        total: 0,
+        resolved: 0,
+        totalMinutes: 0,
+      };
+
+      bucket.total++;
+      if (inc.resolvedAt) {
+        bucket.resolved++;
+        bucket.totalMinutes += (inc.resolvedAt.getTime() - inc.reportedAt.getTime()) / 60000;
+      }
+      buckets.set(key, bucket);
+    }
+
+    // Archive arrivals count per org + building + month
+    const arrivals = await this.prisma.cleanerArrival.findMany({
+      where: { arrivedAt: { lt: cutoff } },
+      select: {
+        arrivedAt: true,
+        buildingId: true,
+        user: { select: { orgId: true } },
+      },
+    });
+
+    const arrivalBuckets = new Map<string, { orgId: string; buildingId: string | null; month: Date; count: number }>();
+    for (const arr of arrivals) {
+      const monthStart = new Date(arr.arrivedAt.getFullYear(), arr.arrivedAt.getMonth(), 1);
+      const key = `${arr.user.orgId}|${arr.buildingId ?? 'null'}|${monthStart.toISOString()}`;
+      const bucket = arrivalBuckets.get(key) ?? {
+        orgId: arr.user.orgId,
+        buildingId: arr.buildingId,
+        month: monthStart,
+        count: 0,
+      };
+      bucket.count++;
+      arrivalBuckets.set(key, bucket);
+    }
+
+    let archived = 0;
+
+    for (const b of buckets.values()) {
+      await this.prisma.monthlyStats.upsert({
+        where: {
+          orgId_buildingId_restroomId_issueTypeId_month: {
+            orgId: b.orgId,
+            buildingId: b.buildingId,
+            restroomId: b.restroomId,
+            issueTypeId: b.issueTypeId,
+            month: b.month,
+          },
+        },
+        create: {
+          orgId: b.orgId,
+          buildingId: b.buildingId,
+          restroomId: b.restroomId,
+          issueTypeId: b.issueTypeId,
+          month: b.month,
+          totalIncidents: b.total,
+          resolvedCount: b.resolved,
+          avgResolutionMinutes: b.resolved > 0 ? b.totalMinutes / b.resolved : 0,
+          totalArrivals: 0,
+        },
+        update: {
+          totalIncidents: b.total,
+          resolvedCount: b.resolved,
+          avgResolutionMinutes: b.resolved > 0 ? b.totalMinutes / b.resolved : 0,
+        },
+      });
+      archived++;
+    }
+
+    for (const ab of arrivalBuckets.values()) {
+      await this.prisma.monthlyStats.upsert({
+        where: {
+          orgId_buildingId_restroomId_issueTypeId_month: {
+            orgId: ab.orgId,
+            buildingId: ab.buildingId ?? '_all',
+            restroomId: '_all',
+            issueTypeId: '_all',
+            month: ab.month,
+          },
+        },
+        create: {
+          orgId: ab.orgId,
+          buildingId: ab.buildingId ?? '_all',
+          restroomId: '_all',
+          issueTypeId: '_all',
+          month: ab.month,
+          totalArrivals: ab.count,
+        },
+        update: {
+          totalArrivals: ab.count,
+        },
+      });
+      archived++;
+    }
+
+    return archived;
+  }
+
   private async runCleanup() {
     try {
-      const cutoff = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000); // 60 days
+      const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // 90 days
 
+      // Archive monthly statistics BEFORE deleting any rows
+      const archived = await this.archiveMonthlyStats(cutoff);
+      if (archived > 0) {
+        this.logger.log(`Cleanup: archived ${archived} monthly stat buckets`);
+      }
+
+      // Only delete RESOLVED incidents — never delete OPEN or IN_PROGRESS
       const oldIncidents = await this.prisma.incident.findMany({
-        where: { reportedAt: { lt: cutoff } },
+        where: {
+          reportedAt: { lt: cutoff },
+          status: 'RESOLVED',
+        },
         select: { id: true },
       });
 
@@ -154,14 +315,25 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
         const { count: incidentsDeleted } = await this.prisma.incident.deleteMany({
           where: { id: { in: ids } },
         });
-        this.logger.log(`Cleanup: deleted ${incidentsDeleted} incidents + ${actionsDeleted} actions older than 60 days`);
+        this.logger.log(`Cleanup: deleted ${incidentsDeleted} resolved incidents + ${actionsDeleted} actions older than 90 days`);
+      }
+
+      // Log but don't delete OPEN/IN_PROGRESS incidents that are very old
+      const staleOpen = await this.prisma.incident.count({
+        where: {
+          reportedAt: { lt: cutoff },
+          status: { in: ['OPEN', 'IN_PROGRESS'] },
+        },
+      });
+      if (staleOpen > 0) {
+        this.logger.warn(`Cleanup: ${staleOpen} OPEN/IN_PROGRESS incidents older than 90 days still exist (not deleted)`);
       }
 
       const { count: arrivalsDeleted } = await this.prisma.cleanerArrival.deleteMany({
         where: { arrivedAt: { lt: cutoff } },
       });
       if (arrivalsDeleted > 0) {
-        this.logger.log(`Cleanup: deleted ${arrivalsDeleted} arrivals older than 60 days`);
+        this.logger.log(`Cleanup: deleted ${arrivalsDeleted} arrivals older than 90 days`);
       }
     } catch (err) {
       this.logger.error('Cleanup cron error', err);

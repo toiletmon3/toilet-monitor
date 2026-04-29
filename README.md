@@ -229,7 +229,7 @@ git push origin v1.0.11
 Deploy אוטומטי דרך GitHub Actions בכל push ל-`main`:
 
 ```
-push → GitHub Actions → SSH לשרת → git pull → prisma db push → build → pm2 restart → nginx reload
+push → GitHub Actions → SSH לשרת → git pull → pnpm install → DB backup → prisma migrate deploy → build → pm2 restart → nginx reload
 ```
 
 קובץ workflow: `.github/workflows/deploy.yml`

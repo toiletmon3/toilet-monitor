@@ -330,12 +330,82 @@ export class IncidentsService {
       where = baseWhere;
     }
 
+    // Archive stats before deleting
+    const toArchive = await this.prisma.incident.findMany({
+      where: { ...where, status: 'RESOLVED' },
+      select: {
+        restroomId: true,
+        issueTypeId: true,
+        reportedAt: true,
+        resolvedAt: true,
+        restroom: {
+          select: {
+            floor: {
+              select: {
+                buildingId: true,
+                building: { select: { orgId: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Group by month and upsert stats
+    const buckets = new Map<string, {
+      orgId: string; buildingId: string; restroomId: string;
+      issueTypeId: string; month: Date; total: number;
+      resolved: number; totalMinutes: number;
+    }>();
+
+    for (const inc of toArchive) {
+      const bOrgId = inc.restroom.floor.building.orgId;
+      const buildingId = inc.restroom.floor.buildingId;
+      const monthStart = new Date(inc.reportedAt.getFullYear(), inc.reportedAt.getMonth(), 1);
+      const key = `${bOrgId}|${buildingId}|${inc.restroomId}|${inc.issueTypeId}|${monthStart.toISOString()}`;
+      const bucket = buckets.get(key) ?? {
+        orgId: bOrgId, buildingId, restroomId: inc.restroomId,
+        issueTypeId: inc.issueTypeId, month: monthStart,
+        total: 0, resolved: 0, totalMinutes: 0,
+      };
+      bucket.total++;
+      if (inc.resolvedAt) {
+        bucket.resolved++;
+        bucket.totalMinutes += (inc.resolvedAt.getTime() - inc.reportedAt.getTime()) / 60000;
+      }
+      buckets.set(key, bucket);
+    }
+
+    for (const b of buckets.values()) {
+      await this.prisma.monthlyStats.upsert({
+        where: {
+          orgId_buildingId_restroomId_issueTypeId_month: {
+            orgId: b.orgId, buildingId: b.buildingId,
+            restroomId: b.restroomId, issueTypeId: b.issueTypeId,
+            month: b.month,
+          },
+        },
+        create: {
+          orgId: b.orgId, buildingId: b.buildingId,
+          restroomId: b.restroomId, issueTypeId: b.issueTypeId,
+          month: b.month, totalIncidents: b.total,
+          resolvedCount: b.resolved,
+          avgResolutionMinutes: b.resolved > 0 ? b.totalMinutes / b.resolved : 0,
+        },
+        update: {
+          totalIncidents: b.total,
+          resolvedCount: b.resolved,
+          avgResolutionMinutes: b.resolved > 0 ? b.totalMinutes / b.resolved : 0,
+        },
+      });
+    }
+
     // Delete actions first (FK constraint)
     const incidents = await this.prisma.incident.findMany({ where, select: { id: true } });
     const ids = incidents.map(i => i.id);
     await this.prisma.incidentAction.deleteMany({ where: { incidentId: { in: ids } } });
     const { count } = await this.prisma.incident.deleteMany({ where });
-    return { deleted: count };
+    return { deleted: count, archived: buckets.size };
   }
 
   async getPositiveFeedback(orgId: string, buildingId?: string) {

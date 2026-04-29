@@ -86,6 +86,18 @@ export class AnalyticsController {
     return this.analyticsService.getPatterns(user.orgId, r.from, r.to);
   }
 
+  @Get('trends')
+  getHistoricalTrends(
+    @CurrentUser() user: any,
+    @Query('days') days?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('buildingId') buildingId?: string,
+  ) {
+    const r = resolveRange(days, from, to, 365);
+    return this.analyticsService.getHistoricalTrends(user.orgId, r.from, r.to, buildingId);
+  }
+
   @Public()
   @Get('kiosk-stats/:restroomId')
   getKioskStats(@Param('restroomId') restroomId: string) {
