@@ -82,7 +82,19 @@ return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 
 ---
 
-## Summary — root causes of past CI failures
+### 5. Database — NEVER use `prisma db push --accept-data-loss` in production
+
+`--accept-data-loss` tells Prisma to silently DROP tables/columns when it
+detects schema drift. This **will delete all production data**.
+
+- **Production deploy** uses `prisma migrate deploy` (safe, refuses destructive ops)
+- **Dev only**: `prisma migrate dev` (creates migration files)
+- Schema changes must go through migration files in `prisma/migrations/`
+- `deploy.sh` runs a pre-migration backup automatically
+
+---
+
+## Summary — root causes of past CI/production failures
 
 | Failure | Root cause | Prevention |
 |---------|-----------|------------|
@@ -90,3 +102,5 @@ return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 | `sw.ts` ServiceWorker type errors | SW file included in DOM-lib tsconfig | Exclude all `*.sw.ts` from tsconfig.app.json |
 | `Uint8Array<ArrayBufferLike>` | TS5 strict generics, local version more lenient | Use `tsc -b` pre-push; cast `.buffer as ArrayBuffer` |
 | Unused variable `qc` | `tsc --noEmit` passed locally, `tsc -b` would have caught it | Use `tsc -b` pre-push |
+| **All production data deleted** | `prisma db push --accept-data-loss` dropped tables | Use `prisma migrate deploy` only; never `--accept-data-loss` |
+| **Default nginx page after deploy** | deploy.sh wrote HTTP-only config, no SSL | deploy.sh now detects SSL certs + post-deploy health check |

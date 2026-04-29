@@ -35,12 +35,37 @@ fi
 cd /opt/toilet-monitor
 pnpm install --frozen-lockfile
 
-# Apply DB schema changes + regenerate Prisma client
+# --- Pre-migration DB backup ---
+BACKUP_DIR="/var/log/toilet/backups"
+mkdir -p "$BACKUP_DIR"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="$BACKUP_DIR/pre_deploy_$TIMESTAMP.sql"
+
+if command -v pg_dump &>/dev/null; then
+  pg_dump "$DATABASE_URL" > "$BACKUP_FILE" 2>/dev/null && \
+    echo "DB backup saved: $BACKUP_FILE" || \
+    echo "WARNING: pg_dump failed (non-fatal)"
+elif docker exec toilet_postgres pg_dump -U postgres toilet_monitor > "$BACKUP_FILE" 2>/dev/null; then
+  echo "DB backup saved (via docker): $BACKUP_FILE"
+else
+  echo "WARNING: Could not create DB backup — pg_dump not available"
+fi
+
+# Keep only last 20 backups
+ls -t "$BACKUP_DIR"/pre_deploy_*.sql 2>/dev/null | tail -n +21 | xargs rm -f 2>/dev/null || true
+
+# Apply DB schema changes safely (never drops data)
 cd /opt/toilet-monitor/apps/server
-pnpm exec prisma db push --accept-data-loss
+
+# Baseline: if _prisma_migrations table doesn't exist yet, mark baseline as applied
+pnpm exec prisma migrate resolve --applied 0_baseline 2>/dev/null || true
+
+# Run pending migrations (safe — refuses destructive changes)
+pnpm exec prisma migrate deploy
+
 cd /opt/toilet-monitor
 
-# Build server (prisma generate runs automatically after db push)
+# Build server (prisma generate runs automatically via migrate deploy)
 pnpm --filter=@toilet/server build
 
 # Restart backend — --update-env ensures new env vars (e.g. VAPID keys) are
