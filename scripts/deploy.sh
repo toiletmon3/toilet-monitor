@@ -160,4 +160,41 @@ echo "Nginx root: $NGINX_ROOT"
 cp -r apps/web/dist/. "$NGINX_ROOT/"
 nginx -s reload 2>/dev/null || systemctl reload nginx 2>/dev/null || true
 
+# --- Post-deploy health check: verify nginx is NOT serving the default page ---
+sleep 2
+HEALTH_URL="http://localhost"
+RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$HEALTH_URL" 2>/dev/null || echo "000")
+BODY=$(curl -s --max-time 5 "$HEALTH_URL" 2>/dev/null || echo "")
+
+if echo "$BODY" | grep -qi "welcome to nginx"; then
+  echo "FATAL: nginx is still serving the default page after deploy!"
+  echo "Attempting automatic recovery..."
+
+  rm -f "$NGINX_ENABLED_DIR/default"
+  rm -f /etc/nginx/conf.d/default.conf
+  nginx -t && (nginx -s reload 2>/dev/null || systemctl reload nginx 2>/dev/null || true)
+  sleep 2
+
+  BODY_RETRY=$(curl -s --max-time 5 "$HEALTH_URL" 2>/dev/null || echo "")
+  if echo "$BODY_RETRY" | grep -qi "welcome to nginx"; then
+    echo "FATAL: Recovery failed — site is still showing default nginx page!"
+    exit 1
+  else
+    echo "Recovery successful — site is now serving the app."
+  fi
+elif [ "$RESPONSE" = "000" ]; then
+  echo "WARNING: Could not reach $HEALTH_URL — nginx may not be running"
+else
+  echo "Health check passed (HTTP $RESPONSE) — site is serving the app."
+fi
+
+# --- Install nginx watchdog cron (runs every 5 min) ---
+WATCHDOG="/opt/toilet-monitor/scripts/nginx-watchdog.sh"
+if [ -f "$WATCHDOG" ]; then
+  chmod +x "$WATCHDOG"
+  CRON_LINE="*/5 * * * * $WATCHDOG >> /var/log/toilet/nginx-watchdog.log 2>&1"
+  (crontab -l 2>/dev/null | grep -v "nginx-watchdog" ; echo "$CRON_LINE") | crontab -
+  echo "Nginx watchdog cron installed (every 5 min)"
+fi
+
 echo "Deploy complete"
