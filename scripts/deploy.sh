@@ -62,6 +62,17 @@ pnpm exec prisma migrate resolve --applied 0_baseline 2>/dev/null || true
 
 # Run pending migrations (safe — refuses destructive changes)
 pnpm exec prisma migrate deploy
+pnpm exec prisma generate
+
+# Auto-seed if DB is empty (no organizations exist)
+ORG_COUNT=$(node -e 'const{PrismaClient}=require("@prisma/client");const p=new PrismaClient();p.organization.count().then(c=>{console.log(c);p.$disconnect()}).catch(()=>{console.log("0");p.$disconnect()})' 2>/dev/null || echo "0")
+if [ "$ORG_COUNT" = "0" ] || [ -z "$ORG_COUNT" ]; then
+  echo "DB is empty — running seed..."
+  pnpm exec ts-node prisma/seed.ts
+  echo "Seed complete"
+else
+  echo "DB has $ORG_COUNT org(s) — skipping seed"
+fi
 
 cd /opt/toilet-monitor
 
