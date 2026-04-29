@@ -51,14 +51,53 @@ pm2 save
 # Build frontend
 pnpm --filter=@toilet/web build
 
-# --- Detect nginx html root ---
-NGINX_ROOT=""
-NGINX_ROOT=$(nginx -T 2>/dev/null | grep -m1 "root " | awk '{print $2}' | tr -d ';' || true)
-if [ -z "$NGINX_ROOT" ] || [ ! -d "$NGINX_ROOT" ]; then
-  for p in /usr/share/nginx/html /var/www/html /opt/toilet-monitor/apps/web/dist; do
-    if [ -d "$p" ]; then NGINX_ROOT="$p"; break; fi
-  done
-fi
+# --- Always write the nginx config to prevent the default page from showing ---
+NGINX_CONF_DIR="/etc/nginx/sites-available"
+NGINX_ENABLED_DIR="/etc/nginx/sites-enabled"
+NGINX_ROOT="/var/www/toilet"
+
+mkdir -p "$NGINX_ROOT"
+
+# Write (or overwrite) the site config on every deploy
+cat > "$NGINX_CONF_DIR/toilet" << 'NGINXEOF'
+server {
+    listen 80;
+    server_name _;
+
+    root /var/www/toilet;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /socket.io/ {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+
+    location ~* \.(js|css|png|svg|ico|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+NGINXEOF
+
+# Enable site, disable default (idempotent)
+ln -sf "$NGINX_CONF_DIR/toilet" "$NGINX_ENABLED_DIR/toilet"
+rm -f "$NGINX_ENABLED_DIR/default"
+
+nginx -t
 
 echo "Nginx root: $NGINX_ROOT"
 cp -r apps/web/dist/. "$NGINX_ROOT/"
