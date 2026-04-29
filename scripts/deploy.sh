@@ -102,14 +102,16 @@ if [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
   echo "SSL certs found — writing HTTPS nginx config"
   cat > "$NGINX_CONF_DIR/toilet" << NGINXEOF
 server {
-    listen 80;
-    server_name toiletcleanpro.duckdns.org;
-    return 301 https://\$host\$request_uri;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name toiletcleanpro.duckdns.org _;
+    return 301 https://toiletcleanpro.duckdns.org\$request_uri;
 }
 
 server {
-    listen 443 ssl http2;
-    server_name toiletcleanpro.duckdns.org;
+    listen 443 ssl http2 default_server;
+    listen [::]:443 ssl http2 default_server;
+    server_name toiletcleanpro.duckdns.org _;
 
     ssl_certificate $SSL_CERT;
     ssl_certificate_key $SSL_KEY;
@@ -150,7 +152,8 @@ else
   echo "No SSL certs found — writing HTTP-only nginx config"
   cat > "$NGINX_CONF_DIR/toilet" << 'NGINXEOF'
 server {
-    listen 80;
+    listen 80 default_server;
+    listen [::]:80 default_server;
     server_name _;
 
     root /var/www/toilet;
@@ -185,10 +188,12 @@ server {
 NGINXEOF
 fi
 
-# Enable site, disable ALL default configs (idempotent)
+# Enable site, nuke ALL default configs so they can never shadow ours
 ln -sf "$NGINX_CONF_DIR/toilet" "$NGINX_ENABLED_DIR/toilet"
 rm -f "$NGINX_ENABLED_DIR/default"
+rm -f "$NGINX_CONF_DIR/default"
 rm -f /etc/nginx/conf.d/default.conf
+rm -f /var/www/html/index.nginx-debian.html
 
 nginx -t
 
@@ -198,20 +203,22 @@ nginx -s reload 2>/dev/null || systemctl reload nginx 2>/dev/null || true
 
 # --- Post-deploy health check: verify nginx is NOT serving the default page ---
 sleep 2
-HEALTH_URL="http://localhost"
-RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$HEALTH_URL" 2>/dev/null || echo "000")
-BODY=$(curl -s --max-time 5 "$HEALTH_URL" 2>/dev/null || echo "")
+HEALTH_URL="https://localhost"
+RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -k -L "$HEALTH_URL" 2>/dev/null || echo "000")
+BODY=$(curl -s --max-time 5 -k -L "$HEALTH_URL" 2>/dev/null || echo "")
 
 if echo "$BODY" | grep -qi "welcome to nginx"; then
   echo "FATAL: nginx is still serving the default page after deploy!"
   echo "Attempting automatic recovery..."
 
   rm -f "$NGINX_ENABLED_DIR/default"
+  rm -f "$NGINX_CONF_DIR/default"
   rm -f /etc/nginx/conf.d/default.conf
+  rm -f /var/www/html/index.nginx-debian.html
   nginx -t && (nginx -s reload 2>/dev/null || systemctl reload nginx 2>/dev/null || true)
   sleep 2
 
-  BODY_RETRY=$(curl -s --max-time 5 "$HEALTH_URL" 2>/dev/null || echo "")
+  BODY_RETRY=$(curl -s --max-time 5 -k -L "$HEALTH_URL" 2>/dev/null || echo "")
   if echo "$BODY_RETRY" | grep -qi "welcome to nginx"; then
     echo "FATAL: Recovery failed — site is still showing default nginx page!"
     exit 1
@@ -222,6 +229,22 @@ elif [ "$RESPONSE" = "000" ]; then
   echo "WARNING: Could not reach $HEALTH_URL — nginx may not be running"
 else
   echo "Health check passed (HTTP $RESPONSE) — site is serving the app."
+fi
+
+# --- Install certbot post-renewal hook to prevent default page after cert renewal ---
+CERTBOT_HOOK_DIR="/etc/letsencrypt/renewal-hooks/post"
+if [ -d "$CERTBOT_HOOK_DIR" ] || mkdir -p "$CERTBOT_HOOK_DIR" 2>/dev/null; then
+  cat > "$CERTBOT_HOOK_DIR/fix-nginx-default.sh" << 'HOOKEOF'
+#!/bin/bash
+rm -f /etc/nginx/sites-enabled/default
+rm -f /etc/nginx/sites-available/default
+rm -f /etc/nginx/conf.d/default.conf
+rm -f /var/www/html/index.nginx-debian.html
+ln -sf /etc/nginx/sites-available/toilet /etc/nginx/sites-enabled/toilet
+nginx -t 2>/dev/null && (nginx -s reload 2>/dev/null || systemctl reload nginx 2>/dev/null || true)
+HOOKEOF
+  chmod +x "$CERTBOT_HOOK_DIR/fix-nginx-default.sh"
+  echo "Certbot post-renewal hook installed"
 fi
 
 # --- Install nginx watchdog cron (runs every 5 min) ---
