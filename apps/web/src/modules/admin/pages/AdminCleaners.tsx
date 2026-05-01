@@ -872,7 +872,7 @@ export default function AdminCleaners() {
             <h3 className="text-sm font-semibold" style={{ color: '#a78bfa' }}>
               {t('admin.cleaners.newAdmin')}
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <input
                 value={adminForm.name}
                 onChange={e => setAdminForm(f => ({ ...f, name: e.target.value }))}
@@ -907,15 +907,17 @@ export default function AdminCleaners() {
                   {adminFormShow ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
               <input
                 value={adminForm.idNumber}
                 onChange={e => setAdminForm(f => ({ ...f, idNumber: e.target.value }))}
                 placeholder={t('admin.cleaners.adminIdPlaceholder')}
                 inputMode="numeric"
-                className="px-4 py-2.5 rounded-xl outline-none text-sm font-mono"
-                style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.25)', color: 'white' }}
+                className="px-4 py-2.5 rounded-xl outline-none text-sm font-mono flex-1 max-w-xs"
+                style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.15)', color: 'white' }}
               />
-              {/* Role is fixed to MANAGER — shift supervisors have their own section */}
+              <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.cleaners.adminIdHint')}</span>
             </div>
             <div className="flex gap-2">
               <button type="submit"
