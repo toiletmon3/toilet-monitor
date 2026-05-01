@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>ToiletCleanPro — השוואת סטטיסטיקות מול מערכות שירותים חכמים מובילות</title>
+<style>
+  @page { size: A4 landscape; margin: 15mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    background: #fff;
+    color: #1a1a2e;
+    padding: 30px 40px;
+    line-height: 1.5;
+    font-size: 13px;
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 24px;
+    border-bottom: 3px solid #00e5cc;
+    padding-bottom: 16px;
+  }
+  .header h1 { font-size: 22px; color: #0a0e1a; margin-bottom: 4px; }
+  .header p { font-size: 13px; color: #555; }
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 18px;
+    font-size: 12px;
+  }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .dot-yes { background: #22c55e; }
+  .dot-partial { background: #f59e0b; }
+  .dot-no { background: #ef4444; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 24px;
+    font-size: 12.5px;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px 10px;
+    text-align: right;
+    vertical-align: top;
+  }
+  th {
+    background: #0a0e1a;
+    color: #00e5cc;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  tr:nth-child(even) { background: #f8fafb; }
+  tr:hover { background: #eef8f6; }
+
+  .status-yes { color: #22c55e; font-weight: bold; }
+  .status-partial { color: #f59e0b; font-weight: bold; }
+  .status-no { color: #ef4444; font-weight: bold; }
+
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0a0e1a;
+    margin: 20px 0 8px;
+    padding: 6px 12px;
+    background: rgba(0,229,204,0.1);
+    border-right: 4px solid #00e5cc;
+    border-radius: 4px;
+  }
+
+  .summary-box {
+    margin-top: 20px;
+    padding: 16px 20px;
+    background: #f0fdf9;
+    border: 1px solid #00e5cc;
+    border-radius: 8px;
+  }
+  .summary-box h3 { color: #0a0e1a; margin-bottom: 8px; font-size: 14px; }
+  .summary-box ul { padding-right: 20px; }
+  .summary-box li { margin-bottom: 4px; }
+
+  .footer {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 11px;
+    color: #888;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+  }
+  .score {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 11px;
+    color: #fff;
+  }
+  .score-high { background: #22c55e; }
+  .score-mid { background: #f59e0b; }
+  .score-low { background: #ef4444; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>ToiletCleanPro — השוואת יכולות סטטיסטיקות ודיווח</h1>
+  <p>מול דרישות PQ (Pre-Qualification) של מערכות ניהול שירותים חכמים</p>
+  <p style="font-size:11px; color:#888; margin-top:4px;">מסמך הושק: מאי 2026 | גרסה נוכחית: v1.0.10</p>
+</div>
+
+<div class="legend">
+  <span><span class="dot dot-yes"></span> קיים ומלא</span>
+  <span><span class="dot dot-partial"></span> קיים חלקית</span>
+  <span><span class="dot dot-no"></span> לא קיים</span>
+</div>
+
+<!-- ==================== SECTION 1: KPIs ==================== -->
+<div class="section-title">1. מדדי ביצוע מרכזיים (KPIs) — לוח בקרה</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:5%">#</th>
+      <th style="width:28%">מדד / סטטיסטיקה</th>
+      <th style="width:12%">דרישת PQ</th>
+      <th style="width:12%">ToiletCleanPro</th>
+      <th style="width:43%">פירוט מימוש / פער</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1.1</td>
+      <td>סה"כ קריאות (כולל / פתוחות / בטיפול / טופלו)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>כרטיסי סיכום בדשבורד: openIncidents, inProgress, resolved, total. סינון לפי בניין.</td>
+    </tr>
+    <tr>
+      <td>1.2</td>
+      <td>זמן תגובה ממוצע (Resolution Time)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>avgResolutionMinutes — ממוצע 30 יום אחרונים. מוצג בדשבורד + דו"ח יומי.</td>
+    </tr>
+    <tr>
+      <td>1.3</td>
+      <td>עמידה ב-SLA (אחוז קריאות שטופלו בזמן)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>slaPercent עם יעד מתכוונן (10/15/20/30 דק'). גרף Gauge + p50/p90. גם בדו"ח יומי (15 דק').</td>
+    </tr>
+    <tr>
+      <td>1.4</td>
+      <td>מספר מבקרים / תנועת קהל (People Counting)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> המערכת לא מונה כניסות/יציאות. נדרש חיישן תנועה / PIR ייעודי.</td>
+    </tr>
+    <tr>
+      <td>1.5</td>
+      <td>שעות שיא שימוש (Peak Hours)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-partial">◐ חלקי</td>
+      <td>גרף שעתי (Hourly) מראה התפלגות קריאות לפי שעה — לא תנועת קהל ישירה.</td>
+    </tr>
+    <tr>
+      <td>1.6</td>
+      <td>התפלגות לפי ימי שבוע (Day-of-Week)</td>
+      <td class="status-partial">◐ רצוי</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>גרף עמודות לפי יום בשבוע עם מספר קריאות.</td>
+    </tr>
+    <tr>
+      <td>1.7</td>
+      <td>מכשירים מקוונים / לא מקוונים</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>onlineDevices, offlineDevices + lastHeartbeat + רשימה מפורטת בדשבורד.</td>
+    </tr>
+    <tr>
+      <td>1.8</td>
+      <td>עובדי ניקיון פעילים במשמרת</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>activeCleaners — על סמך CleanerArrival. כרטיס בדשבורד + דף עובדים.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ==================== SECTION 2: Cleaner ==================== -->
+<div class="section-title">2. ביצועי עובדי ניקיון</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:5%">#</th>
+      <th style="width:28%">מדד / סטטיסטיקה</th>
+      <th style="width:12%">דרישת PQ</th>
+      <th style="width:12%">ToiletCleanPro</th>
+      <th style="width:43%">פירוט מימוש / פער</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2.1</td>
+      <td>דירוג עובדים לפי מספר טיפולים</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>Cleaner Performance — רשימת עובדים ממוינת לפי totalResolved עם גרף פס.</td>
+    </tr>
+    <tr>
+      <td>2.2</td>
+      <td>זמן תגובה ממוצע לעובד</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>avgResolutionMinutes לכל עובד בנפרד.</td>
+    </tr>
+    <tr>
+      <td>2.3</td>
+      <td>זיהוי עובדים סרק (Idle Cleaners)</td>
+      <td class="status-partial">◐ רצוי</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>idleCleaners — 30+ דקות במשמרת ללא טיפול אחד. מופיע בדו"ח יומי + Mismatch בדף עובדים.</td>
+    </tr>
+    <tr>
+      <td>2.4</td>
+      <td>צ'ק-אין / צ'ק-אאוט עובדים</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>CleanerArrival — שעת הגעה, משך משמרת, סטטוס נוכחי בזמן אמת.</td>
+    </tr>
+    <tr>
+      <td>2.5</td>
+      <td>הוכחת ביצוע עם תמונות (Photo Proof)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> אין צילום לפני/אחרי ניקיון. נדרש פיתוח העלאת תמונות.</td>
+    </tr>
+    <tr>
+      <td>2.6</td>
+      <td>רשימת משימות דיגיטלית (Digital Checklist)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-partial">◐ חלקי</td>
+      <td>עובד רואה קריאות פתוחות לטיפול ויכול לסמן "טופל" — אין רשימת ביקורת מפורטת (צ'קליסט).</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ==================== SECTION 3: Incident ==================== -->
+<div class="section-title">3. ניהול קריאות והיסטוריה</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:5%">#</th>
+      <th style="width:28%">מדד / סטטיסטיקה</th>
+      <th style="width:12%">דרישת PQ</th>
+      <th style="width:12%">ToiletCleanPro</th>
+      <th style="width:43%">פירוט מימוש / פער</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>3.1</td>
+      <td>היסטוריית פעולות לכל קריאה (Audit Trail)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>IncidentAction — דווח → אושר → הוקצה → טופל/הוסלם. כולל שם עובד, הערות, שעה.</td>
+    </tr>
+    <tr>
+      <td>3.2</td>
+      <td>הסלמה אוטומטית (Escalation)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>escalationRound + Push Notifications. התראות ברמת עובד → מנהל משמרת → מנהל.</td>
+    </tr>
+    <tr>
+      <td>3.3</td>
+      <td>קריאות דחופות (Urgent Alerts)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>חישוב minutesOpen + סף מוגדר. מוצג בדשבורד ובעמוד בקשות עם אנימציית pulse.</td>
+    </tr>
+    <tr>
+      <td>3.4</td>
+      <td>תדירות סוגי בעיות (Issue Frequency)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>גרף עמודות אופקי לפי סוג בעיה — מספר קריאות + זמן טיפול ממוצע לכל סוג.</td>
+    </tr>
+    <tr>
+      <td>3.5</td>
+      <td>דפוסים חוזרים ונקודות חמות (Patterns & Hotspots)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>Top 5 סוגי בעיות + Top 5 שירותים עם הכי הרבה קריאות. דגל "מעל הממוצע".</td>
+    </tr>
+    <tr>
+      <td>3.6</td>
+      <td>משוב חיובי (Positive Feedback)</td>
+      <td class="status-partial">◐ רצוי</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>כפתור "עבודה טובה" בקיוסק. משוב מופיע בנפרד בדף בקשות + נכלל בנתונים.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ==================== SECTION 4: Sensors ==================== -->
+<div class="section-title">4. חיישנים וניטור סביבתי (IoT)</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:5%">#</th>
+      <th style="width:28%">מדד / סטטיסטיקה</th>
+      <th style="width:12%">דרישת PQ</th>
+      <th style="width:12%">ToiletCleanPro</th>
+      <th style="width:43%">פירוט מימוש / פער</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>4.1</td>
+      <td>ניטור ריחות / איכות אוויר (אמוניה, H₂S)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> אין חיישני ריח/אוויר. נדרש חומרה + אינטגרציה.</td>
+    </tr>
+    <tr>
+      <td>4.2</td>
+      <td>ניטור מפלס מתכלים (סבון, נייר, מגבות)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> אין חיישני מפלס. דיווח מתבצע ידנית דרך כפתורי הקיוסק.</td>
+    </tr>
+    <tr>
+      <td>4.3</td>
+      <td>גילוי נזילות מים (Leak Detection)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> אין חיישני מים. נדרש חומרה.</td>
+    </tr>
+    <tr>
+      <td>4.4</td>
+      <td>טמפרטורה ולחות</td>
+      <td class="status-partial">◐ רצוי</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> אין חיישני סביבה.</td>
+    </tr>
+    <tr>
+      <td>4.5</td>
+      <td>ספירת מבקרים (People Counter)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> אין חיישני ספירה / PIR. קריאות מייצגות דיווחי בעיות בלבד.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ==================== SECTION 5: Reports ==================== -->
+<div class="section-title">5. דיווחים וייצוא נתונים</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:5%">#</th>
+      <th style="width:28%">מדד / סטטיסטיקה</th>
+      <th style="width:12%">דרישת PQ</th>
+      <th style="width:12%">ToiletCleanPro</th>
+      <th style="width:43%">פירוט מימוש / פער</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>5.1</td>
+      <td>דו"ח יומי אוטומטי במייל</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>HTML email אוטומטי: סיכום יום, SLA, Top issues, Top hotspots, ביצועי עובדים, עובדים סרק.</td>
+    </tr>
+    <tr>
+      <td>5.2</td>
+      <td>ייצוא ל-CSV / Excel</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> אין כפתור הורדה/ייצוא לקבצי נתונים.</td>
+    </tr>
+    <tr>
+      <td>5.3</td>
+      <td>ייצוא ל-PDF</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> אין הפקת דו"חות PDF מתוך המערכת.</td>
+    </tr>
+    <tr>
+      <td>5.4</td>
+      <td>דו"ח שבועי / חודשי מתוזמן</td>
+      <td class="status-partial">◐ רצוי</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td>קיים רק דו"ח יומי. אין אגרגציה שבועית/חודשית מתוזמנת.</td>
+    </tr>
+    <tr>
+      <td>5.5</td>
+      <td>בחירת טווח תאריכים מותאם אישית</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>מסך אנליטיקס: 1/2/7/30/60 ימים + טווח from/to מותאם.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ==================== SECTION 6: Real-time ==================== -->
+<div class="section-title">6. זמן אמת ומנשק קיוסק</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:5%">#</th>
+      <th style="width:28%">מדד / סטטיסטיקה</th>
+      <th style="width:12%">דרישת PQ</th>
+      <th style="width:12%">ToiletCleanPro</th>
+      <th style="width:43%">פירוט מימוש / פער</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>6.1</td>
+      <td>עדכון בזמן אמת (WebSocket)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>Socket.io — דשבורד, בקשות, קיוסק, ואפליקציית עובד מתעדכנים בזמן אמת.</td>
+    </tr>
+    <tr>
+      <td>6.2</td>
+      <td>סטטיסטיקות ציבוריות בקיוסק</td>
+      <td class="status-partial">◐ רצוי</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>קריאות השבוע, קריאות היום, זמן תגובה ממוצע — מאוחד לכל הבניין.</td>
+    </tr>
+    <tr>
+      <td>6.3</td>
+      <td>Push Notifications (Web Push / VAPID)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>PWA עם Service Worker, Web Push Notifications דרך VAPID.</td>
+    </tr>
+    <tr>
+      <td>6.4</td>
+      <td>עבודה אופליין (Offline Mode)</td>
+      <td class="status-partial">◐ רצוי</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>קיוסק תומך בתור מקומי + סנכרון אוטומטי בחזרה לרשת.</td>
+    </tr>
+    <tr>
+      <td>6.5</td>
+      <td>ציון שביעות רצון (Guest Survey / Rating)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-partial">◐ חלקי</td>
+      <td>כפתור "משוב חיובי" (😊) — אין סקאלה 1-5 או סקר מפורט.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ==================== SECTION 7: Advanced ==================== -->
+<div class="section-title">7. יכולות מתקדמות</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:5%">#</th>
+      <th style="width:28%">מדד / סטטיסטיקה</th>
+      <th style="width:12%">דרישת PQ</th>
+      <th style="width:12%">ToiletCleanPro</th>
+      <th style="width:43%">פירוט מימוש / פער</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>7.1</td>
+      <td>תחזוקה מנבאת (Predictive Maintenance)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> אין מודל חיזוי. ניתוח הוא תיאורי בלבד (ממוצעים, מגמות).</td>
+    </tr>
+    <tr>
+      <td>7.2</td>
+      <td>ניקיון מבוסס תפוסה (Occupancy-Based Cleaning)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> ללא חיישני תנועה — אין טריגר ניקיון לפי תפוסה.</td>
+    </tr>
+    <tr>
+      <td>7.3</td>
+      <td>חישוב חיסכון בעלויות (Cost Savings)</td>
+      <td class="status-partial">◐ רצוי</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> אין חישוב עלויות כספיות או ROI.</td>
+    </tr>
+    <tr>
+      <td>7.4</td>
+      <td>Multi-tenant — ניהול מספר ארגונים</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>Organization → Building → Floor → Restroom. הרשאות לפי תפקיד.</td>
+    </tr>
+    <tr>
+      <td>7.5</td>
+      <td>תמיכה בריבוי שפות (i18n)</td>
+      <td class="status-partial">◐ רצוי</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>עברית + אנגלית. הגדרה ברמת ארגון לקיוסק ולממשק מנהל.</td>
+    </tr>
+    <tr>
+      <td>7.6</td>
+      <td>אינטגרציה עם CMMS (מערכת תחזוקה)</td>
+      <td class="status-yes">✔ נדרש</td>
+      <td class="status-no">✘ לא קיים</td>
+      <td><b>פער:</b> אין ממשק API חיצוני או אינטגרציה עם מערכות תחזוקה.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ==================== SUMMARY ==================== -->
+<div class="summary-box">
+  <h3>סיכום כמותי</h3>
+  <table style="width:auto; margin:8px 0;">
+    <tr>
+      <th>קטגוריה</th>
+      <th>סה"כ דרישות</th>
+      <th><span class="score score-high">✔ קיים</span></th>
+      <th><span class="score score-mid">◐ חלקי</span></th>
+      <th><span class="score score-low">✘ חסר</span></th>
+    </tr>
+    <tr>
+      <td>1. KPIs — לוח בקרה</td>
+      <td>8</td>
+      <td>6</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>2. ביצועי עובדים</td>
+      <td>6</td>
+      <td>4</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>3. ניהול קריאות</td>
+      <td>6</td>
+      <td>6</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>4. חיישנים / IoT</td>
+      <td>5</td>
+      <td>0</td>
+      <td>0</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <td>5. דיווחים וייצוא</td>
+      <td>5</td>
+      <td>2</td>
+      <td>0</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <td>6. זמן אמת וקיוסק</td>
+      <td>5</td>
+      <td>4</td>
+      <td>1</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>7. יכולות מתקדמות</td>
+      <td>6</td>
+      <td>2</td>
+      <td>0</td>
+      <td>4</td>
+    </tr>
+    <tr style="font-weight:bold; background:#eef8f6;">
+      <td>סה"כ</td>
+      <td>41</td>
+      <td>24 (58%)</td>
+      <td>3 (7%)</td>
+      <td>14 (34%)</td>
+    </tr>
+  </table>
+</div>
+
+<div class="summary-box" style="margin-top:14px; background:#fff8f0; border-color:#f59e0b;">
+  <h3>פערים עיקריים לסגירה (לפי עדיפות)</h3>
+  <ul>
+    <li><b>חיישנים (IoT):</b> ספירת מבקרים, ריחות, מפלס מתכלים, נזילות — דורש חומרה + אינטגרציה. זהו הפער הגדול ביותר.</li>
+    <li><b>ייצוא נתונים:</b> CSV/Excel + PDF — פיתוח תוכנה בלבד, ניתן למימוש מהיר.</li>
+    <li><b>תחזוקה מנבאת:</b> דורש מודל ML על נתונים היסטוריים — פיתוח ארוך טווח.</li>
+    <li><b>צ'קליסט + הוכחת ביצוע (תמונות):</b> פיתוח תוכנה + אחסון תמונות.</li>
+    <li><b>סקר שביעות רצון מלא:</b> הרחבת כפתור ה-Feedback לסולם 1-5 — פיתוח קצר.</li>
+    <li><b>אינטגרציית CMMS:</b> ממשק API פתוח — בינוני.</li>
+  </ul>
+</div>
+
+<div class="summary-box" style="margin-top:14px; background:#f0fdf4; border-color:#22c55e;">
+  <h3>יתרונות ToiletCleanPro (מעבר לדרישות ה-PQ)</h3>
+  <ul>
+    <li><b>PWA + Offline Mode:</b> עבודה מלאה ללא רשת עם סנכרון אוטומטי — לא נפוץ במתחרים.</li>
+    <li><b>WebSocket Real-time:</b> כל הממשקים מתעדכנים בזמן אמת ללא רענון.</li>
+    <li><b>קיוסקים מותאמים:</b> מנוע תבניות (3 עיצובים), כפתורים מותאמים לפי ארגון.</li>
+    <li><b>משוב חיובי:</b> ייחודי — מאפשר למבקרים לדווח גם על שביעות רצון.</li>
+    <li><b>דו"ח יומי אוטומטי:</b> עם עובדים סרק (Idle Cleaners) — יכולת ייחודית.</li>
+    <li><b>אסקלציה אוטומטית:</b> מערכת הסלמה רב-שלבית עם Push Notifications.</li>
+  </ul>
+</div>
+
+<div class="footer">
+  ToiletCleanPro v1.0.10 — מסמך זה הופק אוטומטית לצורך השוואת יכולות מול דרישות PQ של מערכות ניהול שירותים חכמים.<br>
+  מאי 2026 | toiletcleanpro.duckdns.org
+</div>
+
+</body>
+</html>
