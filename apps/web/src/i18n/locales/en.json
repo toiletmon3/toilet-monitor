@@ -316,6 +316,13 @@
       "themeNeonProDesc": "Hand-drawn cleaning icons in neon style"
     },
     "settings": {
+      "myAccount": "My Account",
+      "changePassword": "Change Password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "passwordChanged": "Password changed successfully",
+      "passwordTooShort": "Minimum 6 characters",
+      "passwordMismatch": "Passwords don't match",
       "addBuilding": "Add Building",
       "buildingName": "Building Name",
       "address": "Address",

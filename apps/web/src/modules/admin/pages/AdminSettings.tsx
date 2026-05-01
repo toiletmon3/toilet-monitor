@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, ChevronDown, ChevronRight, Building2, Layers2, Tablet, Trash2, Pencil, Check, X, Globe, Copy, ExternalLink, ShieldCheck, AlertCircle, Mail } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Building2, Layers2, Tablet, Trash2, Pencil, Check, X, Globe, Copy, ExternalLink, ShieldCheck, AlertCircle, Mail, KeyRound, Eye, EyeOff } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -751,8 +751,100 @@ export default function AdminSettings() {
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['building-structure'] });
 
+  const currentUser: { id?: string; name?: string } = JSON.parse(localStorage.getItem('user') ?? '{}');
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwShowNew, setPwShowNew] = useState(false);
+  const [pwSaving, setPwSaving] = useState(false);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pwNew.length < 6 || pwNew !== pwConfirm) return;
+    setPwSaving(true);
+    try {
+      await api.patch(`/users/${currentUser.id}/password`, { password: pwNew });
+      toast.success(t('admin.settings.passwordChanged'));
+      setPwOpen(false);
+      setPwNew('');
+      setPwConfirm('');
+    } catch {
+      toast.error(t('common.error'));
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-5">
+      {/* ── My Account — Change Password ── */}
+      <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-white flex items-center gap-2">
+            <KeyRound size={16} style={{ color: 'var(--color-accent)' }} />
+            {t('admin.settings.myAccount')}
+          </h2>
+          {!pwOpen && (
+            <button onClick={() => setPwOpen(true)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+              style={{ background: 'rgba(0,229,204,0.1)', border: '1px solid rgba(0,229,204,0.3)', color: '#00e5cc' }}>
+              {t('admin.settings.changePassword')}
+            </button>
+          )}
+        </div>
+        {pwOpen && (
+          <form onSubmit={handleChangePassword} className="flex flex-col gap-3 mt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="relative">
+                <input
+                  type={pwShowNew ? 'text' : 'password'}
+                  value={pwNew}
+                  onChange={e => setPwNew(e.target.value)}
+                  placeholder={t('admin.settings.newPassword')}
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-2.5 rounded-xl outline-none text-sm pr-10"
+                  style={{ background: '#0a0e1a', border: '1px solid rgba(0,229,204,0.3)', color: 'white' }}
+                />
+                <button type="button" onClick={() => setPwShowNew(v => !v)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2"
+                  style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  {pwShowNew ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+              <input
+                type="password"
+                value={pwConfirm}
+                onChange={e => setPwConfirm(e.target.value)}
+                placeholder={t('admin.settings.confirmPassword')}
+                required
+                minLength={6}
+                className="px-4 py-2.5 rounded-xl outline-none text-sm"
+                style={{ background: '#0a0e1a', border: '1px solid rgba(0,229,204,0.3)', color: 'white' }}
+              />
+              <div className="flex gap-2">
+                <button type="submit" disabled={pwSaving || pwNew.length < 6 || pwNew !== pwConfirm}
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                  style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid rgba(0,229,204,0.5)', color: '#00e5cc', opacity: (pwNew.length < 6 || pwNew !== pwConfirm) ? 0.4 : 1 }}>
+                  {pwSaving ? '...' : t('common.save')}
+                </button>
+                <button type="button" onClick={() => { setPwOpen(false); setPwNew(''); setPwConfirm(''); }}
+                  className="px-4 py-2.5 rounded-xl text-sm"
+                  style={{ color: 'var(--color-text-secondary)' }}>
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+            {pwNew && pwNew.length < 6 && (
+              <p className="text-xs" style={{ color: '#f59e0b' }}>{t('admin.settings.passwordTooShort')}</p>
+            )}
+            {pwConfirm && pwNew !== pwConfirm && (
+              <p className="text-xs" style={{ color: '#ef4444' }}>{t('admin.settings.passwordMismatch')}</p>
+            )}
+          </form>
+        )}
+      </div>
+
       {/* ── Language Settings ── */}
       <div className="rounded-2xl p-5 flex flex-col gap-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <h2 className="font-semibold text-white flex items-center gap-2">

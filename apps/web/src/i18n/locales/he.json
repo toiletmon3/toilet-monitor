@@ -316,6 +316,13 @@
       "themeNeonProDesc": "אייקוני ניקיון מצוירים בסגנון ניאון"
     },
     "settings": {
+      "myAccount": "החשבון שלי",
+      "changePassword": "שנה סיסמה",
+      "newPassword": "סיסמה חדשה",
+      "confirmPassword": "אימות סיסמה",
+      "passwordChanged": "הסיסמה שונתה בהצלחה",
+      "passwordTooShort": "מינימום 6 תווים",
+      "passwordMismatch": "הסיסמאות לא תואמות",
       "addBuilding": "הוסף בניין",
       "buildingName": "שם הבניין",
       "address": "כתובת",
