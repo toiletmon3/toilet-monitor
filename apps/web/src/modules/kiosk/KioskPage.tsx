@@ -98,8 +98,9 @@ export default function KioskPage() {
         // Re-poll every 5 minutes so timezone/language changes propagate without reload
         const orgPollId = setInterval(applyOrgSettings, 5 * 60 * 1000);
 
-        // Fetch real kiosk stats
-        api.get(`/analytics/kiosk-stats/${device.restroom.id}`)
+        // Fetch building-wide kiosk stats (aggregated across all restrooms)
+        const buildingId = device.restroom.floor.building.id;
+        api.get(`/analytics/kiosk-stats/building/${buildingId}`)
           .then(r => setStats(r.data))
           .catch(() => {});
 

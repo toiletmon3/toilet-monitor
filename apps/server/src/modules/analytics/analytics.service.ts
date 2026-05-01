@@ -249,20 +249,26 @@ export class AnalyticsService {
   }
 
   async getKioskStats(restroomId: string) {
+    return this.getKioskStatsByBuilding(restroomId);
+  }
+
+  async getKioskStatsByBuilding(buildingId: string) {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
+    const buildingFilter = { restroom: { floor: { buildingId } } };
+
     const [weeklyCount, dailyCount, resolvedWithTimes] = await Promise.all([
       this.prisma.incident.count({
-        where: { restroomId, reportedAt: { gte: weekAgo } },
+        where: { ...buildingFilter, reportedAt: { gte: weekAgo } },
       }),
       this.prisma.incident.count({
-        where: { restroomId, reportedAt: { gte: todayStart } },
+        where: { ...buildingFilter, reportedAt: { gte: todayStart } },
       }),
       this.prisma.incident.findMany({
         where: {
-          restroomId,
+          ...buildingFilter,
           status: 'RESOLVED',
           resolvedAt: { not: null },
           reportedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },

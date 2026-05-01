@@ -87,6 +87,12 @@ export class AnalyticsController {
   }
 
   @Public()
+  @Get('kiosk-stats/building/:buildingId')
+  getKioskStatsByBuilding(@Param('buildingId') buildingId: string) {
+    return this.analyticsService.getKioskStatsByBuilding(buildingId);
+  }
+
+  @Public()
   @Get('kiosk-stats/:restroomId')
   getKioskStats(@Param('restroomId') restroomId: string) {
     return this.analyticsService.getKioskStats(restroomId);

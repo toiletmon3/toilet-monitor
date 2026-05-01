@@ -83,7 +83,8 @@ export default function KioskPageNeonPro() {
         api.get('/auth/default-org').then(r => {
           if (r.data?.kioskLang) import('../../../../i18n').then(m => m.setLanguage(r.data.kioskLang));
         }).catch(() => {});
-        api.get(`/analytics/kiosk-stats/${device.restroom.id}`).then(r => setStats(r.data)).catch(() => {});
+        const buildingId = device.restroom.floor.building.id;
+        api.get(`/analytics/kiosk-stats/building/${buildingId}`).then(r => setStats(r.data)).catch(() => {});
         joinRestroom(device.restroom.id);
         getSocket().on('incident:resolved', () => {});
         const heartbeatInterval = setInterval(() => {
