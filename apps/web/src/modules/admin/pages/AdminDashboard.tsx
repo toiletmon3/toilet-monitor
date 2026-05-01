@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, Clock, Users, Tablet, WifiOff, Building2 } from 'lucide-react';
+import { AlertCircle, Clock, Users, Tablet, WifiOff, Building2, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../../../lib/api';
 import { getSocket, joinOrg } from '../../../lib/socket';
 
@@ -37,9 +37,100 @@ function formatRelative(date: string | null, t: (k: string) => string) {
   return `${t('admin.devices.ago')} ${day} ${t('common.days')}`;
 }
 
-export default function AdminDashboard() {
+function DashboardIncidentRow({ inc }: { inc: any }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
+  const [open, setOpen] = useState(false);
+
+  const ACTION_LABEL: Record<string, string> = {
+    REPORTED:     t('admin.incidents.actionReported'),
+    ACKNOWLEDGED: t('admin.incidents.actionAcknowledged'),
+    RESOLVED:     t('admin.incidents.actionResolved'),
+    ESCALATED:    t('admin.incidents.actionEscalated'),
+  };
+
+  const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+    OPEN: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444', label: t('admin.incidents.open') },
+    IN_PROGRESS: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b', label: t('admin.incidents.inProgress') },
+    RESOLVED: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e', label: t('admin.incidents.resolved') },
+  };
+
+  const st = STATUS_STYLES[inc.status] ?? STATUS_STYLES.OPEN;
+  const location = [inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › ');
+
+  return (
+    <div>
+      <div
+        className="px-5 py-3 flex items-center justify-between gap-4 cursor-pointer hover:bg-white/5 transition-colors"
+        onClick={() => setOpen(o => !o)}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-xl">{inc.issueType?.icon ?? '📋'}</span>
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-white truncate">
+              {inc.issueType?.nameI18n?.[lang] ?? inc.issueType?.nameI18n?.he}
+            </div>
+            <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
+              📍 {location}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+            {new Date(inc.reportedAt).toLocaleString(lang === 'he' ? 'he-IL' : 'en-US')}
+          </div>
+          <span
+            className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap"
+            style={{ background: st.bg, color: st.text }}
+          >
+            {st.label}
+          </span>
+          {open
+            ? <ChevronDown size={14} style={{ color: 'var(--color-accent)' }} />
+            : <ChevronRight size={14} style={{ color: 'var(--color-text-secondary)' }} />}
+        </div>
+      </div>
+
+      {open && (
+        <div className="px-5 pb-4 pt-2 flex flex-col gap-3" style={{ borderTop: '1px solid rgba(0,229,204,0.08)' }}>
+          <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+            <span>{t('admin.incidents.reportedAt')}: </span>
+            <span>{new Date(inc.reportedAt).toLocaleString(lang === 'he' ? 'he-IL' : 'en-US')}</span>
+          </div>
+
+          {inc.assignedCleaner && (
+            <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              <span>{t('admin.incidents.assignCleaner')}: </span>
+              <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
+                👤 {inc.assignedCleaner.name}
+              </span>
+            </div>
+          )}
+
+          {(inc.actions ?? []).length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.incidents.history')}</p>
+              {inc.actions.map((a: any) => (
+                <div key={a.id} className="flex items-start gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                  <span className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: 'var(--color-accent)' }} />
+                  <span>
+                    <b style={{ color: 'var(--color-text)' }}>{ACTION_LABEL[a.actionType] ?? a.actionType}</b>
+                    {a.user && ` — ${a.user.name}`}
+                    {a.notes && ` — "${a.notes}"`}
+                    <span className="ms-2 opacity-50">{new Date(a.performedAt).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US')}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AdminDashboard() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [buildingId, setBuildingId] = useState<string>(''); // '' = all
 
@@ -87,12 +178,6 @@ export default function AdminDashboard() {
 
   const incidents = incidentsData?.items ?? [];
   const offlineDevices: any[] = summary?.offlineDevices ?? [];
-
-  const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-    OPEN: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444', label: t('admin.incidents.open') },
-    IN_PROGRESS: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b', label: t('admin.incidents.inProgress') },
-    RESOLVED: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e', label: t('admin.incidents.resolved') },
-  };
 
   const selectedBuildingName = buildings.find((b: any) => b.id === buildingId)?.name;
 
@@ -152,32 +237,9 @@ export default function AdminDashboard() {
             </span>
           </div>
           <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-            {urgentData.map((inc: any) => {
-              const location = [inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › ');
-              return (
-                <div key={inc.id} className="px-5 py-3 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-xl">{inc.issueType?.icon ?? '⚠️'}</span>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-white truncate">
-                        {inc.issueType?.nameI18n?.[lang] ?? inc.issueType?.nameI18n?.he}
-                      </div>
-                      <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>📍 {location}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
-                      ⏱ {inc.minutesOpen} {t('common.minutes')}
-                    </span>
-                    {inc.escalationRound > 0 && (
-                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
-                        ⚠️ ×{inc.escalationRound}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {urgentData.map((inc: any) => (
+              <DashboardIncidentRow key={inc.id} inc={inc} />
+            ))}
           </div>
         </div>
       )}
@@ -228,36 +290,9 @@ export default function AdminDashboard() {
               {t('admin.incidents.empty')}
             </div>
           )}
-          {incidents.map((inc: any) => {
-            const st = STATUS_STYLES[inc.status] ?? STATUS_STYLES.OPEN;
-            const location = [inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › ');
-            return (
-              <div key={inc.id} className="px-5 py-3 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-xl">{inc.issueType?.icon ?? '📋'}</span>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-white truncate">
-                      {inc.issueType?.nameI18n?.[lang] ?? inc.issueType?.nameI18n?.he}
-                    </div>
-                    <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
-                      📍 {location}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                    {new Date(inc.reportedAt).toLocaleString(lang === 'he' ? 'he-IL' : 'en-US')}
-                  </div>
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap"
-                    style={{ background: st.bg, color: st.text }}
-                  >
-                    {st.label}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+          {incidents.map((inc: any) => (
+            <DashboardIncidentRow key={inc.id} inc={inc} />
+          ))}
         </div>
       </div>
     </div>
