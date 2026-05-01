@@ -1,38 +1,46 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Resend } from 'resend';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private resend: Resend | null = null;
+  private transporter: nodemailer.Transporter | null = null;
+  private fromAddress: string;
 
   constructor(private config: ConfigService) {
-    const apiKey = this.config.get<string>('RESEND_API_KEY');
-    if (apiKey) {
-      this.resend = new Resend(apiKey);
+    const smtpUser = this.config.get<string>('SMTP_USER');
+    const smtpPass = this.config.get<string>('SMTP_PASS');
+    const smtpHost = this.config.get<string>('SMTP_HOST') || 'smtp.gmail.com';
+    const smtpPort = parseInt(this.config.get<string>('SMTP_PORT') || '587', 10);
+    this.fromAddress = this.config.get<string>('SMTP_FROM') || smtpUser || 'noreply@toiletmon.com';
+
+    if (smtpUser && smtpPass) {
+      this.transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+      this.logger.log(`Email configured via SMTP (${smtpHost}:${smtpPort}, user: ${smtpUser})`);
     } else {
-      this.logger.warn('RESEND_API_KEY not set — email sending disabled');
+      this.logger.warn('SMTP_USER/SMTP_PASS not set — email sending disabled');
     }
   }
 
   async send(to: string | string[], subject: string, html: string): Promise<boolean> {
-    if (!this.resend) return false;
+    if (!this.transporter) return false;
 
     try {
-      const { error } = await this.resend.emails.send({
-        from: 'ToiletMon <onboarding@resend.dev>',
-        to: Array.isArray(to) ? to : [to],
+      await this.transporter.sendMail({
+        from: `ToiletMon <${this.fromAddress}>`,
+        to: Array.isArray(to) ? to.join(', ') : to,
         subject,
         html,
       });
-      if (error) {
-        this.logger.error(`Email send failed: ${error.message}`);
-        return false;
-      }
       return true;
-    } catch (err) {
-      this.logger.error('Email send error:', err);
+    } catch (err: any) {
+      this.logger.error(`Email send failed: ${err?.message ?? err}`);
       return false;
     }
   }

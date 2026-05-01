@@ -31,6 +31,21 @@ if [ -n "$VAPID_PUBLIC_KEY" ] && [ -n "$VAPID_PRIVATE_KEY" ]; then
   echo "VAPID keys ensured in $ENV_FILE"
 fi
 
+# Inject SMTP credentials from CI environment (idempotent)
+if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASS" ]; then
+  grep -q "SMTP_USER" "$ENV_FILE" 2>/dev/null \
+    || echo "SMTP_USER=$SMTP_USER" >> "$ENV_FILE"
+  grep -q "SMTP_PASS" "$ENV_FILE" 2>/dev/null \
+    || echo "SMTP_PASS=$SMTP_PASS" >> "$ENV_FILE"
+  grep -q "SMTP_HOST" "$ENV_FILE" 2>/dev/null \
+    || echo "SMTP_HOST=smtp.gmail.com" >> "$ENV_FILE"
+  grep -q "SMTP_PORT" "$ENV_FILE" 2>/dev/null \
+    || echo "SMTP_PORT=587" >> "$ENV_FILE"
+  grep -q "SMTP_FROM" "$ENV_FILE" 2>/dev/null \
+    || echo "SMTP_FROM=$SMTP_USER" >> "$ENV_FILE"
+  echo "SMTP credentials ensured in $ENV_FILE"
+fi
+
 # Install / update dependencies (picks up any new packages from pnpm-lock.yaml)
 cd /opt/toilet-monitor
 pnpm install --frozen-lockfile
