@@ -5,8 +5,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   RadialBarChart, RadialBar, PolarAngleAxis,
 } from 'recharts';
-import { Calendar, Info } from 'lucide-react';
+import { Calendar, Info, FileDown, FileSpreadsheet } from 'lucide-react';
 import api from '../../../lib/api';
+import { exportToPdf, exportToExcel, type ExportSection } from '../../../lib/export';
 
 const CYAN = '#00e5cc';
 const AMBER = '#f59e0b';
@@ -110,10 +111,90 @@ export default function AdminAnalytics() {
   // ── Frequency chart: compute max for proportional bars
   const freqMax = Math.max(1, ...((frequency ?? []).map((f: any) => f.count)));
 
+  const buildExportSections = (): ExportSection[] => {
+    const sections: ExportSection[] = [];
+
+    if (sla && sla.totalResolved > 0) {
+      sections.push({
+        title: 'SLA',
+        headers: [t('admin.analytics.slaTarget'), t('admin.analytics.slaGoalMet'), t('admin.analytics.slaAvg'), t('admin.analytics.slaMedian'), t('admin.analytics.slaP90')],
+        rows: [[`${slaTarget} ${minutesUnit}`, `${sla.slaPercent}% (${sla.withinSla}/${sla.totalResolved})`, `${sla.avgMinutes} ${minutesUnit}`, `${sla.p50} ${minutesUnit}`, `${sla.p90} ${minutesUnit}`]],
+      });
+    }
+
+    if (frequency?.length) {
+      sections.push({
+        title: t('admin.analytics.frequencyTitle').replace(/[^\w\u0590-\u05FF ]/g, ''),
+        headers: [t('admin.analytics.issueFrequency'), t('admin.analytics.count'), t('admin.analytics.avgTime')],
+        rows: frequency.map((f: any) => [f.nameI18n?.[lang] ?? f.nameI18n?.he ?? '—', f.count, `${f.avgResolutionMinutes} ${minutesUnit}`]),
+      });
+    }
+
+    if (hourly?.length) {
+      sections.push({
+        title: t('admin.analytics.hourlyTitle').replace(/[^\w\u0590-\u05FF ]/g, ''),
+        headers: [t('admin.analytics.hourlyDistribution'), t('admin.analytics.count')],
+        rows: hourly.map((h: any) => [`${h.hour}:00`, h.count]),
+      });
+    }
+
+    if (dow?.length) {
+      sections.push({
+        title: t('admin.analytics.dowTitle').replace(/[^\w\u0590-\u05FF ]/g, ''),
+        headers: [t('admin.analytics.days'), t('admin.analytics.count')],
+        rows: dow.map((d: any) => [lang === 'he' ? d.dayHe : d.dayEn, d.count]),
+      });
+    }
+
+    if (cleaners?.length) {
+      sections.push({
+        title: t('admin.analytics.cleanerTitle').replace(/[^\w\u0590-\u05FF ]/g, ''),
+        headers: ['#', t('admin.cleaners.fullName'), t('admin.analytics.resolved'), t('admin.analytics.avgTime')],
+        rows: cleaners.map((c: any, i: number) => [i + 1, c.name, c.totalResolved, `${Math.round(c.avgResolutionMinutes)} ${minutesUnit}`]),
+      });
+    }
+
+    if (patterns?.hotspots?.length) {
+      sections.push({
+        title: t('admin.analytics.busiestRestrooms'),
+        headers: ['#', t('admin.analytics.busiestRestrooms'), t('admin.analytics.count')],
+        rows: patterns.hotspots.map((h: any, i: number) => [i + 1, h.location, h.count]),
+      });
+    }
+
+    return sections;
+  };
+
+  const handleExportPdf = () => {
+    const sections = buildExportSections();
+    if (sections.length === 0) return;
+    exportToPdf(sections, 'toiletmon_analytics', `ToiletMon — ${t('admin.analytics.title')}`);
+  };
+
+  const handleExportExcel = () => {
+    const sections = buildExportSections();
+    if (sections.length === 0) return;
+    exportToExcel(sections, 'toiletmon_analytics');
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{t('admin.analytics.title')}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{t('admin.analytics.title')}</h1>
+          <div className="flex gap-1.5">
+            <button onClick={handleExportPdf} title={t('admin.analytics.exportPdf')}
+              className="p-2 rounded-lg transition-all hover:scale-105"
+              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
+              <FileDown size={16} />
+            </button>
+            <button onClick={handleExportExcel} title={t('admin.analytics.exportExcel')}
+              className="p-2 rounded-lg transition-all hover:scale-105"
+              style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }}>
+              <FileSpreadsheet size={16} />
+            </button>
+          </div>
+        </div>
         <div className="flex gap-2 flex-wrap items-center">
           {[
             { label: t('admin.analytics.lastDay'), value: 1 },

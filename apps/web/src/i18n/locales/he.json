@@ -197,7 +197,9 @@
       "customRangeHint": "בחר טווח תאריכים מותאם — כל הסטטיסטיקות יעודכנו לפיו",
       "from": "מתאריך",
       "to": "עד תאריך",
-      "apply": "החל"
+      "apply": "החל",
+      "exportPdf": "ייצוא ל-PDF",
+      "exportExcel": "ייצוא ל-Excel"
     },
     "devices": {
       "title": "מכשירים",
