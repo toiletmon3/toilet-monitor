@@ -197,7 +197,9 @@
       "customRangeHint": "Pick a custom date range — all stats below will refresh accordingly",
       "from": "From",
       "to": "To",
-      "apply": "Apply"
+      "apply": "Apply",
+      "exportPdf": "Export to PDF",
+      "exportExcel": "Export to Excel"
     },
     "devices": {
       "title": "Devices",
