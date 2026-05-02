@@ -7,6 +7,7 @@ export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter: nodemailer.Transporter | null = null;
   private fromAddress: string;
+  private lastError: string | null = null;
 
   constructor(private config: ConfigService) {
     const smtpUser = this.config.get<string>('SMTP_USER');
@@ -24,12 +25,23 @@ export class EmailService {
       });
       this.logger.log(`Email configured via SMTP (${smtpHost}:${smtpPort}, user: ${smtpUser})`);
     } else {
-      this.logger.warn('SMTP_USER/SMTP_PASS not set — email sending disabled');
+      this.logger.warn(`SMTP not configured — user: ${smtpUser ? 'set' : 'MISSING'}, pass: ${smtpPass ? 'set' : 'MISSING'}`);
     }
   }
 
+  isConfigured(): boolean {
+    return this.transporter !== null;
+  }
+
+  getLastError(): string | null {
+    return this.lastError;
+  }
+
   async send(to: string | string[], subject: string, html: string): Promise<boolean> {
-    if (!this.transporter) return false;
+    if (!this.transporter) {
+      this.lastError = 'SMTP not configured (SMTP_USER or SMTP_PASS missing)';
+      return false;
+    }
 
     try {
       await this.transporter.sendMail({
@@ -38,9 +50,11 @@ export class EmailService {
         subject,
         html,
       });
+      this.lastError = null;
       return true;
     } catch (err: any) {
-      this.logger.error(`Email send failed: ${err?.message ?? err}`);
+      this.lastError = err?.message ?? String(err);
+      this.logger.error(`Email send failed: ${this.lastError}`);
       return false;
     }
   }

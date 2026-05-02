@@ -946,7 +946,7 @@ export default function AdminSettings() {
             try {
               const { data } = await api.post('/email/send-daily-report');
               if (data.sent) toast.success(t('admin.settings.dailyReportSent', { count: data.recipients.length }));
-              else toast.error(t('admin.settings.dailyReportFailed'));
+              else toast.error(data.error || t('admin.settings.dailyReportFailed'));
             } catch { toast.error(t('admin.settings.dailyReportFailed')); }
           }}
           className="self-start px-4 py-2 rounded-xl text-sm font-medium transition-all"
