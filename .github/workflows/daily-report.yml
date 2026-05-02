@@ -13,13 +13,21 @@ jobs:
       - name: Fetch report from server
         id: fetch
         run: |
-          RESPONSE=$(curl -s --max-time 30 \
+          HTTP_CODE=$(curl -s -o /tmp/report.json -w "%{http_code}" --max-time 30 \
             -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
             "https://toiletcleanpro.duckdns.org/api/email/generate-report")
           
-          echo "$RESPONSE" > /tmp/report.json
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response body:"
+          cat /tmp/report.json | head -c 500
+          echo ""
           
-          REPORT_COUNT=$(echo "$RESPONSE" | jq '.reports | length')
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: Server returned $HTTP_CODE"
+            exit 1
+          fi
+          
+          REPORT_COUNT=$(cat /tmp/report.json | jq '.reports | length')
           echo "report_count=$REPORT_COUNT" >> "$GITHUB_OUTPUT"
           
           if [ "$REPORT_COUNT" = "0" ] || [ -z "$REPORT_COUNT" ]; then
