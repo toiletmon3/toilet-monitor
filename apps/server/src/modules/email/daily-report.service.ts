@@ -50,7 +50,7 @@ export class DailyReportService {
     const admins = await this.prisma.user.findMany({
       where: {
         orgId: org.id,
-        role: { in: ['ORG_ADMIN', 'SUPER_ADMIN'] },
+        role: { in: ['ORG_ADMIN', 'SUPER_ADMIN', 'MANAGER'] },
         isActive: true,
         email: { not: null },
       },
@@ -84,7 +84,7 @@ export class DailyReportService {
     const admins = await this.prisma.user.findMany({
       where: {
         orgId: org.id,
-        role: { in: ['ORG_ADMIN', 'SUPER_ADMIN'] },
+        role: { in: ['ORG_ADMIN', 'SUPER_ADMIN', 'MANAGER'] },
         isActive: true,
         email: { not: null },
       },

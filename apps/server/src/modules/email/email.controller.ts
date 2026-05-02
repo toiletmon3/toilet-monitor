@@ -53,6 +53,9 @@ export class EmailController {
       return { sent: false, error: 'GITHUB_PAT not configured — cannot trigger workflow' };
     }
 
+    const report = await this.dailyReport.generateReport(user.orgId);
+    const recipients = report?.recipients ?? [];
+
     try {
       const res = await fetch(
         'https://api.github.com/repos/toiletmon3/toilet-monitor/actions/workflows/daily-report.yml/dispatches',
@@ -67,7 +70,7 @@ export class EmailController {
         },
       );
       if (res.status === 204) {
-        return { sent: true, recipients: ['(via GitHub Actions)'] };
+        return { sent: true, recipients };
       }
       const body = await res.text();
       return { sent: false, error: `GitHub API returned ${res.status}: ${body}` };
