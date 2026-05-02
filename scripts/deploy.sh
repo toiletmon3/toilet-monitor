@@ -6,6 +6,14 @@ git pull
 
 # Load production environment variables (source of DATABASE_URL etc.)
 ENV_FILE="/opt/toilet-monitor/.env.production"
+
+# Fix broken SMTP_PASS lines (unquoted app passwords with spaces) before sourcing
+if [ -f "$ENV_FILE" ]; then
+  sed -i '/^SMTP_PASS=$/d' "$ENV_FILE" 2>/dev/null || true
+  # Remove any SMTP_PASS line that isn't properly quoted
+  sed -i '/^SMTP_PASS=[^"]/d' "$ENV_FILE" 2>/dev/null || true
+fi
+
 if [ -f "$ENV_FILE" ]; then
   set -a
   source "$ENV_FILE"
