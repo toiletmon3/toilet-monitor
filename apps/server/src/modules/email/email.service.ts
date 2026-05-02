@@ -13,17 +13,32 @@ export class EmailService {
     const smtpUser = this.config.get<string>('SMTP_USER');
     const smtpPass = this.config.get<string>('SMTP_PASS');
     const smtpHost = this.config.get<string>('SMTP_HOST') || 'smtp.gmail.com';
-    const smtpPort = parseInt(this.config.get<string>('SMTP_PORT') || '587', 10);
+    const smtpPort = parseInt(this.config.get<string>('SMTP_PORT') || '465', 10);
     this.fromAddress = this.config.get<string>('SMTP_FROM') || smtpUser || 'noreply@toiletmon.com';
 
     if (smtpUser && smtpPass) {
-      this.transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: { user: smtpUser, pass: smtpPass },
-      });
-      this.logger.log(`Email configured via SMTP (${smtpHost}:${smtpPort}, user: ${smtpUser})`);
+      const passClean = smtpPass.replace(/\s/g, '');
+
+      if (smtpHost === 'smtp.gmail.com') {
+        this.transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: { user: smtpUser, pass: passClean },
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          socketTimeout: 15000,
+        });
+      } else {
+        this.transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpPort === 465,
+          auth: { user: smtpUser, pass: passClean },
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          socketTimeout: 15000,
+        });
+      }
+      this.logger.log(`Email configured via SMTP (${smtpHost}, user: ${smtpUser})`);
     } else {
       this.logger.warn(`SMTP not configured — user: ${smtpUser ? 'set' : 'MISSING'}, pass: ${smtpPass ? 'set' : 'MISSING'}`);
     }
