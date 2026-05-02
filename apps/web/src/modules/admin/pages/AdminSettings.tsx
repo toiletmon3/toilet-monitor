@@ -759,6 +759,16 @@ export default function AdminSettings() {
   const [pwSaving, setPwSaving] = useState(false);
   const [emailLog, setEmailLog] = useState<{ ok: boolean; msg: string; time: string } | null>(null);
 
+  useEffect(() => {
+    api.get('/email/status').then(({ data }) => {
+      if (!data.configured) {
+        setEmailLog({ ok: false, msg: 'SMTP not configured on server', time: new Date().toLocaleTimeString() });
+      } else if (data.smtpConnection !== 'OK') {
+        setEmailLog({ ok: false, msg: `SMTP: ${data.smtpConnection}`, time: new Date().toLocaleTimeString() });
+      }
+    }).catch(() => {});
+  }, []);
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (pwNew.length < 6 || pwNew !== pwConfirm) return;

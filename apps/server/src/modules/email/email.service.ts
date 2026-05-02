@@ -52,6 +52,16 @@ export class EmailService {
     return this.lastError;
   }
 
+  async verify(): Promise<{ ok: boolean; error?: string }> {
+    if (!this.transporter) return { ok: false, error: 'SMTP not configured' };
+    try {
+      await this.transporter.verify();
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message ?? String(err) };
+    }
+  }
+
   async send(to: string | string[], subject: string, html: string): Promise<boolean> {
     if (!this.transporter) {
       this.lastError = 'SMTP not configured (SMTP_USER or SMTP_PASS missing)';

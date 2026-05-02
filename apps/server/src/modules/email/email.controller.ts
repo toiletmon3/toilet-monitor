@@ -13,9 +13,12 @@ export class EmailController {
   ) {}
 
   @Get('status')
-  getStatus() {
+  async getStatus() {
+    const configured = this.emailService.isConfigured();
+    const verify = configured ? await this.emailService.verify() : { ok: false, error: 'Not configured' };
     return {
-      configured: this.emailService.isConfigured(),
+      configured,
+      smtpConnection: verify.ok ? 'OK' : verify.error,
       lastError: this.emailService.getLastError(),
     };
   }
@@ -25,9 +28,13 @@ export class EmailController {
     if (!this.emailService.isConfigured()) {
       return { sent: false, error: 'SMTP not configured on server (SMTP_USER/SMTP_PASS missing)', recipients: [] };
     }
+    const verify = await this.emailService.verify();
+    if (!verify.ok) {
+      return { sent: false, error: `SMTP connection failed: ${verify.error}`, recipients: [] };
+    }
     const result = await this.dailyReport.sendNow(user.orgId);
     if (!result.sent) {
-      return { ...result, error: this.emailService.getLastError() || 'No admin recipients found' };
+      return { ...result, error: this.emailService.getLastError() || 'No admin recipients found with email' };
     }
     return result;
   }
