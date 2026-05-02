@@ -1,4 +1,4 @@
-import { Controller, Post, Get, UseGuards, Headers, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Get, UseGuards, Headers, Query, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -81,9 +81,10 @@ export class EmailController {
 
   @Public()
   @Get('generate-report')
-  async generateReport(@Headers('x-cron-secret') cronSecret: string) {
+  async generateReport(@Headers('x-cron-secret') cronSecretHeader: string, @Query('secret') cronSecretQuery: string) {
     const expectedSecret = this.config.get<string>('CRON_SECRET');
-    if (!expectedSecret || cronSecret !== expectedSecret) {
+    const provided = cronSecretHeader || cronSecretQuery;
+    if (!expectedSecret || provided !== expectedSecret) {
       throw new UnauthorizedException('Invalid cron secret');
     }
 

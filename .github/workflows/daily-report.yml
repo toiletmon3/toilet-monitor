@@ -14,8 +14,7 @@ jobs:
         id: fetch
         run: |
           HTTP_CODE=$(curl -s -o /tmp/report.json -w "%{http_code}" --max-time 30 \
-            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
-            "https://toiletcleanpro.duckdns.org/api/email/generate-report")
+            "https://toiletcleanpro.duckdns.org/api/email/generate-report?secret=${{ secrets.CRON_SECRET }}")
           
           echo "HTTP status: $HTTP_CODE"
           echo "Response body:"
