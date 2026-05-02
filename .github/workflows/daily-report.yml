@@ -20,7 +20,7 @@ jobs:
           BASE="https://toiletcleanpro.duckdns.org/api"
           
           echo "Logging in..."
-          LOGIN=$(curl -s --max-time 15 -X POST "$BASE/auth/login" \
+          LOGIN=$(curl -s --max-time 15 -X POST "$BASE/auth/admin/login" \
             -H "Content-Type: application/json" \
             -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}")
           
