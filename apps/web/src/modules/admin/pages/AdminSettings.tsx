@@ -947,7 +947,10 @@ export default function AdminSettings() {
               const { data } = await api.post('/email/send-daily-report');
               if (data.sent) toast.success(t('admin.settings.dailyReportSent', { count: data.recipients.length }));
               else toast.error(data.error || t('admin.settings.dailyReportFailed'));
-            } catch { toast.error(t('admin.settings.dailyReportFailed')); }
+            } catch (err: any) {
+              const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || t('admin.settings.dailyReportFailed');
+              toast.error(msg, { duration: 8000 });
+            }
           }}
           className="self-start px-4 py-2 rounded-xl text-sm font-medium transition-all"
           style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.4)', color: '#a78bfa' }}>
