@@ -1,0 +1,73 @@
+name: Daily Report Email
+
+on:
+  schedule:
+    # Run at 04:00 UTC = 07:00 Israel time
+    - cron: '0 4 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch report from server
+        id: fetch
+        run: |
+          RESPONSE=$(curl -s --max-time 30 \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            "https://toiletcleanpro.duckdns.org/api/email/generate-report")
+          
+          echo "$RESPONSE" > /tmp/report.json
+          
+          REPORT_COUNT=$(echo "$RESPONSE" | jq '.reports | length')
+          echo "report_count=$REPORT_COUNT" >> "$GITHUB_OUTPUT"
+          
+          if [ "$REPORT_COUNT" = "0" ] || [ -z "$REPORT_COUNT" ]; then
+            echo "No reports to send"
+            exit 0
+          fi
+          
+          echo "Found $REPORT_COUNT report(s) to send"
+
+      - name: Send emails via Gmail
+        if: steps.fetch.outputs.report_count != '0'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install nodemailer and send
+        if: steps.fetch.outputs.report_count != '0'
+        run: |
+          npm install nodemailer
+          
+          node -e "
+          const nodemailer = require('nodemailer');
+          const fs = require('fs');
+          
+          const data = JSON.parse(fs.readFileSync('/tmp/report.json', 'utf8'));
+          
+          const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+              user: process.env.SMTP_USER,
+              pass: process.env.SMTP_PASS.replace(/\s/g, ''),
+            },
+          });
+          
+          async function main() {
+            for (const report of data.reports) {
+              await transporter.sendMail({
+                from: 'ToiletMon <' + process.env.SMTP_USER + '>',
+                to: report.recipients.join(', '),
+                subject: report.subject,
+                html: report.html,
+              });
+              console.log('Sent to:', report.recipients.join(', '));
+            }
+          }
+          
+          main().then(() => console.log('Done')).catch(e => { console.error(e); process.exit(1); });
+          "
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}

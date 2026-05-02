@@ -55,6 +55,13 @@ if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASS" ]; then
   echo "SMTP credentials ensured in $ENV_FILE"
 fi
 
+# Inject CRON_SECRET from CI environment (idempotent)
+if [ -n "$CRON_SECRET" ]; then
+  grep -q "CRON_SECRET" "$ENV_FILE" 2>/dev/null \
+    || echo "CRON_SECRET=\"$CRON_SECRET\"" >> "$ENV_FILE"
+  echo "CRON_SECRET ensured in $ENV_FILE"
+fi
+
 # Install / update dependencies (picks up any new packages from pnpm-lock.yaml)
 cd /opt/toilet-monitor
 pnpm install --frozen-lockfile

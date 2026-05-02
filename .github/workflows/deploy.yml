@@ -15,11 +15,12 @@ jobs:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,SMTP_USER,SMTP_PASS
+          envs: VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,SMTP_USER,SMTP_PASS,CRON_SECRET
           script: |
             cd /opt/toilet-monitor
             git pull

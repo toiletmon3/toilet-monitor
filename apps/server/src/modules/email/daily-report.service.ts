@@ -33,11 +33,19 @@ export class DailyReportService {
   }
 
   async sendNow(orgId: string): Promise<{ sent: boolean; recipients: string[] }> {
+    const report = await this.generateReport(orgId);
+    if (!report) return { sent: false, recipients: [] };
+
+    const ok = await this.email.send(report.recipients, report.subject, report.html);
+    return { sent: ok, recipients: report.recipients };
+  }
+
+  async generateReport(orgId: string): Promise<{ html: string; subject: string; recipients: string[] } | null> {
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },
       select: { id: true, name: true, settings: true },
     });
-    if (!org) return { sent: false, recipients: [] };
+    if (!org) return null;
 
     const admins = await this.prisma.user.findMany({
       where: {
@@ -49,14 +57,13 @@ export class DailyReportService {
       select: { email: true },
     });
     const emails = admins.map(a => a.email!).filter(Boolean);
-    if (emails.length === 0) return { sent: false, recipients: [] };
+    if (emails.length === 0) return null;
 
     const data = await this.gatherYesterdayData(org.id, org.name);
     const html = buildDailyReportHtml(data);
     const subject = `📊 סיכום יומי — ${org.name} — ${data.date}`;
 
-    const ok = await this.email.send(emails, subject, html);
-    return { sent: ok, recipients: emails };
+    return { html, subject, recipients: emails };
   }
 
   private async processOrg(org: { id: string; name: string; settings: any }) {

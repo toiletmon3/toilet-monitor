@@ -956,7 +956,7 @@ export default function AdminSettings() {
           <button
             onClick={async () => {
               try {
-                const { data } = await api.post('/email/send-daily-report');
+                const { data } = await api.post('/email/trigger-daily-report');
                 if (data.sent) {
                   setEmailLog({ ok: true, msg: `✅ ${t('admin.settings.dailyReportSent', { count: data.recipients.length })} → ${data.recipients.join(', ')}`, time: new Date().toLocaleTimeString() });
                   toast.success(t('admin.settings.dailyReportSent', { count: data.recipients.length }));
