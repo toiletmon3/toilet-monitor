@@ -941,6 +941,18 @@ export default function AdminSettings() {
             </div>
           </div>
         )}
+        <button
+          onClick={async () => {
+            try {
+              const { data } = await api.post('/email/send-daily-report');
+              if (data.sent) toast.success(t('admin.settings.dailyReportSent', { count: data.recipients.length }));
+              else toast.error(t('admin.settings.dailyReportFailed'));
+            } catch { toast.error(t('admin.settings.dailyReportFailed')); }
+          }}
+          className="self-start px-4 py-2 rounded-xl text-sm font-medium transition-all"
+          style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.4)', color: '#a78bfa' }}>
+          {t('admin.settings.sendTestEmail')}
+        </button>
       </div>
 
       {/* ── Escalation & Mismatch Settings ── */}

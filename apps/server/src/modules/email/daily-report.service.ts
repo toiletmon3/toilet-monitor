@@ -32,6 +32,33 @@ export class DailyReportService {
     }
   }
 
+  async sendNow(orgId: string): Promise<{ sent: boolean; recipients: string[] }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { id: true, name: true, settings: true },
+    });
+    if (!org) return { sent: false, recipients: [] };
+
+    const admins = await this.prisma.user.findMany({
+      where: {
+        orgId: org.id,
+        role: { in: ['ORG_ADMIN', 'SUPER_ADMIN'] },
+        isActive: true,
+        email: { not: null },
+      },
+      select: { email: true },
+    });
+    const emails = admins.map(a => a.email!).filter(Boolean);
+    if (emails.length === 0) return { sent: false, recipients: [] };
+
+    const data = await this.gatherYesterdayData(org.id, org.name);
+    const html = buildDailyReportHtml(data);
+    const subject = `📊 סיכום יומי — ${org.name} — ${data.date}`;
+
+    const ok = await this.email.send(emails, subject, html);
+    return { sent: ok, recipients: emails };
+  }
+
   private async processOrg(org: { id: string; name: string; settings: any }) {
     const settings = (org.settings ?? {}) as Record<string, any>;
     if (settings.dailyReportEnabled === false) return;
