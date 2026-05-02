@@ -757,6 +757,7 @@ export default function AdminSettings() {
   const [pwConfirm, setPwConfirm] = useState('');
   const [pwShowNew, setPwShowNew] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
+  const [emailLog, setEmailLog] = useState<{ ok: boolean; msg: string; time: string } | null>(null);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -941,21 +942,39 @@ export default function AdminSettings() {
             </div>
           </div>
         )}
-        <button
-          onClick={async () => {
-            try {
-              const { data } = await api.post('/email/send-daily-report');
-              if (data.sent) toast.success(t('admin.settings.dailyReportSent', { count: data.recipients.length }));
-              else toast.error(data.error || t('admin.settings.dailyReportFailed'));
-            } catch (err: any) {
-              const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || t('admin.settings.dailyReportFailed');
-              toast.error(msg, { duration: 8000 });
-            }
-          }}
-          className="self-start px-4 py-2 rounded-xl text-sm font-medium transition-all"
-          style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.4)', color: '#a78bfa' }}>
-          {t('admin.settings.sendTestEmail')}
-        </button>
+        <div className="flex flex-col gap-2 self-start">
+          <button
+            onClick={async () => {
+              try {
+                const { data } = await api.post('/email/send-daily-report');
+                if (data.sent) {
+                  setEmailLog({ ok: true, msg: `✅ ${t('admin.settings.dailyReportSent', { count: data.recipients.length })} → ${data.recipients.join(', ')}`, time: new Date().toLocaleTimeString() });
+                  toast.success(t('admin.settings.dailyReportSent', { count: data.recipients.length }));
+                } else {
+                  setEmailLog({ ok: false, msg: data.error || 'Unknown error', time: new Date().toLocaleTimeString() });
+                  toast.error(data.error || t('admin.settings.dailyReportFailed'));
+                }
+              } catch (err: any) {
+                const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Network error';
+                setEmailLog({ ok: false, msg, time: new Date().toLocaleTimeString() });
+                toast.error(msg, { duration: 8000 });
+              }
+            }}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+            style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.4)', color: '#a78bfa' }}>
+            {t('admin.settings.sendTestEmail')}
+          </button>
+          {emailLog && (
+            <div className="rounded-lg px-3 py-2 text-xs font-mono break-all max-w-lg"
+              style={{
+                background: emailLog.ok ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+                border: `1px solid ${emailLog.ok ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                color: emailLog.ok ? '#22c55e' : '#ef4444',
+              }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>[{emailLog.time}]</span> {emailLog.msg}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Escalation & Mismatch Settings ── */}
