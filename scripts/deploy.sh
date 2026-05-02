@@ -62,6 +62,13 @@ if [ -n "$CRON_SECRET" ]; then
   echo "CRON_SECRET ensured in $ENV_FILE"
 fi
 
+# Inject GITHUB_PAT from CI environment (idempotent)
+if [ -n "$GITHUB_PAT" ]; then
+  sed -i '/^GITHUB_PAT=/d' "$ENV_FILE" 2>/dev/null || true
+  echo "GITHUB_PAT=\"$GITHUB_PAT\"" >> "$ENV_FILE"
+  echo "GITHUB_PAT ensured in $ENV_FILE"
+fi
+
 # Install / update dependencies (picks up any new packages from pnpm-lock.yaml)
 cd /opt/toilet-monitor
 pnpm install --frozen-lockfile
