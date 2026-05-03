@@ -39,17 +39,36 @@ if [ -n "$VAPID_PUBLIC_KEY" ] && [ -n "$VAPID_PRIVATE_KEY" ]; then
   echo "VAPID keys ensured in $ENV_FILE"
 fi
 
-# Inject SMTP credentials from CI environment (idempotent)
+# Inject Gmail API credentials from CI environment (idempotent)
+if [ -n "$GMAIL_CLIENT_ID" ]; then
+  sed -i '/^GMAIL_CLIENT_ID=/d' "$ENV_FILE" 2>/dev/null || true
+  echo "GMAIL_CLIENT_ID=\"$GMAIL_CLIENT_ID\"" >> "$ENV_FILE"
+fi
+if [ -n "$GMAIL_CLIENT_SECRET" ]; then
+  sed -i '/^GMAIL_CLIENT_SECRET=/d' "$ENV_FILE" 2>/dev/null || true
+  echo "GMAIL_CLIENT_SECRET=\"$GMAIL_CLIENT_SECRET\"" >> "$ENV_FILE"
+fi
+if [ -n "$GMAIL_REFRESH_TOKEN" ]; then
+  sed -i '/^GMAIL_REFRESH_TOKEN=/d' "$ENV_FILE" 2>/dev/null || true
+  echo "GMAIL_REFRESH_TOKEN=\"$GMAIL_REFRESH_TOKEN\"" >> "$ENV_FILE"
+fi
+if [ -n "$GMAIL_USER" ]; then
+  sed -i '/^GMAIL_USER=/d' "$ENV_FILE" 2>/dev/null || true
+  echo "GMAIL_USER=\"$GMAIL_USER\"" >> "$ENV_FILE"
+elif [ -n "$SMTP_USER" ]; then
+  grep -q "GMAIL_USER" "$ENV_FILE" 2>/dev/null \
+    || echo "GMAIL_USER=\"$SMTP_USER\"" >> "$ENV_FILE"
+fi
+if [ -n "$GMAIL_CLIENT_ID" ] && [ -n "$GMAIL_CLIENT_SECRET" ] && [ -n "$GMAIL_REFRESH_TOKEN" ]; then
+  echo "Gmail API credentials ensured in $ENV_FILE"
+fi
+
+# Legacy SMTP credentials (kept for backwards compat)
 if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASS" ]; then
-  # Fix any previously broken SMTP_PASS line (without quotes) by removing it first
   sed -i '/^SMTP_PASS=/d' "$ENV_FILE" 2>/dev/null || true
   echo "SMTP_PASS=\"$SMTP_PASS\"" >> "$ENV_FILE"
   grep -q "SMTP_USER" "$ENV_FILE" 2>/dev/null \
     || echo "SMTP_USER=\"$SMTP_USER\"" >> "$ENV_FILE"
-  grep -q "SMTP_HOST" "$ENV_FILE" 2>/dev/null \
-    || echo "SMTP_HOST=\"smtp.gmail.com\"" >> "$ENV_FILE"
-  grep -q "SMTP_PORT" "$ENV_FILE" 2>/dev/null \
-    || echo "SMTP_PORT=587" >> "$ENV_FILE"
   grep -q "SMTP_FROM" "$ENV_FILE" 2>/dev/null \
     || echo "SMTP_FROM=\"$SMTP_USER\"" >> "$ENV_FILE"
   echo "SMTP credentials ensured in $ENV_FILE"
