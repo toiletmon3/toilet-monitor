@@ -34,10 +34,6 @@ export class EmailController {
     if (!this.emailService.isConfigured()) {
       return { sent: false, error: 'SMTP not configured on server (SMTP_USER/SMTP_PASS missing)', recipients: [] };
     }
-    const verify = await this.emailService.verify();
-    if (!verify.ok) {
-      return { sent: false, error: `SMTP connection failed: ${verify.error}`, recipients: [] };
-    }
     const result = await this.dailyReport.sendNow(user.orgId);
     if (!result.sent) {
       return { ...result, error: this.emailService.getLastError() || 'No admin recipients found with email' };
