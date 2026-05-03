@@ -23,9 +23,11 @@ export class EmailService {
         this.transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: { user: smtpUser, pass: passClean },
-          connectionTimeout: 10000,
-          greetingTimeout: 10000,
-          socketTimeout: 15000,
+          pool: true,
+          maxConnections: 3,
+          connectionTimeout: 30000,
+          greetingTimeout: 30000,
+          socketTimeout: 60000,
         });
       } else {
         this.transporter = nodemailer.createTransport({
@@ -33,9 +35,11 @@ export class EmailService {
           port: smtpPort,
           secure: smtpPort === 465,
           auth: { user: smtpUser, pass: passClean },
-          connectionTimeout: 10000,
-          greetingTimeout: 10000,
-          socketTimeout: 15000,
+          pool: true,
+          maxConnections: 3,
+          connectionTimeout: 30000,
+          greetingTimeout: 30000,
+          socketTimeout: 60000,
         });
       }
       this.logger.log(`Email configured via SMTP (${smtpHost}, user: ${smtpUser})`);

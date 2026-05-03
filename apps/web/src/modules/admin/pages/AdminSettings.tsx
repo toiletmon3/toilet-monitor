@@ -760,7 +760,7 @@ export default function AdminSettings() {
   const [emailLog, setEmailLog] = useState<{ ok: boolean; msg: string; time: string } | null>(null);
 
   useEffect(() => {
-    api.get('/email/status').then(({ data }) => {
+    api.get('/email/status', { timeout: 30000 }).then(({ data }) => {
       if (!data.configured) {
         setEmailLog({ ok: false, msg: 'SMTP not configured on server', time: new Date().toLocaleTimeString() });
       } else if (data.smtpConnection !== 'OK') {
@@ -956,7 +956,7 @@ export default function AdminSettings() {
           <button
             onClick={async () => {
               try {
-                const { data } = await api.post('/email/send-daily-report');
+                const { data } = await api.post('/email/send-daily-report', {}, { timeout: 60000 });
                 if (data.sent) {
                   setEmailLog({ ok: true, msg: `✅ ${t('admin.settings.dailyReportSent', { count: data.recipients.length })} → ${data.recipients.join(', ')}`, time: new Date().toLocaleTimeString() });
                   toast.success(t('admin.settings.dailyReportSent', { count: data.recipients.length }));
