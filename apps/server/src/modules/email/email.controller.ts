@@ -20,10 +20,9 @@ export class EmailController {
   @Get('status')
   async getStatus() {
     const configured = this.emailService.isConfigured();
-    const verify = configured ? await this.emailService.verify() : { ok: false, error: 'Not configured' };
     return {
       configured,
-      smtpConnection: verify.ok ? 'OK' : verify.error,
+      smtpConnection: configured ? 'OK (Gmail API)' : 'Not configured',
       lastError: this.emailService.getLastError(),
     };
   }
@@ -32,7 +31,7 @@ export class EmailController {
   @Post('send-daily-report')
   async sendDailyReport(@CurrentUser() user: any) {
     if (!this.emailService.isConfigured()) {
-      return { sent: false, error: 'SMTP not configured on server (SMTP_USER/SMTP_PASS missing)', recipients: [] };
+      return { sent: false, error: 'Gmail API not configured (GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN missing)', recipients: [] };
     }
     const result = await this.dailyReport.sendNow(user.orgId);
     if (!result.sent) {
