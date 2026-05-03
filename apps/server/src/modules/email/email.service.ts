@@ -68,18 +68,22 @@ export class EmailService {
       return false;
     }
 
+    const recipients = Array.isArray(to) ? to.join(', ') : to;
+    this.logger.log(`Sending email to: ${recipients} | subject: ${subject}`);
+
     try {
-      await this.transporter.sendMail({
+      const info = await this.transporter.sendMail({
         from: `ToiletMon <${this.fromAddress}>`,
-        to: Array.isArray(to) ? to.join(', ') : to,
+        to: recipients,
         subject,
         html,
       });
       this.lastError = null;
+      this.logger.log(`Email sent successfully to: ${recipients} (messageId: ${info.messageId})`);
       return true;
     } catch (err: any) {
       this.lastError = err?.message ?? String(err);
-      this.logger.error(`Email send failed: ${this.lastError}`);
+      this.logger.error(`Email send failed to ${recipients}: ${this.lastError}`);
       return false;
     }
   }
