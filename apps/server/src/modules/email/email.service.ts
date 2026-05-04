@@ -128,7 +128,7 @@ export class EmailService {
       return true;
     } catch (err: any) {
       this.lastError = err?.message ?? String(err);
-      this.lastAttempt = { at, recipients, subject, ok: false, error: this.lastError, httpStatus };
+      this.lastAttempt = { at, recipients, subject, ok: false, error: this.lastError ?? undefined, httpStatus };
       this.logger.error(`Email send failed: ${this.lastError}`);
       return false;
     }
