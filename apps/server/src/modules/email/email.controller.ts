@@ -28,6 +28,51 @@ export class EmailController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('diagnose')
+  async diagnose(@CurrentUser() user: any) {
+    const configured = this.emailService.isConfigured();
+    const config = this.emailService.getConfigStatus();
+
+    let oauth: { ok: boolean; error?: string } = { ok: false, error: 'not configured' };
+    if (configured) {
+      oauth = await this.emailService.verify();
+    }
+
+    const allAdmins = await this.prisma.user.findMany({
+      where: { orgId: user.orgId, role: { in: ['ORG_ADMIN', 'SUPER_ADMIN', 'MANAGER'] } },
+      select: { email: true, role: true, isActive: true, name: true },
+    });
+    const eligibleRecipients = allAdmins
+      .filter(a => a.isActive && a.email)
+      .map(a => a.email!);
+
+    const orgs = await this.prisma.organization.findMany({
+      select: { id: true, name: true, settings: true },
+    });
+
+    return {
+      now: new Date().toISOString(),
+      tz: 'Asia/Jerusalem',
+      currentJerusalemHour: new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' })).getHours(),
+      configured,
+      config,
+      oauth,
+      currentOrgId: user.orgId,
+      adminsInOrg: allAdmins,
+      eligibleRecipients,
+      eligibleCount: eligibleRecipients.length,
+      allOrgs: orgs.map(o => ({
+        id: o.id,
+        name: o.name,
+        dailyReportEnabled: (o.settings as any)?.dailyReportEnabled !== false,
+        dailyReportHour: (o.settings as any)?.dailyReportHour ?? 7,
+      })),
+      lastAttempt: this.emailService.getLastAttempt(),
+      lastError: this.emailService.getLastError(),
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('send-daily-report')
   async sendDailyReport(@CurrentUser() user: any) {
     if (!this.emailService.isConfigured()) {

@@ -1,10 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+export interface LastAttempt {
+  at: string;
+  recipients: string[];
+  subject: string;
+  ok: boolean;
+  messageId?: string;
+  httpStatus?: number;
+  error?: string;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private lastError: string | null = null;
+  private lastAttempt: LastAttempt | null = null;
 
   private readonly fromAddress: string;
   private readonly gmailUser: string | undefined;
@@ -41,6 +52,24 @@ export class EmailService {
     return this.lastError;
   }
 
+  getLastAttempt(): LastAttempt | null {
+    return this.lastAttempt;
+  }
+
+  getConfigStatus() {
+    const mask = (v?: string) => (v ? `${v.slice(0, 4)}…${v.slice(-4)} (len=${v.length})` : null);
+    return {
+      gmailUser: this.gmailUser ?? null,
+      fromAddress: this.fromAddress,
+      hasClientId: !!this.clientId,
+      hasClientSecret: !!this.clientSecret,
+      hasRefreshToken: !!this.refreshToken,
+      clientIdPreview: mask(this.clientId),
+      refreshTokenPreview: mask(this.refreshToken),
+      cachedAccessTokenValid: !!this.cachedAccessToken && Date.now() < this.tokenExpiresAt,
+    };
+  }
+
   async verify(): Promise<{ ok: boolean; error?: string }> {
     if (!this.isConfigured()) return { ok: false, error: 'Gmail API not configured' };
     try {
@@ -52,14 +81,18 @@ export class EmailService {
   }
 
   async send(to: string | string[], subject: string, html: string): Promise<boolean> {
+    const recipients = Array.isArray(to) ? to : [to];
+    const at = new Date().toISOString();
+
     if (!this.isConfigured()) {
       this.lastError = 'Gmail API not configured (GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN required)';
+      this.lastAttempt = { at, recipients, subject, ok: false, error: this.lastError };
       return false;
     }
 
-    const recipients = Array.isArray(to) ? to : [to];
-    this.logger.log(`Sending email to: ${recipients.join(', ')} | subject: ${subject}`);
+    this.logger.log(`Sending email to: ${recipients.join(', ')} | subject: ${subject} | from: ${this.fromAddress}`);
 
+    let httpStatus: number | undefined;
     try {
       const accessToken = await this.getAccessToken();
 
@@ -81,6 +114,7 @@ export class EmailService {
           body: JSON.stringify({ raw: base64Email }),
         },
       );
+      httpStatus = res.status;
 
       if (!res.ok) {
         const body = await res.text();
@@ -89,10 +123,12 @@ export class EmailService {
 
       const data = await res.json();
       this.lastError = null;
+      this.lastAttempt = { at, recipients, subject, ok: true, messageId: data.id, httpStatus };
       this.logger.log(`Email sent successfully to: ${recipients.join(', ')} (id: ${data.id})`);
       return true;
     } catch (err: any) {
       this.lastError = err?.message ?? String(err);
+      this.lastAttempt = { at, recipients, subject, ok: false, error: this.lastError, httpStatus };
       this.logger.error(`Email send failed: ${this.lastError}`);
       return false;
     }
