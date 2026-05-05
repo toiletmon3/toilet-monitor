@@ -47,14 +47,18 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 15m
+          command_timeout: 8m
           debug: true
           envs: VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,SMTP_USER,SMTP_PASS,GMAIL_USER,GMAIL_CLIENT_ID,GMAIL_CLIENT_SECRET,GMAIL_REFRESH_TOKEN,CRON_SECRET,GITHUB_PAT
           script: |
             set -e
+            echo "=== [$(date -u +%H:%M:%S)] cd /opt/toilet-monitor ==="
             cd /opt/toilet-monitor
-            git pull
-            bash scripts/deploy.sh
+            echo "=== [$(date -u +%H:%M:%S)] git pull (with 60s timeout) ==="
+            timeout 60 git pull --no-edit || { echo "::error::git pull hung or failed"; exit 1; }
+            echo "=== [$(date -u +%H:%M:%S)] bash -x scripts/deploy.sh ==="
+            bash -x scripts/deploy.sh
+            echo "=== [$(date -u +%H:%M:%S)] deploy.sh complete ==="
 
       - name: Smoke test — verify site is not showing default nginx page
         run: |
