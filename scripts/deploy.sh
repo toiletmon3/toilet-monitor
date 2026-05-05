@@ -39,25 +39,34 @@ if [ -n "$VAPID_PUBLIC_KEY" ] && [ -n "$VAPID_PRIVATE_KEY" ]; then
   echo "VAPID keys ensured in $ENV_FILE"
 fi
 
+# Strip surrounding whitespace/newlines from secrets — GitHub Secrets sometimes
+# preserve trailing newlines from copy-paste, which corrupts OAuth requests.
+trim() { echo -n "$1" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
+
 # Inject Gmail API credentials from CI environment (idempotent)
 if [ -n "$GMAIL_CLIENT_ID" ]; then
+  CLEAN=$(trim "$GMAIL_CLIENT_ID")
   sed -i '/^GMAIL_CLIENT_ID=/d' "$ENV_FILE" 2>/dev/null || true
-  echo "GMAIL_CLIENT_ID=\"$GMAIL_CLIENT_ID\"" >> "$ENV_FILE"
+  echo "GMAIL_CLIENT_ID=\"$CLEAN\"" >> "$ENV_FILE"
 fi
 if [ -n "$GMAIL_CLIENT_SECRET" ]; then
+  CLEAN=$(trim "$GMAIL_CLIENT_SECRET")
   sed -i '/^GMAIL_CLIENT_SECRET=/d' "$ENV_FILE" 2>/dev/null || true
-  echo "GMAIL_CLIENT_SECRET=\"$GMAIL_CLIENT_SECRET\"" >> "$ENV_FILE"
+  echo "GMAIL_CLIENT_SECRET=\"$CLEAN\"" >> "$ENV_FILE"
 fi
 if [ -n "$GMAIL_REFRESH_TOKEN" ]; then
+  CLEAN=$(trim "$GMAIL_REFRESH_TOKEN")
   sed -i '/^GMAIL_REFRESH_TOKEN=/d' "$ENV_FILE" 2>/dev/null || true
-  echo "GMAIL_REFRESH_TOKEN=\"$GMAIL_REFRESH_TOKEN\"" >> "$ENV_FILE"
+  echo "GMAIL_REFRESH_TOKEN=\"$CLEAN\"" >> "$ENV_FILE"
 fi
 if [ -n "$GMAIL_USER" ]; then
+  CLEAN=$(trim "$GMAIL_USER")
   sed -i '/^GMAIL_USER=/d' "$ENV_FILE" 2>/dev/null || true
-  echo "GMAIL_USER=\"$GMAIL_USER\"" >> "$ENV_FILE"
+  echo "GMAIL_USER=\"$CLEAN\"" >> "$ENV_FILE"
 elif [ -n "$SMTP_USER" ]; then
+  CLEAN=$(trim "$SMTP_USER")
   grep -q "GMAIL_USER" "$ENV_FILE" 2>/dev/null \
-    || echo "GMAIL_USER=\"$SMTP_USER\"" >> "$ENV_FILE"
+    || echo "GMAIL_USER=\"$CLEAN\"" >> "$ENV_FILE"
 fi
 if [ -n "$GMAIL_CLIENT_ID" ] && [ -n "$GMAIL_CLIENT_SECRET" ] && [ -n "$GMAIL_REFRESH_TOKEN" ]; then
   echo "Gmail API credentials ensured in $ENV_FILE"
