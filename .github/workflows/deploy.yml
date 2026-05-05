@@ -13,8 +13,25 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Pre-flight — verify SSH host reachable
+        run: |
+          HOST="${{ secrets.SSH_HOST }}"
+          if [ -z "$HOST" ]; then
+            echo "::error::SSH_HOST secret is empty"
+            exit 1
+          fi
+          echo "Resolving $HOST..."
+          getent hosts "$HOST" || echo "::warning::DNS resolution failed for $HOST (may still work via /etc/hosts on action)"
+          echo "Testing TCP port 22..."
+          if timeout 10 bash -c "exec 3<>/dev/tcp/$HOST/22"; then
+            echo "SSH port 22 open on $HOST"
+          else
+            echo "::error::SSH port 22 unreachable on $HOST — server down, firewall blocking, or wrong host"
+            exit 1
+          fi
+
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.0
         env:
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
@@ -30,8 +47,11 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 15m
+          debug: true
           envs: VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,SMTP_USER,SMTP_PASS,GMAIL_USER,GMAIL_CLIENT_ID,GMAIL_CLIENT_SECRET,GMAIL_REFRESH_TOKEN,CRON_SECRET,GITHUB_PAT
           script: |
+            set -e
             cd /opt/toilet-monitor
             git pull
             bash scripts/deploy.sh

@@ -16,6 +16,28 @@ Still ask before:
 - Deleting branches with unmerged work
 - Anything that touches production data (DB resets, dropping tables, `--accept-data-loss`)
 
+## Post-merge deploy verification (REQUIRED after every push to main)
+
+**After every merge/push to `main`, verify the deploy actually passed.** The notify-on-failure email job depends on Gmail OAuth, which has been broken — so silent failures happen.
+
+### Verification protocol
+1. Wait ~30s after the merge for the run to start
+2. WebFetch `https://github.com/toiletmon3/toilet-monitor/commit/<SHA>/checks` — this page renders the run status reliably (the actions list page is cached/stale via WebFetch)
+3. If the page reports the deploy job FAILED:
+   - Read it again with a prompt asking for any visible error/log lines
+   - Check the duration: <15s usually means SSH-level failure (host unreachable, key auth, or action error); 1-3min means deploy.sh failure (build, migration, smoke test)
+   - Iterate: hypothesise, push fix, verify again — until the run is green
+4. Do NOT mark the task done until the latest run on `main` is ✓
+
+### Useful URLs
+- Per-commit checks: `https://github.com/toiletmon3/toilet-monitor/commit/<SHA>/checks`
+- Workflow list: `https://github.com/toiletmon3/toilet-monitor/actions/workflows/deploy.yml`
+- Failure-filtered: `https://github.com/toiletmon3/toilet-monitor/actions?query=is%3Afailure`
+
+### What WebFetch is reliable for / not
+- ✓ Per-commit `/checks` page → conclusive pass/fail and duration
+- ✗ Actions list page → often hallucinates "all green"; do not trust it
+
 ---
 
 ## Pre-push checklist (run BEFORE every push)
