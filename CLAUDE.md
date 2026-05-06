@@ -22,21 +22,24 @@ Still ask before:
 
 ### Verification protocol
 1. Wait ~30s after the merge for the run to start
-2. WebFetch `https://github.com/toiletmon3/toilet-monitor/commit/<SHA>/checks` — this page renders the run status reliably (the actions list page is cached/stale via WebFetch)
-3. If the page reports the deploy job FAILED:
-   - Read it again with a prompt asking for any visible error/log lines
-   - Check the duration: <15s usually means SSH-level failure (host unreachable, key auth, or action error); 1-3min means deploy.sh failure (build, migration, smoke test)
-   - Iterate: hypothesise, push fix, verify again — until the run is green
+2. WebFetch `https://github.com/toiletmon3/toilet-monitor/actions/workflows/deploy.yml` — ask "list the 5 most recent runs with run number, title, and exact status (queued/succeeded/failed/in_progress)"
+3. If the latest run FAILED:
+   - WebFetch the per-commit `/checks` page for any visible error annotation
+   - Check duration: <15s = SSH connection failure; 1-5min = script/build failure; 20-30min = normal full deploy
+   - Iterate: hypothesise, push fix, verify again — until green
 4. Do NOT mark the task done until the latest run on `main` is ✓
 
 ### Useful URLs
+- Workflow runs: `https://github.com/toiletmon3/toilet-monitor/actions/workflows/deploy.yml`
 - Per-commit checks: `https://github.com/toiletmon3/toilet-monitor/commit/<SHA>/checks`
-- Workflow list: `https://github.com/toiletmon3/toilet-monitor/actions/workflows/deploy.yml`
 - Failure-filtered: `https://github.com/toiletmon3/toilet-monitor/actions?query=is%3Afailure`
 
 ### What WebFetch is reliable for / not
-- ✓ Per-commit `/checks` page → conclusive pass/fail and duration
-- ✗ Actions list page → often hallucinates "all green"; do not trust it
+- ✓ Workflow runs LIST page → shows accurate run status (succeeded/failed/queued)
+- ✓ Per-commit `/checks` page → shows duration and error annotation text
+- ✗ `curl` scraping of the checks page → always shows "In progress" (page is JS-rendered); do NOT use
+- ✗ Actions list page with query params → sometimes hallucdinates "all green"
+- A 20-30min "in progress" run is likely a NORMAL deploy (pnpm install + build), not a hang
 
 ---
 
