@@ -3,7 +3,40 @@
 set -e
 
 cd /opt/toilet-monitor
+
+# --- Capture HEAD before pull so we can detect what changed ---
+PREV_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
 git pull
+NEW_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
+
+# Compute changed paths (empty when SHAs match — e.g., re-running after a no-op push)
+if [ -n "$PREV_SHA" ] && [ -n "$NEW_SHA" ] && [ "$PREV_SHA" != "$NEW_SHA" ]; then
+  CHANGED_FILES=$(git diff --name-only "$PREV_SHA" "$NEW_SHA" || echo "")
+else
+  CHANGED_FILES=""
+fi
+
+# Helper: returns 0 if any changed file matches the given regex
+changed_match() {
+  [ -z "$CHANGED_FILES" ] && return 1
+  echo "$CHANGED_FILES" | grep -qE "$1"
+}
+
+# Decide which heavy steps to run.
+# Force everything if this looks like a first deploy or PREV_SHA missing.
+if [ -z "$PREV_SHA" ] || [ -z "$NEW_SHA" ] || [ ! -d /opt/toilet-monitor/node_modules ] || [ ! -d /opt/toilet-monitor/apps/server/node_modules ] || [ ! -d /opt/toilet-monitor/apps/web/node_modules ] || [ ! -d /opt/toilet-monitor/apps/web/dist ] || [ ! -d /opt/toilet-monitor/apps/server/dist ]; then
+  RUN_INSTALL=1; RUN_MIGRATE=1; BUILD_SERVER=1; BUILD_WEB=1
+  echo "First deploy or missing build artefacts — running all steps"
+else
+  RUN_INSTALL=0; RUN_MIGRATE=0; BUILD_SERVER=0; BUILD_WEB=0
+  changed_match '(^|/)package\.json$|^pnpm-lock\.yaml$|^pnpm-workspace\.yaml$' && RUN_INSTALL=1
+  changed_match '^apps/server/prisma/(migrations/|schema\.prisma$)' && RUN_MIGRATE=1
+  changed_match '^apps/server/|^packages/shared-types/' && BUILD_SERVER=1
+  changed_match '^apps/web/|^packages/shared-types/' && BUILD_WEB=1
+  # Lockfile change rebuilds everything (deps may have changed)
+  if [ "$RUN_INSTALL" = "1" ]; then BUILD_SERVER=1; BUILD_WEB=1; fi
+  echo "Change detection: install=$RUN_INSTALL migrate=$RUN_MIGRATE server=$BUILD_SERVER web=$BUILD_WEB"
+fi
 
 # Load production environment variables (source of DATABASE_URL etc.)
 ENV_FILE="/opt/toilet-monitor/.env.production"
@@ -128,36 +161,45 @@ fi
 
 # Install / update dependencies (picks up any new packages from pnpm-lock.yaml)
 cd /opt/toilet-monitor
-pnpm install --frozen-lockfile
-
-# --- Pre-migration DB backup ---
-BACKUP_DIR="/var/log/toilet/backups"
-mkdir -p "$BACKUP_DIR"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILE="$BACKUP_DIR/pre_deploy_$TIMESTAMP.sql"
-
-if command -v pg_dump &>/dev/null; then
-  pg_dump "$DATABASE_URL" > "$BACKUP_FILE" 2>/dev/null && \
-    echo "DB backup saved: $BACKUP_FILE" || \
-    echo "WARNING: pg_dump failed (non-fatal)"
-elif docker exec toilet_postgres pg_dump -U postgres toilet_monitor > "$BACKUP_FILE" 2>/dev/null; then
-  echo "DB backup saved (via docker): $BACKUP_FILE"
+if [ "$RUN_INSTALL" = "1" ]; then
+  pnpm install --frozen-lockfile --prefer-offline
 else
-  echo "WARNING: Could not create DB backup — pg_dump not available"
+  echo "Skipping pnpm install (no package.json / lockfile changes)"
 fi
 
-# Keep only last 20 backups
-ls -t "$BACKUP_DIR"/pre_deploy_*.sql 2>/dev/null | tail -n +21 | xargs rm -f 2>/dev/null || true
+if [ "$RUN_MIGRATE" = "1" ]; then
+  # --- Pre-migration DB backup ---
+  BACKUP_DIR="/var/log/toilet/backups"
+  mkdir -p "$BACKUP_DIR"
+  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+  BACKUP_FILE="$BACKUP_DIR/pre_deploy_$TIMESTAMP.sql"
 
-# Apply DB schema changes safely (never drops data)
-cd /opt/toilet-monitor/apps/server
+  if command -v pg_dump &>/dev/null; then
+    pg_dump "$DATABASE_URL" > "$BACKUP_FILE" 2>/dev/null && \
+      echo "DB backup saved: $BACKUP_FILE" || \
+      echo "WARNING: pg_dump failed (non-fatal)"
+  elif docker exec toilet_postgres pg_dump -U postgres toilet_monitor > "$BACKUP_FILE" 2>/dev/null; then
+    echo "DB backup saved (via docker): $BACKUP_FILE"
+  else
+    echo "WARNING: Could not create DB backup — pg_dump not available"
+  fi
 
-# Baseline: if _prisma_migrations table doesn't exist yet, mark baseline as applied
-pnpm exec prisma migrate resolve --applied 0_baseline 2>/dev/null || true
+  # Keep only last 20 backups
+  ls -t "$BACKUP_DIR"/pre_deploy_*.sql 2>/dev/null | tail -n +21 | xargs rm -f 2>/dev/null || true
 
-# Run pending migrations (safe — refuses destructive changes)
-pnpm exec prisma migrate deploy
-pnpm exec prisma generate
+  # Apply DB schema changes safely (never drops data)
+  cd /opt/toilet-monitor/apps/server
+
+  # Baseline: if _prisma_migrations table doesn't exist yet, mark baseline as applied
+  pnpm exec prisma migrate resolve --applied 0_baseline 2>/dev/null || true
+
+  # Run pending migrations (safe — refuses destructive changes)
+  pnpm exec prisma migrate deploy
+  pnpm exec prisma generate
+else
+  echo "Skipping DB migration + backup (no schema/migration changes)"
+  cd /opt/toilet-monitor/apps/server
+fi
 
 # Auto-seed if DB is empty (no organizations exist)
 ORG_COUNT=$(node -e 'const{PrismaClient}=require("@prisma/client");const p=new PrismaClient();p.organization.count().then(c=>{console.log(c);p.$disconnect()}).catch(()=>{console.log("0");p.$disconnect()})' 2>/dev/null || echo "0")
@@ -172,10 +214,29 @@ fi
 cd /opt/toilet-monitor
 
 # Build server (prisma generate runs automatically via migrate deploy)
-pnpm --filter=@toilet/server build
+if [ "$BUILD_SERVER" = "1" ]; then
+  pnpm --filter=@toilet/server build &
+  SERVER_BUILD_PID=$!
+else
+  echo "Skipping server build (no apps/server or shared-types changes)"
+  SERVER_BUILD_PID=""
+fi
 
-# Restart backend — --update-env ensures new env vars (e.g. VAPID keys) are
-# picked up by the running process, not just inherited from the saved PM2 config.
+# Build frontend in parallel with server build
+if [ "$BUILD_WEB" = "1" ]; then
+  pnpm --filter=@toilet/web build &
+  WEB_BUILD_PID=$!
+else
+  echo "Skipping web build (no apps/web or shared-types changes)"
+  WEB_BUILD_PID=""
+fi
+
+# Wait for server build to finish before restarting PM2
+if [ -n "$SERVER_BUILD_PID" ]; then
+  wait "$SERVER_BUILD_PID"
+fi
+
+# Always restart backend so it picks up new env vars (secrets may have rotated even without code change)
 pm2 restart toilet-server --update-env
 pm2 save
 
@@ -186,8 +247,10 @@ echo "=== Gmail OAuth status (last 40 lines of pm2 logs) ==="
 pm2 logs toilet-server --lines 40 --nostream 2>/dev/null | grep -iE "gmail|email|oauth" || echo "(no email log lines found)"
 echo "=== end Gmail OAuth status ==="
 
-# Build frontend
-pnpm --filter=@toilet/web build
+# Wait for the (parallel) web build started earlier
+if [ -n "$WEB_BUILD_PID" ]; then
+  wait "$WEB_BUILD_PID"
+fi
 
 # --- Always write the nginx config to prevent the default page from showing ---
 NGINX_CONF_DIR="/etc/nginx/sites-available"
