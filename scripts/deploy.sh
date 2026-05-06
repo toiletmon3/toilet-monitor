@@ -7,17 +7,35 @@ git pull
 # Load production environment variables (source of DATABASE_URL etc.)
 ENV_FILE="/opt/toilet-monitor/.env.production"
 
-# Fix broken SMTP_PASS lines (unquoted app passwords with spaces) before sourcing
+# --- Sanitize .env.production before sourcing ---
+# Past deploys wrote secrets with embedded newlines, leaving lines like
+# `$'\n'` that bash tries to execute when sourcing → exit 127 → deploy fails.
+# We rebuild the file keeping only valid lines: comments, blanks, and
+# proper KEY=value (where KEY is uppercase / digits / underscore).
 if [ -f "$ENV_FILE" ]; then
+  cp "$ENV_FILE" "${ENV_FILE}.bak.$(date +%s)" 2>/dev/null || true
+  awk '
+    /^[[:space:]]*#/ { print; next }                                 # comment
+    /^[[:space:]]*$/ { print; next }                                 # blank
+    /^[A-Za-z_][A-Za-z0-9_]*=/ { print; next }                       # KEY=value
+    { next }                                                         # drop garbage
+  ' "$ENV_FILE" > "${ENV_FILE}.clean" && mv "${ENV_FILE}.clean" "$ENV_FILE"
+  # Also drop legacy broken SMTP_PASS lines
   sed -i '/^SMTP_PASS=$/d' "$ENV_FILE" 2>/dev/null || true
-  # Remove any SMTP_PASS line that isn't properly quoted
   sed -i '/^SMTP_PASS=[^"]/d' "$ENV_FILE" 2>/dev/null || true
 fi
 
 if [ -f "$ENV_FILE" ]; then
+  # Source with set +e so any single bad line doesn't abort the whole deploy
+  set +e
   set -a
   source "$ENV_FILE"
+  SOURCE_EXIT=$?
   set +a
+  set -e
+  if [ "$SOURCE_EXIT" -ne 0 ]; then
+    echo "WARNING: sourcing $ENV_FILE returned exit $SOURCE_EXIT (continuing anyway)"
+  fi
   echo "Loaded env from $ENV_FILE"
 else
   echo "WARNING: $ENV_FILE not found, trying fallback locations..."
