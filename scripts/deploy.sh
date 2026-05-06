@@ -61,30 +61,40 @@ fi
 # preserve trailing newlines from copy-paste, which corrupts OAuth requests.
 trim() { echo -n "$1" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
 
-# Inject Gmail API credentials from CI environment (idempotent)
+# Inject Gmail API credentials from CI environment (idempotent).
+# CRITICAL: also re-export the cleaned value into the current shell so that
+# `pm2 restart --update-env` picks up the clean version. Without this, PM2
+# inherits the dirty (newline-tailed) shell value, NestJS reads from
+# process.env (which takes precedence over the .env file in ConfigModule),
+# and OAuth requests get rejected with "invalid_client".
 if [ -n "$GMAIL_CLIENT_ID" ]; then
   CLEAN=$(trim "$GMAIL_CLIENT_ID")
   sed -i '/^GMAIL_CLIENT_ID=/d' "$ENV_FILE" 2>/dev/null || true
   echo "GMAIL_CLIENT_ID=\"$CLEAN\"" >> "$ENV_FILE"
+  export GMAIL_CLIENT_ID="$CLEAN"
 fi
 if [ -n "$GMAIL_CLIENT_SECRET" ]; then
   CLEAN=$(trim "$GMAIL_CLIENT_SECRET")
   sed -i '/^GMAIL_CLIENT_SECRET=/d' "$ENV_FILE" 2>/dev/null || true
   echo "GMAIL_CLIENT_SECRET=\"$CLEAN\"" >> "$ENV_FILE"
+  export GMAIL_CLIENT_SECRET="$CLEAN"
 fi
 if [ -n "$GMAIL_REFRESH_TOKEN" ]; then
   CLEAN=$(trim "$GMAIL_REFRESH_TOKEN")
   sed -i '/^GMAIL_REFRESH_TOKEN=/d' "$ENV_FILE" 2>/dev/null || true
   echo "GMAIL_REFRESH_TOKEN=\"$CLEAN\"" >> "$ENV_FILE"
+  export GMAIL_REFRESH_TOKEN="$CLEAN"
 fi
 if [ -n "$GMAIL_USER" ]; then
   CLEAN=$(trim "$GMAIL_USER")
   sed -i '/^GMAIL_USER=/d' "$ENV_FILE" 2>/dev/null || true
   echo "GMAIL_USER=\"$CLEAN\"" >> "$ENV_FILE"
+  export GMAIL_USER="$CLEAN"
 elif [ -n "$SMTP_USER" ]; then
   CLEAN=$(trim "$SMTP_USER")
   grep -q "GMAIL_USER" "$ENV_FILE" 2>/dev/null \
     || echo "GMAIL_USER=\"$CLEAN\"" >> "$ENV_FILE"
+  export GMAIL_USER="$CLEAN"
 fi
 if [ -n "$GMAIL_CLIENT_ID" ] && [ -n "$GMAIL_CLIENT_SECRET" ] && [ -n "$GMAIL_REFRESH_TOKEN" ]; then
   echo "Gmail API credentials ensured in $ENV_FILE"
