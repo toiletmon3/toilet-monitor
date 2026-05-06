@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface LastAttempt {
@@ -12,7 +12,7 @@ export interface LastAttempt {
 }
 
 @Injectable()
-export class EmailService {
+export class EmailService implements OnApplicationBootstrap {
   private readonly logger = new Logger(EmailService.name);
   private lastError: string | null = null;
   private lastAttempt: LastAttempt | null = null;
@@ -41,6 +41,16 @@ export class EmailService {
       if (!this.clientSecret) missing.push('GMAIL_CLIENT_SECRET');
       if (!this.refreshToken) missing.push('GMAIL_REFRESH_TOKEN');
       this.logger.warn(`Gmail API not configured — missing: ${missing.join(', ')}`);
+    }
+  }
+
+  async onApplicationBootstrap() {
+    if (!this.isConfigured()) return;
+    try {
+      await this.getAccessToken();
+      this.logger.log('Gmail OAuth verified at startup — email is ready');
+    } catch (err: any) {
+      this.logger.error(`Gmail OAuth FAILED at startup: ${err?.message ?? err}`);
     }
   }
 
