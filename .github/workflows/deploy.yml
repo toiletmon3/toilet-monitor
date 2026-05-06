@@ -49,19 +49,75 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           GITHUB_PAT: ${{ secrets.GH_PAT }}
         run: |
+          set +e  # don't let the auth diagnostic abort the job
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           HOST=$(printf '%s' "${{ secrets.SSH_HOST }}" | tr -d '\r\n' | xargs)
           USER=$(printf '%s' "${{ secrets.SSH_USER }}" | tr -d '\r\n' | xargs)
 
+          # === Surface every secret length and key fingerprint to step summary ===
+          KEY_BYTES=$(stat -c%s ~/.ssh/deploy_key 2>/dev/null || echo 0)
+          KEY_FIRST=$(head -1 ~/.ssh/deploy_key)
+          KEY_LAST=$(tail -1 ~/.ssh/deploy_key)
+          KEY_FPR=$(ssh-keygen -l -f ~/.ssh/deploy_key 2>&1 || echo "fingerprint-failed")
+
+          {
+            echo "## SSH connection diagnostics"
+            echo ""
+            echo "| field | value |"
+            echo "|---|---|"
+            echo "| SSH_HOST len | ${#HOST} (\`$HOST\`) |"
+            echo "| SSH_USER len | ${#USER} (\`$USER\`) |"
+            echo "| SSH_PRIVATE_KEY bytes | $KEY_BYTES |"
+            echo "| key first line | \`$KEY_FIRST\` |"
+            echo "| key last line | \`$KEY_LAST\` |"
+            echo "| key fingerprint | \`$KEY_FPR\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "=== Diagnostics ==="
+          echo "HOST='$HOST' (len=${#HOST})"
+          echo "USER='$USER' (len=${#USER})"
+          echo "KEY bytes=$KEY_BYTES first='$KEY_FIRST' last='$KEY_LAST'"
+          echo "KEY fingerprint: $KEY_FPR"
+
+          if [ -z "$USER" ]; then
+            echo "::error::SSH_USER secret is empty — set it in repo Settings → Secrets → Actions"
+            exit 1
+          fi
+          if [ "$KEY_BYTES" -lt 100 ]; then
+            echo "::error::SSH_PRIVATE_KEY is too short ($KEY_BYTES bytes) — secret missing or corrupted"
+            exit 1
+          fi
+
           echo "=== SSH auth test to $USER@$HOST ==="
           ssh -v -i ~/.ssh/deploy_key \
             -o StrictHostKeyChecking=no \
             -o ConnectTimeout=10 \
             -o BatchMode=yes \
-            "$USER@$HOST" 'echo SSH_AUTH_OK' 2>&1 | tail -20
+            "$USER@$HOST" 'echo SSH_AUTH_OK' > /tmp/ssh-auth.log 2>&1
+          AUTH_EXIT=$?
+          echo "SSH auth exit code: $AUTH_EXIT"
+          echo "--- ssh -v output (last 60 lines) ---"
+          tail -60 /tmp/ssh-auth.log
+          echo "--- end ssh -v output ---"
 
+          {
+            echo ""
+            echo "### SSH auth test"
+            echo "Exit code: \`$AUTH_EXIT\`"
+            echo ""
+            echo '```'
+            tail -60 /tmp/ssh-auth.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ $AUTH_EXIT -ne 0 ]; then
+            echo "::error::SSH authentication failed (exit $AUTH_EXIT). See step summary for full ssh -v output."
+            exit $AUTH_EXIT
+          fi
+
+          set -e
           echo "=== Running deploy ==="
           ssh -i ~/.ssh/deploy_key \
             -o StrictHostKeyChecking=no \
