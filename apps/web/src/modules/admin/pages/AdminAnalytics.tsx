@@ -165,10 +165,10 @@ export default function AdminAnalytics() {
     return sections;
   };
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     const sections = buildExportSections();
     if (sections.length === 0) return;
-    exportToPdf(sections, 'toiletmon_analytics', `ToiletMon — ${t('admin.analytics.title')}`);
+    await exportToPdf(sections, 'toiletmon_analytics', `ToiletMon — ${t('admin.analytics.title')}`);
   };
 
   const handleExportExcel = () => {
