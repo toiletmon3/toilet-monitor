@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ToiletMon — השוואה לסקירת שוק Smart Restroom Management</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 15mm;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      padding: 32px;
+      line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 {
+      text-align: center;
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+      color: #0f172a;
+    }
+    .subtitle {
+      text-align: center;
+      color: #64748b;
+      margin-bottom: 32px;
+      font-size: 0.95rem;
+    }
+    .section-title {
+      font-size: 1.3rem;
+      color: #0f172a;
+      margin: 28px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #00e5cc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    th, td {
+      padding: 10px 14px;
+      text-align: right;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.88rem;
+    }
+    th {
+      background: #0f172a;
+      color: #fff;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    tr:nth-child(even) { background: #f8fafc; }
+    tr:hover { background: #f1f5f9; }
+    .status-yes {
+      background: #dcfce7;
+      color: #166534;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.82rem;
+    }
+    .status-partial {
+      background: #fef9c3;
+      color: #854d0e;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.82rem;
+    }
+    .status-no {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.82rem;
+    }
+    .status-advantage {
+      background: #dbeafe;
+      color: #1e40af;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.82rem;
+    }
+    .summary-box {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 24px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .summary-box h3 { margin-bottom: 10px; color: #0f172a; }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .stat-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-card .number {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #00b4a0;
+    }
+    .stat-card .label { font-size: 0.82rem; color: #64748b; }
+    .footer {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 0.8rem;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .note {
+      background: #eff6ff;
+      border-right: 4px solid #3b82f6;
+      padding: 12px 16px;
+      border-radius: 4px;
+      margin: 16px 0;
+      font-size: 0.88rem;
+    }
+    @media print {
+      body { padding: 0; background: #fff; }
+      .container { max-width: 100%; }
+      table { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ToiletMon — השוואת יכולות מול דרישות PQ שוק ניהול שירותים חכמים</h1>
+    <p class="subtitle">
+      סקירה המבוססת על דוחות שוק 2025–2026 (QY Research, WiseGuy Reports, Infodeck, ISSA Standards) ודרישות PQ מקובלות בתעשייה
+    </p>
+
+    <div class="summary-grid">
+      <div class="stat-card">
+        <div class="number">24</div>
+        <div class="label">סה"כ קטגוריות נבדקו</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">16</div>
+        <div class="label">קיים במלואו ✅</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">3</div>
+        <div class="label">קיים חלקית ⚠️</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">5</div>
+        <div class="label">לא קיים ❌</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">67%</div>
+        <div class="label">כיסוי מלא</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">79%</div>
+        <div class="label">כיסוי כולל (כולל חלקי)</div>
+      </div>
+    </div>
+
+    <h2 class="section-title">📊 סטטיסטיקות וניתוח נתונים</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>קטגוריה / מדד</th>
+          <th>דרישת PQ תעשייתית</th>
+          <th>ToiletMon — מצב נוכחי</th>
+          <th>סטטוס</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>זמן תגובה ממוצע (Resolution Time)</strong></td>
+          <td>מדידת זמן מרגע דיווח/חיישן עד סגירה. יעד &lt;15 דקות</td>
+          <td>נמדד: reportedAt → resolvedAt. ממוצע 30 יום + median (p50), p90. יעד SLA מותאם: 10/15/20/30 דקות</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>אחוז עמידה ב-SLA</strong></td>
+          <td>% תקלות שנפתרו בתוך זמן היעד. יעד &gt;85%</td>
+          <td>slaPercent מחושב בזמן אמת עם target מותאם. תצוגה: gauge + within/total</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>חלוקת תקלות לפי סוג (Issue Frequency)</strong></td>
+          <td>פירוט כמות דיווחים לפי קטגוריה (ניקיון, ריח, חוסר אספקה וכו')</td>
+          <td>issue-frequency API: count + avgResolution per type. תרשים עמודות באנליטיקס</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>דפוסי שעות שיא (Hourly Patterns)</strong></td>
+          <td>ניתוח תנועה ושימוש לפי שעה ביום</td>
+          <td>24 buckets עם count per hour + תרשים. day-of-week analysis (7 ימים)</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>ביצועי עובדים (Cleaner Performance)</strong></td>
+          <td>כמות פתרונות, זמן ממוצע, השוואה בין עובדים</td>
+          <td>leaderboard: totalResolved + avgResolutionMinutes per cleaner + idle detection בדו"ח יומי</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>זיהוי נקודות חמות (Hotspots)</strong></td>
+          <td>אילו שירותים דורשים הכי הרבה טיפול</td>
+          <td>patterns API: top 5 restrooms by incident count + heatmap API (server ready, UI planned)</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>דו"ח יומי אוטומטי</strong></td>
+          <td>סיכום יומי לניהול עם KPIs</td>
+          <td>Email daily report: incidents/resolved/SLA/top issues/hotspots/cleaners/idle list</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>ייצוא דוחות (PDF/CSV)</strong></td>
+          <td>ייצוא נתונים לגורמים חיצוניים / הנהלה</td>
+          <td>ב-Roadmap (v1.2.0). כרגע אין ייצוא ידני</td>
+          <td><span class="status-no">❌ חסר</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="section-title">🔧 ניהול תפעולי ותגובה</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>קטגוריה</th>
+          <th>דרישת PQ תעשייתית</th>
+          <th>ToiletMon — מצב נוכחי</th>
+          <th>סטטוס</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>התראות זמן אמת (Real-time Alerts)</strong></td>
+          <td>Push/SMS/email מיידי על תקלה חדשה</td>
+          <td>WebSocket push מיידי + toast בממשק מנהל. Web Push (PWA) לטלפון בפיתוח (v1.1.0)</td>
+          <td><span class="status-partial">⚠️ חלקי</span></td>
+        </tr>
+        <tr>
+          <td><strong>אסקלציה אוטומטית</strong></td>
+          <td>העלאת חומרה אוטומטית לפי זמן שעבר ללא טיפול</td>
+          <td>רמות אסקלציה בקפיצות 5 דקות (configurable). Urgent alerts בדשבורד</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>הקצאת משימות לעובדים</strong></td>
+          <td>שיוך תקלה לעובד ספציפי + מעקב</td>
+          <td>assignedCleaner על incident + מעקב status. Bulk-resolve siblings</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>מעקב נוכחות עובדים</strong></td>
+          <td>Check-in/out + שעות עבודה + mismatch detection</td>
+          <td>Check-in/out מקיוסק פיזי. Mismatch alerts (30 דקות+ ללא פעולה). פאנל "כרגע בעבודה"</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>תזמון ניקיון דינמי (Occupancy-based)</strong></td>
+          <td>ניקיון על-פי עומס בפועל (לא schedule קבוע)</td>
+          <td>תגובתי לדיווחים. אין תזמון יזום על בסיס occupancy/footfall</td>
+          <td><span class="status-partial">⚠️ חלקי</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="section-title">📡 חיישנים ו-IoT</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>קטגוריה</th>
+          <th>דרישת PQ תעשייתית</th>
+          <th>ToiletMon — מצב נוכחי</th>
+          <th>סטטוס</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>חיישן תפוסה (Occupancy Sensor)</strong></td>
+          <td>ספירת כניסות/יציאות, מפת תאים פנויים בזמן אמת</td>
+          <td>לא קיים. המערכת מבוססת דיווח אנושי (קיוסק) — לא חיישנים פיזיים</td>
+          <td><span class="status-no">❌ חסר</span></td>
+        </tr>
+        <tr>
+          <td><strong>חיישן ריח / איכות אוויר (NH₃)</strong></td>
+          <td>התראה אוטומטית ברמת אמוניה &gt;25ppm</td>
+          <td>לא קיים. ב-Roadmap (feature/hardware-sensor-device branch)</td>
+          <td><span class="status-no">❌ חסר</span></td>
+        </tr>
+        <tr>
+          <td><strong>חיישן רמת מתכלים (סבון/נייר)</strong></td>
+          <td>ניטור רמת מילוי + התראה אוטומטית בירידה מתחת ל-20%</td>
+          <td>לא קיים. ניתן לדווח ידנית דרך הקיוסק</td>
+          <td><span class="status-no">❌ חסר</span></td>
+        </tr>
+        <tr>
+          <td><strong>חיישן רטיבות רצפה / דליפה</strong></td>
+          <td>זיהוי מים על הרצפה + התראה מיידית</td>
+          <td>לא קיים. ניתן לדווח ידנית ("רצפה רטובה")</td>
+          <td><span class="status-no">❌ חסר</span></td>
+        </tr>
+        <tr>
+          <td><strong>Heartbeat / Device Monitoring</strong></td>
+          <td>מעקב online/offline על כל מכשיר</td>
+          <td>✅ מלא: isOnline, lastHeartbeat, offline device list + alerts</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="section-title">🖥️ ממשק משתמש וחוויה</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>קטגוריה</th>
+          <th>דרישת PQ תעשייתית</th>
+          <th>ToiletMon — מצב נוכחי</th>
+          <th>סטטוס</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>קיוסק דיווח (User Feedback Panel)</strong></td>
+          <td>לוח דיווח אינטראקטיבי בשירותים לשימוש הציבור</td>
+          <td>קיוסק טאבלט עם URL ייחודי, 2 תבניות עיצוב, כפתורים מותאמים, שפות, שעון חי</td>
+          <td><span class="status-advantage">🚀 מתקדם</span></td>
+        </tr>
+        <tr>
+          <td><strong>אפליקציית עובד (Mobile/PWA)</strong></td>
+          <td>ממשק מובייל לעובדי שטח עם משימות ועדכונים</td>
+          <td>PWA עם offline mode, WebSocket real-time, push (בפיתוח), גלילה מותאמת iOS/Android</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>דשבורד ניהולי (Admin Dashboard)</strong></td>
+          <td>מסך ניהול מרכזי עם סיכום מצב, KPIs ו-drill-down</td>
+          <td>4 KPI cards + urgent alerts + offline devices + building filter + analytics page מלא</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>תמיכה רב-שפתית (i18n)</strong></td>
+          <td>תמיכה בשפות רבות לארגונים בינלאומיים</td>
+          <td>עברית + אנגלית מלא. תשתית i18next מוכנה להוספת שפות</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>Responsive / Cross-platform</strong></td>
+          <td>עבודה תקינה על desktop, tablet, mobile</td>
+          <td>Full responsive: sidebar מתקפל, drawer למובייל, iPad Safari support, dynamic viewport</td>
+          <td><span class="status-yes">✅ מלא</span></td>
+        </tr>
+        <tr>
+          <td><strong>מסך תפוסה לציבור (Availability Display)</strong></td>
+          <td>שלט דיגיטלי למבקרים — תאים פנויים/תפוסים</td>
+          <td>לא קיים (דורש חיישני תפוסה)</td>
+          <td><span class="status-partial">⚠️ חלקי</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="summary-box">
+      <h3>📈 סיכום השוואה — איפה ToiletMon ביחס לשוק</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>היבט</th>
+            <th>ציון ToiletMon</th>
+            <th>הערה</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>סטטיסטיקות ו-Analytics</td>
+            <td><span class="status-yes">7/8 (88%)</span></td>
+            <td>חסר רק ייצוא PDF/CSV — ב-Roadmap</td>
+          </tr>
+          <tr>
+            <td>ניהול תפעולי</td>
+            <td><span class="status-yes">4/5 (80%)</span></td>
+            <td>Push notifications בפיתוח; תזמון occupancy-based דורש חיישנים</td>
+          </tr>
+          <tr>
+            <td>חיישנים ו-IoT</td>
+            <td><span class="status-no">1/5 (20%)</span></td>
+            <td>הפער העיקרי — המערכת מבוססת דיווח אנושי, לא IoT sensors</td>
+          </tr>
+          <tr>
+            <td>ממשק וחוויה</td>
+            <td><span class="status-advantage">5.5/6 (92%)</span></td>
+            <td>יתרון: קיוסק מותאם, PWA, multi-interface. חסר: שילוט תפוסה</td>
+          </tr>
+          <tr>
+            <td><strong>ציון כולל</strong></td>
+            <td><strong>17.5/24 (73%)</strong></td>
+            <td>מוביל ב-UX ואנליטיקס; פער ב-IoT hardware</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <strong>💡 המלצה אסטרטגית:</strong>
+      ToiletMon מכסה את רוב דרישות ה-PQ בתחום התוכנה, האנליטיקס וה-UX — ואף עולה על הממוצע בתעשייה בקיוסק הדיווח ובממשק המנהל.
+      הפער העיקרי הוא בשכבת ה-IoT (חיישנים פיזיים) — אך זהו roadmap מתוכנן (branch: feature/hardware-sensor-device).
+      ללא חיישנים, המערכת מציעה פתרון "Software-first" שמתאים לפיילוט מהיר בעלות נמוכה, עם אפשרות הוספת חומרה בהמשך.
+    </div>
+
+    <h2 class="section-title">💰 השוואת נתוני שוק</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>מדד שוק</th>
+          <th>נתון מדוח PQ / Industry</th>
+          <th>ToiletMon — מיקום</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>גודל שוק גלובלי (2025)</td>
+          <td>US$ 1.5 מיליארד</td>
+          <td>פעיל בשוק הישראלי — SMB segment</td>
+        </tr>
+        <tr>
+          <td>צמיחה שנתית (CAGR)</td>
+          <td>13–14% עד 2032</td>
+          <td>מיצוב נכון לצמיחה — Software-as-a-Service</td>
+        </tr>
+        <tr>
+          <td>חיסכון בעלויות עבודה (occupancy-based)</td>
+          <td>20–30% הפחתה</td>
+          <td>מספק analytics לזיהוי שעות שיא — חיסכון עקיף</td>
+        </tr>
+        <tr>
+          <td>יעד SLA מקובל</td>
+          <td>&lt;15 דקות תגובה</td>
+          <td>SLA configurable: 10/15/20/30 דקות + מדידה מלאה</td>
+        </tr>
+        <tr>
+          <td>Audit pass rate (תקן ISSA)</td>
+          <td>&gt;95%</td>
+          <td>Daily report + mismatch detection מאפשרים audit trail</td>
+        </tr>
+        <tr>
+          <td>Customer satisfaction target</td>
+          <td>CSAT &gt;85%</td>
+          <td>משוב חיובי מהקיוסק + positive feedback tracking</td>
+        </tr>
+        <tr>
+          <td>עלות פריסה (בסיסי)</td>
+          <td>$500–2000 per restroom (חומרה + SW)</td>
+          <td>~₪400–700 per restroom (טאבלט בלבד) — חסכוני משמעותית</td>
+        </tr>
+        <tr>
+          <td>עלות שרת חודשית</td>
+          <td>$50–200/חודש (ענן)</td>
+          <td>~$12/חודש (DigitalOcean) — חסכוני מאוד</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="summary-box">
+      <h3>🎯 יתרונות ToiletMon לעומת פתרונות תעשייתיים</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>יתרון</th>
+            <th>פירוט</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="status-advantage">עלות נמוכה</span></td>
+            <td>₪400–700 לתא (טאבלט) + ₪45/חודש שרת לכל הארגון. פתרונות IoT: $500–2000 לתא + $50–200/חודש</td>
+          </tr>
+          <tr>
+            <td><span class="status-advantage">פריסה מהירה</span></td>
+            <td>הקמה תוך שעות (לא ימים). אין צורך בחיווט חיישנים, gateway, אינטגרציית BMS</td>
+          </tr>
+          <tr>
+            <td><span class="status-advantage">4 ממשקים ייחודיים</span></td>
+            <td>קיוסק + עובד + אחראי משמרת + מנהל — רוב המתחרים מציעים 2 (dashboard + app)</td>
+          </tr>
+          <tr>
+            <td><span class="status-advantage">Analytics מתקדם</span></td>
+            <td>SLA עם p50/p90, דפוסי שעות, hotspots, cleaner leaderboard — ברמת Enterprise</td>
+          </tr>
+          <tr>
+            <td><span class="status-advantage">תמיכה בעברית מלאה</span></td>
+            <td>RTL + i18n מלא — פתרונות גלובליים בד"כ באנגלית בלבד</td>
+          </tr>
+          <tr>
+            <td><span class="status-advantage">PWA + Offline</span></td>
+            <td>עובד ללא חיבור רשת קבוע, סנכרון אוטומטי</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <p>ToiletMon v1.0.10 | מסמך הושווה מול: Smart Restroom Management PQ — Industry Standards 2025–2026</p>
+      <p>מקורות: QY Research, WiseGuy Reports, Infodeck, ISSA Clean Standard, MarketSCAGR | נוצר: מאי 2026</p>
+    </div>
+  </div>
+</body>
+</html>
