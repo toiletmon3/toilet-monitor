@@ -70,7 +70,14 @@ jobs:
             set -e
             echo "=== [$(date -u +%H:%M:%S)] start ==="
             cd /opt/toilet-monitor
+
+            echo "=== clearing any stale git locks ==="
+            rm -f .git/index.lock .git/HEAD.lock .git/FETCH_HEAD.lock .git/refs/heads/*.lock 2>/dev/null || true
+            git status --short
+
+            echo "=== [$(date -u +%H:%M:%S)] git pull ==="
             GIT_TERMINAL_PROMPT=0 timeout 60 git pull --no-edit || { echo "::error::git pull failed"; exit 1; }
+
             echo "=== [$(date -u +%H:%M:%S)] deploy ==="
             bash -x scripts/deploy.sh
             echo "=== [$(date -u +%H:%M:%S)] done ==="
