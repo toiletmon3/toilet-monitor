@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { AlertCircle, Clock, Users, Tablet, WifiOff, Building2, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../../../lib/api';
 import { getSocket, joinOrg } from '../../../lib/socket';
+import { translateFloorName, translateRestroomName } from '../../../lib/translate-name';
 
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) {
   return (
@@ -56,7 +57,11 @@ function DashboardIncidentRow({ inc }: { inc: any }) {
   };
 
   const st = STATUS_STYLES[inc.status] ?? STATUS_STYLES.OPEN;
-  const location = [inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › ');
+  const location = [
+    inc.restroom?.floor?.building?.name,
+    translateFloorName(inc.restroom?.floor?.name ?? '', lang),
+    translateRestroomName(inc.restroom?.name ?? '', lang),
+  ].filter(Boolean).join(' › ');
 
   return (
     <div>

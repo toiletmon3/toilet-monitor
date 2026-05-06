@@ -8,6 +8,7 @@ import {
 import { Calendar, Info, FileDown, FileSpreadsheet } from 'lucide-react';
 import api from '../../../lib/api';
 import { exportToPdf, exportToExcel, type ExportSection } from '../../../lib/export';
+import { translateLocationPath } from '../../../lib/translate-name';
 
 const CYAN = '#00e5cc';
 const AMBER = '#f59e0b';
@@ -158,7 +159,7 @@ export default function AdminAnalytics() {
       sections.push({
         title: t('admin.analytics.busiestRestrooms'),
         headers: ['#', t('admin.analytics.busiestRestrooms'), t('admin.analytics.count')],
-        rows: patterns.hotspots.map((h: any, i: number) => [i + 1, h.location, h.count]),
+        rows: patterns.hotspots.map((h: any, i: number) => [i + 1, translateLocationPath(h.location, i18n.language), h.count]),
       });
     }
 
@@ -395,7 +396,7 @@ export default function AdminAnalytics() {
               <p className="text-xs mb-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.analytics.busiestRestrooms')}</p>
               {(patterns?.hotspots ?? []).slice(0, 3).map((h: any, i: number) => (
                 <div key={i} className="flex items-center justify-between py-1.5 border-b text-sm" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>📍 {h.location}</span>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>📍 {translateLocationPath(h.location, i18n.language)}</span>
                   <span className="font-bold tabular-nums" style={{ color: AMBER }}>{h.count}</span>
                 </div>
               ))}

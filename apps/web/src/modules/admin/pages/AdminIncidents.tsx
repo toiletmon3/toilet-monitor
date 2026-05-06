@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, UserCheck, CheckCircle, RefreshCw, Clock, Wrench, CheckSquare, AlertTriangle } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
+import { translateLocationPath, translateFloorName, translateRestroomName } from '../../../lib/translate-name';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   OPEN:        { bg: 'rgba(239,68,68,0.15)',  text: '#ef4444' },
@@ -33,7 +34,11 @@ function IncidentRow({ inc, cleaners }: { inc: any; cleaners: any[] }) {
   });
 
   const st = STATUS_COLORS[inc.status] ?? STATUS_COLORS.OPEN;
-  const location = [inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › ');
+  const location = [
+    inc.restroom?.floor?.building?.name,
+    translateFloorName(inc.restroom?.floor?.name ?? '', i18n.language),
+    translateRestroomName(inc.restroom?.name ?? '', i18n.language),
+  ].filter(Boolean).join(' › ');
 
   const timeAgo = (() => {
     const diff = Date.now() - new Date(inc.reportedAt).getTime();
@@ -257,7 +262,7 @@ export default function AdminIncidents() {
                         {inc.issueType?.nameI18n?.[lang] ?? inc.issueType?.nameI18n?.he}
                       </div>
                       <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-secondary)' }}>
-                        📍 {[inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › ')}
+                        📍 {translateLocationPath([inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › '), lang)}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
@@ -321,7 +326,10 @@ export default function AdminIncidents() {
               </div>
               <div className="flex flex-col gap-2">
                 {positiveFeedback.map((inc: any) => {
-                  const location = [inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › ');
+                  const location = translateLocationPath(
+                    [inc.restroom?.floor?.building?.name, inc.restroom?.floor?.name, inc.restroom?.name].filter(Boolean).join(' › '),
+                    lang,
+                  );
                   const diff = Date.now() - new Date(inc.reportedAt).getTime();
                   const m = Math.floor(diff / 60000);
                   const timeAgo = m < 60 ? t('admin.incidents.agoMinutes', { n: m })

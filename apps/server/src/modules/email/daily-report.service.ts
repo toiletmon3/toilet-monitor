@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from './email.service';
 import { buildDailyReportHtml, DailyReportData } from './daily-report.template';
 import { getReportStrings } from './daily-report.i18n';
+import { translateLocationPath } from '../../common/locale/translate-name';
 
 const DEFAULT_REPORT_HOUR = 8;
 const DEFAULT_TZ = 'Asia/Jerusalem';
@@ -145,7 +146,11 @@ export class DailyReportService {
 
   private localizeData(data: DailyReportData & { _yesterdayStart: Date }, lang: string): DailyReportData {
     const s = getReportStrings(lang);
-    return { ...data, date: this.formatDate(data._yesterdayStart, s.dateLocale) };
+    return {
+      ...data,
+      date: this.formatDate(data._yesterdayStart, s.dateLocale),
+      hotspots: data.hotspots.map(h => ({ ...h, location: translateLocationPath(h.location, lang) })),
+    };
   }
 
   private formatDate(d: Date, locale: string): string {
