@@ -1,4 +1,5 @@
 #!/bin/bash
+# Reload Gmail OAuth secrets after refresh-token rotation
 set -e
 
 cd /opt/toilet-monitor
