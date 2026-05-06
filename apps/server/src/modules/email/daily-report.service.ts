@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from './email.service';
 import { buildDailyReportHtml, DailyReportData } from './daily-report.template';
 
-const DEFAULT_REPORT_HOUR = 7;
+const DEFAULT_REPORT_HOUR = 8;
 const DEFAULT_TZ = 'Asia/Jerusalem';
 
 @Injectable()
