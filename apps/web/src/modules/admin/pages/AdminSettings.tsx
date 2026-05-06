@@ -763,7 +763,7 @@ export default function AdminSettings() {
     api.get('/email/status', { timeout: 30000 }).then(({ data }) => {
       if (!data.configured) {
         setEmailLog({ ok: false, msg: 'SMTP not configured on server', time: new Date().toLocaleTimeString() });
-      } else if (data.smtpConnection !== 'OK') {
+      } else if (!data.smtpConnection?.startsWith('OK')) {
         setEmailLog({ ok: false, msg: `SMTP: ${data.smtpConnection}`, time: new Date().toLocaleTimeString() });
       }
     }).catch(() => {});
