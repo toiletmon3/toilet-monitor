@@ -71,12 +71,24 @@ function registerHeebo(doc: jsPDF, fonts: { regular: string; bold: string }) {
   doc.addFont('Heebo-Bold.ttf', 'Heebo', 'bold');
 }
 
-export async function exportToPdf(sections: ExportSection[], filenamePrefix = 'analytics', title?: string) {
+const RTL_LANGS = new Set(['he', 'ar', 'fa', 'ur']);
+function isRtl(lang: string): boolean {
+  return RTL_LANGS.has(lang.toLowerCase().split('-')[0]);
+}
+
+export async function exportToPdf(
+  sections: ExportSection[],
+  filenamePrefix = 'analytics',
+  title?: string,
+  language: string = 'he',
+) {
   const fonts = await loadHeebo();
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   registerHeebo(doc, fonts);
   doc.setFont('Heebo', 'normal');
 
+  const rtl = isRtl(language);
+  const align: 'right' | 'left' = rtl ? 'right' : 'left';
   const pageWidth = doc.internal.pageSize.getWidth();
 
   doc.setFont('Heebo', 'bold');
@@ -87,7 +99,7 @@ export async function exportToPdf(sections: ExportSection[], filenamePrefix = 'a
   doc.setFontSize(10);
   doc.setFont('Heebo', 'normal');
   doc.text(
-    new Date().toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' }),
+    new Date().toLocaleDateString(language, { year: 'numeric', month: 'long', day: 'numeric' }),
     pageWidth / 2,
     22,
     { align: 'center' },
@@ -103,7 +115,8 @@ export async function exportToPdf(sections: ExportSection[], filenamePrefix = 'a
 
     doc.setFont('Heebo', 'bold');
     doc.setFontSize(12);
-    doc.text(section.title, pageWidth - 14, yPos, { align: 'right' });
+    const titleX = rtl ? pageWidth - 14 : 14;
+    doc.text(section.title, titleX, yPos, { align });
     yPos += 3;
 
     autoTable(doc, {
@@ -111,9 +124,9 @@ export async function exportToPdf(sections: ExportSection[], filenamePrefix = 'a
       head: [section.headers],
       body: section.rows.map(r => r.map(String)),
       theme: 'striped',
-      headStyles: { fillColor: [0, 180, 160], textColor: 255, fontStyle: 'bold', font: 'Heebo', halign: 'right' },
-      bodyStyles: { font: 'Heebo', halign: 'right' },
-      styles: { fontSize: 9, cellPadding: 2, font: 'Heebo', halign: 'right' },
+      headStyles: { fillColor: [0, 180, 160], textColor: 255, fontStyle: 'bold', font: 'Heebo', halign: align },
+      bodyStyles: { font: 'Heebo', halign: align },
+      styles: { fontSize: 9, cellPadding: 2, font: 'Heebo', halign: align },
       margin: { left: 14, right: 14 },
     });
 
