@@ -30,25 +30,7 @@ jobs:
             exit 1
           fi
 
-      - name: SSH auth diagnostics
-        continue-on-error: true
-        run: |
-          set +e
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          HOST=$(printf '%s' "${{ secrets.SSH_HOST }}" | tr -d '\r\n' | xargs)
-          USER=$(printf '%s' "${{ secrets.SSH_USER }}" | tr -d '\r\n' | xargs)
-          echo "SSH target: $USER@$HOST"
-          ssh -v -i ~/.ssh/deploy_key \
-            -o StrictHostKeyChecking=no \
-            -o ConnectTimeout=10 \
-            -o BatchMode=yes \
-            "$USER@$HOST" 'echo SSH_AUTH_OK' 2>&1
-          echo "ssh exit code: $?"
-
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
+      - name: Deploy via SSH (raw ssh, no appleboy)
         env:
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
@@ -60,27 +42,44 @@ jobs:
           GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           GITHUB_PAT: ${{ secrets.GH_PAT }}
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 8m
-          envs: VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,SMTP_USER,SMTP_PASS,GMAIL_USER,GMAIL_CLIENT_ID,GMAIL_CLIENT_SECRET,GMAIL_REFRESH_TOKEN,CRON_SECRET,GITHUB_PAT
-          script: |
-            set -e
-            echo "=== [$(date -u +%H:%M:%S)] start ==="
-            cd /opt/toilet-monitor
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          HOST=$(printf '%s' "${{ secrets.SSH_HOST }}" | tr -d '\r\n' | xargs)
+          USER=$(printf '%s' "${{ secrets.SSH_USER }}" | tr -d '\r\n' | xargs)
 
-            echo "=== clearing any stale git locks ==="
-            rm -f .git/index.lock .git/HEAD.lock .git/FETCH_HEAD.lock .git/refs/heads/*.lock 2>/dev/null || true
-            git status --short
+          echo "=== SSH auth test to $USER@$HOST ==="
+          ssh -v -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=10 \
+            -o BatchMode=yes \
+            "$USER@$HOST" 'echo SSH_AUTH_OK' 2>&1 | tail -20
 
-            echo "=== [$(date -u +%H:%M:%S)] git pull ==="
-            GIT_TERMINAL_PROMPT=0 timeout 60 git pull --no-edit || { echo "::error::git pull failed"; exit 1; }
-
-            echo "=== [$(date -u +%H:%M:%S)] deploy ==="
-            bash -x scripts/deploy.sh
-            echo "=== [$(date -u +%H:%M:%S)] done ==="
+          echo "=== Running deploy ==="
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=30 \
+            -o ServerAliveInterval=20 \
+            -o ServerAliveCountMax=15 \
+            "$USER@$HOST" /bin/bash << ENDSSH
+          set -e
+          export VAPID_PUBLIC_KEY="${VAPID_PUBLIC_KEY}"
+          export VAPID_PRIVATE_KEY="${VAPID_PRIVATE_KEY}"
+          export GMAIL_USER="${GMAIL_USER}"
+          export GMAIL_CLIENT_ID="${GMAIL_CLIENT_ID}"
+          export GMAIL_CLIENT_SECRET="${GMAIL_CLIENT_SECRET}"
+          export GMAIL_REFRESH_TOKEN="${GMAIL_REFRESH_TOKEN}"
+          export CRON_SECRET="${CRON_SECRET}"
+          export GITHUB_PAT="${GITHUB_PAT}"
+          echo "=== [$(date -u +%H:%M:%S)] start ==="
+          cd /opt/toilet-monitor
+          rm -f .git/index.lock .git/HEAD.lock .git/FETCH_HEAD.lock 2>/dev/null || true
+          GIT_TERMINAL_PROMPT=0 timeout 60 git pull --no-edit
+          echo "=== [$(date -u +%H:%M:%S)] deploy ==="
+          bash scripts/deploy.sh
+          echo "=== [$(date -u +%H:%M:%S)] done ==="
+          ENDSSH
 
       - name: Smoke test — verify site is not showing default nginx page
         run: |
