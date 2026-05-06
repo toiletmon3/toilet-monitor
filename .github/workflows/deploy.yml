@@ -15,18 +15,18 @@ jobs:
     steps:
       - name: Pre-flight — verify SSH host reachable
         run: |
-          HOST="${{ secrets.SSH_HOST }}"
+          RAW_HOST="${{ secrets.SSH_HOST }}"
+          HOST=$(echo -n "$RAW_HOST" | tr -d '\r\n' | xargs)
           if [ -z "$HOST" ]; then
             echo "::error::SSH_HOST secret is empty"
             exit 1
           fi
-          echo "Resolving $HOST..."
-          getent hosts "$HOST" || echo "::warning::DNS resolution failed for $HOST (may still work via /etc/hosts on action)"
+          echo "SSH_HOST='$HOST' (len=${#HOST})"
           echo "Testing TCP port 22..."
           if timeout 10 bash -c "exec 3<>/dev/tcp/$HOST/22"; then
             echo "SSH port 22 open on $HOST"
           else
-            echo "::error::SSH port 22 unreachable on $HOST — server down, firewall blocking, or wrong host"
+            echo "::error::SSH port 22 unreachable on $HOST — server down, firewall blocking, or wrong SSH_HOST secret value"
             exit 1
           fi
 
