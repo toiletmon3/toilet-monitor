@@ -30,6 +30,22 @@ jobs:
             exit 1
           fi
 
+      - name: SSH auth diagnostics
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          HOST=$(printf '%s' "${{ secrets.SSH_HOST }}" | tr -d '\r\n' | xargs)
+          USER=$(printf '%s' "${{ secrets.SSH_USER }}" | tr -d '\r\n' | xargs)
+          echo "Connecting to $USER@$HOST ..."
+          ssh -v -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=10 \
+            -o BatchMode=yes \
+            "$USER@$HOST" 'echo SSH_AUTH_OK' 2>&1 \
+          | grep -E 'Authenticated|Permission denied|refused|timeout|SSH_AUTH_OK|Offering|debug1: (Trying|Next auth|Authentications|connect to)' \
+          || echo "SSH test completed (check output above)"
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         env:
@@ -47,18 +63,19 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key_path: ~/.ssh/deploy_key
           command_timeout: 8m
           debug: true
           envs: VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,SMTP_USER,SMTP_PASS,GMAIL_USER,GMAIL_CLIENT_ID,GMAIL_CLIENT_SECRET,GMAIL_REFRESH_TOKEN,CRON_SECRET,GITHUB_PAT
           script: |
             set -e
-            echo "=== [$(date -u +%H:%M:%S)] cd /opt/toilet-monitor ==="
+            echo "=== [$(date -u +%H:%M:%S)] cd ==="
             cd /opt/toilet-monitor
-            echo "=== [$(date -u +%H:%M:%S)] git pull (with 60s timeout) ==="
-            timeout 60 git pull --no-edit || { echo "::error::git pull hung or failed"; exit 1; }
-            echo "=== [$(date -u +%H:%M:%S)] bash -x scripts/deploy.sh ==="
+            echo "=== [$(date -u +%H:%M:%S)] git pull ==="
+            GIT_TERMINAL_PROMPT=0 timeout 60 git pull --no-edit || { echo "::error::git pull failed"; exit 1; }
+            echo "=== [$(date -u +%H:%M:%S)] deploy ==="
             bash -x scripts/deploy.sh
-            echo "=== [$(date -u +%H:%M:%S)] deploy.sh complete ==="
+            echo "=== [$(date -u +%H:%M:%S)] done ==="
 
       - name: Smoke test — verify site is not showing default nginx page
         run: |
