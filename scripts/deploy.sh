@@ -150,6 +150,13 @@ pnpm --filter=@toilet/server build
 pm2 restart toilet-server --update-env
 pm2 save
 
+# --- Surface email/Gmail OAuth status from PM2 logs into the CI deploy log ---
+# Wait briefly for the server to boot and run EmailService.onApplicationBootstrap()
+sleep 8
+echo "=== Gmail OAuth status (last 40 lines of pm2 logs) ==="
+pm2 logs toilet-server --lines 40 --nostream 2>/dev/null | grep -iE "gmail|email|oauth" || echo "(no email log lines found)"
+echo "=== end Gmail OAuth status ==="
+
 # Build frontend
 pnpm --filter=@toilet/web build
 
