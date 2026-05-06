@@ -178,15 +178,16 @@ export class UsersService {
     });
   }
 
-  async updateAdmin(userId: string, patch: { name?: string; email?: string; idNumber?: string }) {
+  async updateAdmin(userId: string, patch: { name?: string; email?: string; idNumber?: string; preferredLang?: string }) {
     return this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...(patch.name     !== undefined && { name: patch.name }),
-        ...(patch.email    !== undefined && { email: patch.email }),
-        ...(patch.idNumber !== undefined && { idNumber: patch.idNumber }),
+        ...(patch.name          !== undefined && { name: patch.name }),
+        ...(patch.email         !== undefined && { email: patch.email }),
+        ...(patch.idNumber      !== undefined && { idNumber: patch.idNumber }),
+        ...(patch.preferredLang !== undefined && { preferredLang: patch.preferredLang }),
       },
-      select: { id: true, name: true, email: true, idNumber: true, role: true, isActive: true },
+      select: { id: true, name: true, email: true, idNumber: true, role: true, isActive: true, preferredLang: true },
     });
   }
 

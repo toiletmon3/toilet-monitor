@@ -73,7 +73,7 @@ export class UsersController {
   }
 
   @Patch(':id/admin')
-  updateAdmin(@Param('id') id: string, @Body() dto: { name?: string; email?: string; idNumber?: string }) {
+  updateAdmin(@Param('id') id: string, @Body() dto: { name?: string; email?: string; idNumber?: string; preferredLang?: string }) {
     return this.usersService.updateAdmin(id, dto);
   }
 

@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from './email.service';
 import { buildDailyReportHtml, DailyReportData } from './daily-report.template';
+import { getReportStrings } from './daily-report.i18n';
 
 const DEFAULT_REPORT_HOUR = 8;
 const DEFAULT_TZ = 'Asia/Jerusalem';
@@ -33,13 +34,40 @@ export class DailyReportService {
   }
 
   async sendNow(orgId: string): Promise<{ sent: boolean; recipients: string[] }> {
-    const report = await this.generateReport(orgId);
-    if (!report) return { sent: false, recipients: [] };
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { id: true, name: true },
+    });
+    if (!org) return { sent: false, recipients: [] };
 
-    const ok = await this.email.send(report.recipients, report.subject, report.html);
-    return { sent: ok, recipients: report.recipients };
+    const admins = await this.prisma.user.findMany({
+      where: {
+        orgId: org.id,
+        role: { in: ['ORG_ADMIN', 'SUPER_ADMIN', 'MANAGER'] },
+        isActive: true,
+        email: { not: null },
+      },
+      select: { email: true, preferredLang: true },
+    });
+    const recipients = admins.filter(a => a.email);
+    if (recipients.length === 0) return { sent: false, recipients: [] };
+
+    const data = await this.gatherYesterdayData(org.id, org.name);
+    const sentTo: string[] = [];
+    for (const r of recipients) {
+      const html = buildDailyReportHtml(this.localizeData(data, r.preferredLang), r.preferredLang);
+      const s = getReportStrings(r.preferredLang);
+      const subject = `${s.subjectPrefix} — ${org.name} — ${this.formatDate(data._yesterdayStart, s.dateLocale)}`;
+      const ok = await this.email.send([r.email!], subject, html);
+      if (ok) sentTo.push(r.email!);
+    }
+    return { sent: sentTo.length > 0, recipients: sentTo };
   }
 
+  /**
+   * Backward-compatible single-render report (used by /api/email/generate-report cron endpoint).
+   * Renders in Hebrew by default; per-recipient localization is handled in sendNow/processOrg.
+   */
   async generateReport(orgId: string): Promise<{ html: string; subject: string; recipients: string[] } | null> {
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },
@@ -60,8 +88,9 @@ export class DailyReportService {
     if (emails.length === 0) return null;
 
     const data = await this.gatherYesterdayData(org.id, org.name);
-    const html = buildDailyReportHtml(data);
-    const subject = `📊 סיכום יומי — ${org.name} — ${data.date}`;
+    const html = buildDailyReportHtml(this.localizeData(data, 'he'), 'he');
+    const s = getReportStrings('he');
+    const subject = `${s.subjectPrefix} — ${org.name} — ${this.formatDate(data._yesterdayStart, s.dateLocale)}`;
 
     return { html, subject, recipients: emails };
   }
@@ -88,28 +117,42 @@ export class DailyReportService {
         isActive: true,
         email: { not: null },
       },
-      select: { email: true },
+      select: { email: true, preferredLang: true },
     });
 
-    const emails = admins.map(a => a.email!).filter(Boolean);
-    if (emails.length === 0) {
+    const recipients = admins.filter(a => a.email);
+    if (recipients.length === 0) {
       this.logger.warn(`Org ${org.name}: no admin emails, skipping daily report`);
       this.sentDates.set(sentKey, 'skipped');
       return;
     }
 
     const data = await this.gatherYesterdayData(org.id, org.name);
-    const html = buildDailyReportHtml(data);
-    const subject = `📊 סיכום יומי — ${org.name} — ${data.date}`;
 
-    const ok = await this.email.send(emails, subject, html);
-    if (ok) {
+    let sentCount = 0;
+    for (const r of recipients) {
+      const html = buildDailyReportHtml(this.localizeData(data, r.preferredLang), r.preferredLang);
+      const s = getReportStrings(r.preferredLang);
+      const subject = `${s.subjectPrefix} — ${org.name} — ${this.formatDate(data._yesterdayStart, s.dateLocale)}`;
+      const ok = await this.email.send([r.email!], subject, html);
+      if (ok) sentCount++;
+    }
+    if (sentCount > 0) {
       this.sentDates.set(sentKey, 'sent');
-      this.logger.log(`Daily report sent for ${org.name} to ${emails.length} recipient(s)`);
+      this.logger.log(`Daily report sent for ${org.name} to ${sentCount}/${recipients.length} recipient(s)`);
     }
   }
 
-  private async gatherYesterdayData(orgId: string, orgName: string): Promise<DailyReportData> {
+  private localizeData(data: DailyReportData & { _yesterdayStart: Date }, lang: string): DailyReportData {
+    const s = getReportStrings(lang);
+    return { ...data, date: this.formatDate(data._yesterdayStart, s.dateLocale) };
+  }
+
+  private formatDate(d: Date, locale: string): string {
+    return d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  private async gatherYesterdayData(orgId: string, orgName: string): Promise<DailyReportData & { _yesterdayStart: Date }> {
     const now = new Date();
     const yesterdayEnd = new Date(now.toLocaleString('en-US', { timeZone: DEFAULT_TZ }));
     yesterdayEnd.setHours(0, 0, 0, 0);
@@ -255,6 +298,7 @@ export class DailyReportService {
     });
 
     return {
+      _yesterdayStart: yesterdayStart,
       orgName: orgName,
       date: dateStr,
       totalIncidents: total,

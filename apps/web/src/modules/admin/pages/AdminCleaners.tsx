@@ -113,6 +113,7 @@ function AdminEditModal({ user, onClose, onSaved }: { user: any; onClose: () => 
   // idNumber for admins: if it equals the email (legacy default) show empty so admin can set a real one
   const currentId = user.idNumber === user.email ? '' : (user.idNumber ?? '');
   const [idNumber, setIdNumber] = useState(currentId);
+  const [preferredLang, setPreferredLang] = useState<string>(user.preferredLang ?? 'he');
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -123,6 +124,7 @@ function AdminEditModal({ user, onClose, onSaved }: { user: any; onClose: () => 
         name: name.trim(),
         email: email.trim(),
         ...(idNumber.trim() && { idNumber: idNumber.trim() }),
+        preferredLang,
       });
       toast.success(t('admin.cleaners.savedMsg'));
       onSaved();
@@ -169,6 +171,20 @@ function AdminEditModal({ user, onClose, onSaved }: { user: any; onClose: () => 
               placeholder={t('admin.cleaners.idPlaceholder')}
               inputMode="numeric"
             />
+          </div>
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>
+              {t('admin.cleaners.emailLanguage')}
+            </label>
+            <select
+              value={preferredLang}
+              onChange={e => setPreferredLang(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl outline-none text-sm"
+              style={inputStyle}
+            >
+              <option value="he">עברית</option>
+              <option value="en">English</option>
+            </select>
           </div>
         </div>
 

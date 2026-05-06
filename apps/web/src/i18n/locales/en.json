@@ -271,6 +271,7 @@
       "delete": "Delete",
       "kioskLoginHint": "— for kiosk login",
       "idPlaceholder": "ID number",
+      "emailLanguage": "Daily email language",
       "adminAdded": "Admin added",
       "idWarning": "⚠ ID not set — edit to add",
       "addAdmin": "Add Admin",
