@@ -9,28 +9,26 @@ const bidi = bidiFactory();
 function toVisualOrder(text: string, baseDir: 'ltr' | 'rtl'): string {
   if (!text) return text;
   const embeddingLevels = bidi.getEmbeddingLevels(text, baseDir);
-  const flips = bidi.getReorderSegments(text, embeddingLevels);
-  const mirrored = bidi.getMirroredCharactersMap(text, embeddingLevels);
-  const chars = Array.from(text);
-  mirrored.forEach((replacement: string, index: number) => {
-    chars[index] = replacement;
-  });
-  for (const [start, end] of flips) {
-    let i = start;
-    let j = end;
-    while (i < j) {
-      const tmp = chars[i];
-      chars[i] = chars[j];
-      chars[j] = tmp;
-      i++;
-      j--;
-    }
-  }
-  return chars.join('');
+  return bidi.getReorderedString(text, embeddingLevels);
 }
 
 function bidiCell(value: string | number, baseDir: 'ltr' | 'rtl'): string {
   return toVisualOrder(String(value), baseDir);
+}
+
+// jsPDF runs its own (incomplete) BiDi engine on every text() call via a global
+// "postProcessText" handler — it mangles digits and parentheses inside Hebrew
+// (e.g. "אחוזון 90 (P90)" -> "אחוזון 09 (09P)") and would re-order the strings
+// we already laid out with bidi-js. autoTable calls doc.text() without options,
+// so we can't disable it per-call there. Patching doc.text() to always inject
+// these flags makes jsPDF's engine an identity transform (verified) while its
+// UTF-8 escaping handler keeps working.
+const BIDI_NOOP = { isInputVisual: true, isOutputVisual: true, isInputRtl: false, isOutputRtl: false } as const;
+
+function disableJsPdfBidi(doc: jsPDF) {
+  const orig = doc.text.bind(doc);
+  (doc as any).text = (text: any, x: number, y: number, options?: any, transform?: any) =>
+    orig(text, x, y, { ...BIDI_NOOP, ...(options || {}) }, transform);
 }
 
 export interface ExportSection {
@@ -114,6 +112,7 @@ export async function exportToPdf(
 ) {
   const fonts = await loadHeebo();
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  disableJsPdfBidi(doc);
   registerHeebo(doc, fonts);
   doc.setFont('Heebo', 'normal');
 
