@@ -2,6 +2,36 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import bidiFactory from 'bidi-js';
+
+const bidi = bidiFactory();
+
+function toVisualOrder(text: string, baseDir: 'ltr' | 'rtl'): string {
+  if (!text) return text;
+  const embeddingLevels = bidi.getEmbeddingLevels(text, baseDir);
+  const flips = bidi.getReorderSegments(text, embeddingLevels);
+  const mirrored = bidi.getMirroredCharactersMap(text, embeddingLevels);
+  const chars = Array.from(text);
+  mirrored.forEach((replacement: string, index: number) => {
+    chars[index] = replacement;
+  });
+  for (const [start, end] of flips) {
+    let i = start;
+    let j = end;
+    while (i < j) {
+      const tmp = chars[i];
+      chars[i] = chars[j];
+      chars[j] = tmp;
+      i++;
+      j--;
+    }
+  }
+  return chars.join('');
+}
+
+function bidiCell(value: string | number, baseDir: 'ltr' | 'rtl'): string {
+  return toVisualOrder(String(value), baseDir);
+}
 
 export interface ExportSection {
   title: string;
@@ -88,18 +118,22 @@ export async function exportToPdf(
   doc.setFont('Heebo', 'normal');
 
   const rtl = isRtl(language);
+  const baseDir: 'ltr' | 'rtl' = rtl ? 'rtl' : 'ltr';
   const align: 'right' | 'left' = rtl ? 'right' : 'left';
   const pageWidth = doc.internal.pageSize.getWidth();
 
   doc.setFont('Heebo', 'bold');
   doc.setFontSize(16);
   const pageTitle = title || 'ToiletMon Analytics Report';
-  doc.text(pageTitle, pageWidth / 2, 15, { align: 'center' });
+  doc.text(toVisualOrder(pageTitle, baseDir), pageWidth / 2, 15, { align: 'center' });
 
   doc.setFontSize(10);
   doc.setFont('Heebo', 'normal');
   doc.text(
-    new Date().toLocaleDateString(language, { year: 'numeric', month: 'long', day: 'numeric' }),
+    toVisualOrder(
+      new Date().toLocaleDateString(language, { year: 'numeric', month: 'long', day: 'numeric' }),
+      baseDir,
+    ),
     pageWidth / 2,
     22,
     { align: 'center' },
@@ -116,13 +150,13 @@ export async function exportToPdf(
     doc.setFont('Heebo', 'bold');
     doc.setFontSize(12);
     const titleX = rtl ? pageWidth - 14 : 14;
-    doc.text(section.title, titleX, yPos, { align });
+    doc.text(toVisualOrder(section.title, baseDir), titleX, yPos, { align });
     yPos += 3;
 
     autoTable(doc, {
       startY: yPos,
-      head: [section.headers],
-      body: section.rows.map(r => r.map(String)),
+      head: [section.headers.map(h => bidiCell(h, baseDir))],
+      body: section.rows.map(r => r.map(v => bidiCell(v, baseDir))),
       theme: 'striped',
       headStyles: { fillColor: [0, 180, 160], textColor: 255, fontStyle: 'bold', font: 'Heebo', halign: align },
       bodyStyles: { font: 'Heebo', halign: align },
