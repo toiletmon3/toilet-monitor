@@ -67,7 +67,7 @@ export function exportToExcel(sections: ExportSection[], filenamePrefix = 'analy
   saveAs(blob, buildFilename(filenamePrefix, 'xlsx'));
 }
 
-let heeboCache: { regular: string; bold: string } | null = null;
+let reportFontCache: { regular: string; bold: string } | null = null;
 
 async function fetchFontBase64(url: string): Promise<string> {
   const res = await fetch(url);
@@ -82,21 +82,25 @@ async function fetchFontBase64(url: string): Promise<string> {
   return btoa(binary);
 }
 
-async function loadHeebo(): Promise<{ regular: string; bold: string }> {
-  if (heeboCache) return heeboCache;
+// DejaVu Sans subset: Latin + Latin-ext + Greek + Cyrillic + Hebrew +
+// punctuation/currency. Covers every UI language plus foreign-script DB
+// data (names, locations) — Heebo was Latin+Hebrew only and rendered
+// Cyrillic/Greek as blank glyphs.
+async function loadReportFont(): Promise<{ regular: string; bold: string }> {
+  if (reportFontCache) return reportFontCache;
   const [regular, bold] = await Promise.all([
-    fetchFontBase64('/fonts/Heebo-Regular.ttf'),
-    fetchFontBase64('/fonts/Heebo-Bold.ttf'),
+    fetchFontBase64('/fonts/ReportSans-Regular.ttf'),
+    fetchFontBase64('/fonts/ReportSans-Bold.ttf'),
   ]);
-  heeboCache = { regular, bold };
-  return heeboCache;
+  reportFontCache = { regular, bold };
+  return reportFontCache;
 }
 
-function registerHeebo(doc: jsPDF, fonts: { regular: string; bold: string }) {
-  doc.addFileToVFS('Heebo-Regular.ttf', fonts.regular);
-  doc.addFont('Heebo-Regular.ttf', 'Heebo', 'normal');
-  doc.addFileToVFS('Heebo-Bold.ttf', fonts.bold);
-  doc.addFont('Heebo-Bold.ttf', 'Heebo', 'bold');
+function registerReportFont(doc: jsPDF, fonts: { regular: string; bold: string }) {
+  doc.addFileToVFS('ReportSans-Regular.ttf', fonts.regular);
+  doc.addFont('ReportSans-Regular.ttf', 'ReportSans', 'normal');
+  doc.addFileToVFS('ReportSans-Bold.ttf', fonts.bold);
+  doc.addFont('ReportSans-Bold.ttf', 'ReportSans', 'bold');
 }
 
 const RTL_LANGS = new Set(['he', 'ar', 'fa', 'ur']);
@@ -110,24 +114,24 @@ export async function exportToPdf(
   title?: string,
   language: string = 'he',
 ) {
-  const fonts = await loadHeebo();
+  const fonts = await loadReportFont();
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   disableJsPdfBidi(doc);
-  registerHeebo(doc, fonts);
-  doc.setFont('Heebo', 'normal');
+  registerReportFont(doc, fonts);
+  doc.setFont('ReportSans', 'normal');
 
   const rtl = isRtl(language);
   const baseDir: 'ltr' | 'rtl' = rtl ? 'rtl' : 'ltr';
   const align: 'right' | 'left' = rtl ? 'right' : 'left';
   const pageWidth = doc.internal.pageSize.getWidth();
 
-  doc.setFont('Heebo', 'bold');
+  doc.setFont('ReportSans', 'bold');
   doc.setFontSize(16);
   const pageTitle = title || 'ToiletMon Analytics Report';
   doc.text(toVisualOrder(pageTitle, baseDir), pageWidth / 2, 15, { align: 'center' });
 
   doc.setFontSize(10);
-  doc.setFont('Heebo', 'normal');
+  doc.setFont('ReportSans', 'normal');
   doc.text(
     toVisualOrder(
       new Date().toLocaleDateString(language, { year: 'numeric', month: 'long', day: 'numeric' }),
@@ -146,7 +150,7 @@ export async function exportToPdf(
       yPos = 15;
     }
 
-    doc.setFont('Heebo', 'bold');
+    doc.setFont('ReportSans', 'bold');
     doc.setFontSize(12);
     const titleX = rtl ? pageWidth - 14 : 14;
     doc.text(toVisualOrder(section.title, baseDir), titleX, yPos, { align });
@@ -157,9 +161,9 @@ export async function exportToPdf(
       head: [section.headers.map(h => bidiCell(h, baseDir))],
       body: section.rows.map(r => r.map(v => bidiCell(v, baseDir))),
       theme: 'striped',
-      headStyles: { fillColor: [0, 180, 160], textColor: 255, fontStyle: 'bold', font: 'Heebo', halign: align },
-      bodyStyles: { font: 'Heebo', halign: align },
-      styles: { fontSize: 9, cellPadding: 2, font: 'Heebo', halign: align },
+      headStyles: { fillColor: [0, 180, 160], textColor: 255, fontStyle: 'bold', font: 'ReportSans', halign: align },
+      bodyStyles: { font: 'ReportSans', halign: align },
+      styles: { fontSize: 9, cellPadding: 2, font: 'ReportSans', halign: align },
       margin: { left: 14, right: 14 },
     });
 
