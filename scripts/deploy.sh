@@ -4,14 +4,20 @@ set -e
 
 cd /opt/toilet-monitor
 
-# --- Capture HEAD before pull so we can detect what changed ---
-PREV_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
+# --- Detect what changed since the last SUCCESSFULLY deployed commit ---
+# We diff against a persisted marker (written only at the end of a successful
+# deploy), NOT against pre-pull HEAD. With cancel-in-progress overlapping
+# deploys, a cancelled run can still `git pull` the working copy forward, so a
+# pre-pull-HEAD diff would compute an empty changeset and wrongly skip builds,
+# leaving stale artefacts (e.g. an un-rebuilt web bundle) live.
+DEPLOYED_MARKER="/opt/toilet-monitor/.last-deployed-sha"
+LAST_DEPLOYED_SHA=$(cat "$DEPLOYED_MARKER" 2>/dev/null || echo "")
 git pull
 NEW_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
 
-# Compute changed paths (empty when SHAs match — e.g., re-running after a no-op push)
-if [ -n "$PREV_SHA" ] && [ -n "$NEW_SHA" ] && [ "$PREV_SHA" != "$NEW_SHA" ]; then
-  CHANGED_FILES=$(git diff --name-only "$PREV_SHA" "$NEW_SHA" || echo "")
+# Only trust the marker if it names a commit we actually have in history.
+if [ -n "$LAST_DEPLOYED_SHA" ] && git cat-file -e "${LAST_DEPLOYED_SHA}^{commit}" 2>/dev/null && [ -n "$NEW_SHA" ] && [ "$LAST_DEPLOYED_SHA" != "$NEW_SHA" ]; then
+  CHANGED_FILES=$(git diff --name-only "$LAST_DEPLOYED_SHA" "$NEW_SHA" || echo "")
 else
   CHANGED_FILES=""
 fi
@@ -22,11 +28,12 @@ changed_match() {
   echo "$CHANGED_FILES" | grep -qE "$1"
 }
 
-# Decide which heavy steps to run.
-# Force everything if this looks like a first deploy or PREV_SHA missing.
-if [ -z "$PREV_SHA" ] || [ -z "$NEW_SHA" ] || [ ! -d /opt/toilet-monitor/node_modules ] || [ ! -d /opt/toilet-monitor/apps/server/node_modules ] || [ ! -d /opt/toilet-monitor/apps/web/node_modules ] || [ ! -d /opt/toilet-monitor/apps/web/dist ] || [ ! -d /opt/toilet-monitor/apps/server/dist ]; then
+# Decide which heavy steps to run. Force everything when we cannot reliably
+# attribute the on-disk artefacts to NEW_SHA: no/invalid marker, marker
+# unchanged but artefacts missing, or first deploy.
+if [ -z "$LAST_DEPLOYED_SHA" ] || ! git cat-file -e "${LAST_DEPLOYED_SHA}^{commit}" 2>/dev/null || [ -z "$NEW_SHA" ] || [ ! -d /opt/toilet-monitor/node_modules ] || [ ! -d /opt/toilet-monitor/apps/server/node_modules ] || [ ! -d /opt/toilet-monitor/apps/web/node_modules ] || [ ! -d /opt/toilet-monitor/apps/web/dist ] || [ ! -d /opt/toilet-monitor/apps/server/dist ]; then
   RUN_INSTALL=1; RUN_MIGRATE=1; BUILD_SERVER=1; BUILD_WEB=1
-  echo "First deploy or missing build artefacts — running all steps"
+  echo "No reliable deploy marker or missing build artefacts — running all steps"
 else
   RUN_INSTALL=0; RUN_MIGRATE=0; BUILD_SERVER=0; BUILD_WEB=0
   changed_match '(^|/)package\.json$|^pnpm-lock\.yaml$|^pnpm-workspace\.yaml$' && RUN_INSTALL=1
@@ -397,5 +404,9 @@ if [ -f "$WATCHDOG" ]; then
   (crontab -l 2>/dev/null | grep -v "nginx-watchdog" ; echo "$CRON_LINE") | crontab -
   echo "Nginx watchdog cron installed (every 5 min)"
 fi
+
+# Record the commit whose artefacts are now actually live, so the next deploy
+# can compute an accurate changeset even if this/previous runs overlapped.
+echo "$NEW_SHA" > "$DEPLOYED_MARKER"
 
 echo "Deploy complete"
