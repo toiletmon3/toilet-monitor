@@ -166,6 +166,20 @@ if [ -n "$GITHUB_PAT" ]; then
   echo "GITHUB_PAT ensured in $ENV_FILE"
 fi
 
+# Reconcile DB containers with docker-compose.databases.yml.
+# `docker compose up -d` is idempotent: if the running container's config
+# (e.g. port bindings) matches the YAML, nothing happens; if it diverges,
+# Docker recreates the container. Named volumes persist, so data is safe.
+# This makes infra changes (like binding Postgres/Redis to 127.0.0.1) take
+# effect automatically on the next deploy instead of requiring manual SSH.
+if [ -f /opt/toilet-monitor/docker-compose.databases.yml ]; then
+  echo "Reconciling DB containers with docker-compose.databases.yml..."
+  cd /opt/toilet-monitor
+  docker compose -f docker-compose.databases.yml up -d --wait --wait-timeout 60 2>&1 \
+    || docker compose -f docker-compose.databases.yml up -d 2>&1 \
+    || echo "WARNING: docker compose up failed (non-fatal — continuing)"
+fi
+
 # Install / update dependencies (picks up any new packages from pnpm-lock.yaml)
 cd /opt/toilet-monitor
 if [ "$RUN_INSTALL" = "1" ]; then
