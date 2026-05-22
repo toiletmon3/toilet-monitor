@@ -79,6 +79,25 @@ export class AnalyticsService {
       restroomName: d.restroom.name,
     }));
 
+    // Breakdown of RESOLVED incidents by issue type (for the overview pie)
+    const resolvedIncidentsByType = await this.prisma.incident.findMany({
+      where: { ...incidentWhere, status: 'RESOLVED' },
+      select: { issueTypeId: true, issueType: { select: { nameI18n: true, icon: true } } },
+    });
+
+    const typeMap = new Map<string, { issueTypeId: string; nameI18n: any; icon: string | null; count: number }>();
+    for (const inc of resolvedIncidentsByType) {
+      const existing = typeMap.get(inc.issueTypeId) ?? {
+        issueTypeId: inc.issueTypeId,
+        nameI18n: (inc.issueType as any)?.nameI18n ?? { he: inc.issueTypeId },
+        icon: (inc.issueType as any)?.icon ?? null,
+        count: 0,
+      };
+      existing.count++;
+      typeMap.set(inc.issueTypeId, existing);
+    }
+    const resolvedByType = [...typeMap.values()].sort((a, b) => b.count - a.count);
+
     return {
       totalIncidents: total,
       resolvedIncidents: resolved,
@@ -89,6 +108,7 @@ export class AnalyticsService {
       onlineDevices,
       offlineDevicesCount: offlineDevices.length,
       offlineDevices,
+      resolvedByType,
     };
   }
 
