@@ -83,6 +83,7 @@
     "title": "לוח בקרה",
     "nav": {
       "dashboard": "סקירה כללית",
+      "devices": "טאבלטים לא מחוברים",
       "incidents": "בקשות",
       "analytics": "סטטיסטיקות",
       "cleaners": "עובדים",
@@ -208,7 +209,8 @@
       "lastSeen": "נראה לאחרונה",
       "never": "מעולם לא",
       "justNow": "הרגע",
-      "ago": "לפני"
+      "ago": "לפני",
+      "allConnected": "כל הטאבלטים מחוברים"
     },
     "dashboard": {
       "allBuildings": "כל הבניינים",
