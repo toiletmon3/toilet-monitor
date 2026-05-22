@@ -218,7 +218,8 @@
       "clearFilter": "נקה סינון",
       "offlineDevices": "טאבלטים לא מחוברים",
       "lastSeen": "חיבור אחרון",
-      "urgentAlerts": "התראות דחופות"
+      "urgentAlerts": "התראות דחופות",
+      "incidentOverview": "סקירת תקלות"
     },
     "cleaners": {
       "onShift": "כרגע בעבודה",

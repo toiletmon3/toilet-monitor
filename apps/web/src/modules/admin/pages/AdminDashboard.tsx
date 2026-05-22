@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, Clock, Users, Tablet, Building2, ChevronDown, ChevronRight } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import api from '../../../lib/api';
 import { getSocket, joinOrg } from '../../../lib/socket';
 import { translateFloorName, translateRestroomName } from '../../../lib/translate-name';
@@ -140,14 +141,6 @@ export default function AdminDashboard() {
     refetchInterval: 30_000,
   });
 
-  const { data: incidentsData } = useQuery({
-    queryKey: ['recent-incidents', buildingId],
-    queryFn: async () => (
-      await api.get('/incidents', { params: { limit: 10, ...(buildingId ? { buildingId } : {}) } })
-    ).data,
-    refetchInterval: 15_000,
-  });
-
   const { data: urgentData = [] } = useQuery({
     queryKey: ['incidents', 'urgent'],
     queryFn: async () => (await api.get('/incidents/urgent')).data,
@@ -161,7 +154,6 @@ export default function AdminDashboard() {
     const socket = getSocket();
     const refresh = () => {
       queryClient.invalidateQueries({ queryKey: ['analytics-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-incidents'] });
     };
     socket.on('incident:created', refresh);
     socket.on('incident:resolved', refresh);
@@ -169,9 +161,14 @@ export default function AdminDashboard() {
     return () => { socket.off('incident:created', refresh); socket.off('incident:resolved', refresh); socket.off('incident:escalated', refresh); };
   }, [queryClient]);
 
-  const incidents = incidentsData?.items ?? [];
-
   const selectedBuildingName = buildings.find((b: any) => b.id === buildingId)?.name;
+
+  const incidentBreakdown = [
+    { name: t('admin.incidents.open'), value: summary?.openIncidents ?? 0, color: '#ef4444' },
+    { name: t('admin.incidents.inProgress'), value: summary?.inProgressIncidents ?? 0, color: '#f59e0b' },
+    { name: t('admin.incidents.resolved'), value: summary?.resolvedIncidents ?? 0, color: '#22c55e' },
+  ];
+  const incidentTotal = incidentBreakdown.reduce((s, d) => s + d.value, 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -236,22 +233,46 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Recent incidents */}
+      {/* Incident breakdown (pie) */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
-          <h2 className="font-semibold text-white">{t('admin.incidents.title')}</h2>
+          <h2 className="font-semibold text-white">{t('admin.dashboard.incidentOverview')}</h2>
         </div>
 
-        <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-          {incidents.length === 0 && (
-            <div className="px-5 py-8 text-center" style={{ color: 'var(--color-text-secondary)' }}>
-              {t('admin.incidents.empty')}
-            </div>
-          )}
-          {incidents.map((inc: any) => (
-            <DashboardIncidentRow key={inc.id} inc={inc} />
-          ))}
-        </div>
+        {incidentTotal === 0 ? (
+          <div className="px-5 py-12 text-center" style={{ color: 'var(--color-text-secondary)' }}>
+            {t('admin.incidents.empty')}
+          </div>
+        ) : (
+          <div className="p-5">
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={incidentBreakdown}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  label={({ value }) => (value > 0 ? value : '')}
+                >
+                  {incidentBreakdown.map((d) => (
+                    <Cell key={d.name} fill={d.color} stroke="transparent" />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ background: 'var(--color-surface)', border: '1px solid rgba(0,229,204,0.2)', borderRadius: 12, color: 'var(--color-text)' }}
+                />
+                <Legend
+                  iconType="circle"
+                  formatter={(val) => <span style={{ color: 'var(--color-text-secondary)' }}>{val}</span>}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
     </div>
   );
