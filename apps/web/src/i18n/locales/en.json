@@ -218,7 +218,8 @@
       "clearFilter": "Clear filter",
       "offlineDevices": "Offline Tablets",
       "lastSeen": "Last seen",
-      "urgentAlerts": "Urgent Alerts"
+      "urgentAlerts": "Urgent Alerts",
+      "incidentOverview": "Incident Overview"
     },
     "cleaners": {
       "onShift": "Currently on shift",
