@@ -219,7 +219,8 @@
       "offlineDevices": "טאבלטים לא מחוברים",
       "lastSeen": "חיבור אחרון",
       "urgentAlerts": "התראות דחופות",
-      "incidentOverview": "סקירת תקלות"
+      "incidentOverview": "סקירת תקלות שנסגרו לפי סוג",
+      "noResolvedIncidents": "אין תקלות שנסגרו עדיין"
     },
     "cleaners": {
       "onShift": "כרגע בעבודה",

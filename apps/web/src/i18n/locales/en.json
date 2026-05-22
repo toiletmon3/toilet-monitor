@@ -219,7 +219,8 @@
       "offlineDevices": "Offline Tablets",
       "lastSeen": "Last seen",
       "urgentAlerts": "Urgent Alerts",
-      "incidentOverview": "Incident Overview"
+      "incidentOverview": "Resolved Incidents by Type",
+      "noResolvedIncidents": "No resolved incidents yet"
     },
     "cleaners": {
       "onShift": "Currently on shift",

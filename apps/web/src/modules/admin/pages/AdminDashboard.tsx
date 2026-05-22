@@ -124,7 +124,8 @@ function DashboardIncidentRow({ inc }: { inc: any }) {
 }
 
 export default function AdminDashboard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const queryClient = useQueryClient();
   const [buildingId, setBuildingId] = useState<string>(''); // '' = all
 
@@ -163,11 +164,13 @@ export default function AdminDashboard() {
 
   const selectedBuildingName = buildings.find((b: any) => b.id === buildingId)?.name;
 
-  const incidentBreakdown = [
-    { name: t('admin.incidents.open'), value: summary?.openIncidents ?? 0, color: '#ef4444' },
-    { name: t('admin.incidents.inProgress'), value: summary?.inProgressIncidents ?? 0, color: '#f59e0b' },
-    { name: t('admin.incidents.resolved'), value: summary?.resolvedIncidents ?? 0, color: '#22c55e' },
-  ];
+  const PIE_COLORS = ['#00e5cc', '#8b5cf6', '#f59e0b', '#ef4444', '#22c55e', '#3b82f6', '#ec4899', '#eab308'];
+  const resolvedByType: any[] = summary?.resolvedByType ?? [];
+  const incidentBreakdown = resolvedByType.map((d, i) => ({
+    name: `${d.icon ? d.icon + ' ' : ''}${d.nameI18n?.[lang] ?? d.nameI18n?.he ?? d.issueTypeId}`,
+    value: d.count,
+    color: PIE_COLORS[i % PIE_COLORS.length],
+  }));
   const incidentTotal = incidentBreakdown.reduce((s, d) => s + d.value, 0);
 
   return (
@@ -241,7 +244,7 @@ export default function AdminDashboard() {
 
         {incidentTotal === 0 ? (
           <div className="px-5 py-12 text-center" style={{ color: 'var(--color-text-secondary)' }}>
-            {t('admin.incidents.empty')}
+            {t('admin.dashboard.noResolvedIncidents')}
           </div>
         ) : (
           <div className="p-5">
