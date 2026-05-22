@@ -6,6 +6,7 @@ import CleanerLoginPage from './modules/cleaner/CleanerLoginPage';
 import AdminLoginPage from './modules/admin/AdminLoginPage';
 import AdminLayout from './modules/admin/AdminLayout';
 import AdminDashboard from './modules/admin/pages/AdminDashboard';
+import AdminDevices from './modules/admin/pages/AdminDevices';
 import AdminIncidents from './modules/admin/pages/AdminIncidents';
 import AdminAnalytics from './modules/admin/pages/AdminAnalytics';
 import AdminCleaners from './modules/admin/pages/AdminCleaners';
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
+          <Route path="devices" element={<AdminDevices />} />
           <Route path="incidents" element={<AdminIncidents />} />
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="cleaners" element={<AdminCleaners />} />

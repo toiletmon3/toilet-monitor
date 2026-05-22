@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, Clock, Users, Tablet, WifiOff, Building2, ChevronDown, ChevronRight } from 'lucide-react';
+import { AlertCircle, Clock, Users, Tablet, Building2, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../../../lib/api';
 import { getSocket, joinOrg } from '../../../lib/socket';
 import { translateFloorName, translateRestroomName } from '../../../lib/translate-name';
@@ -24,18 +24,6 @@ function StatCard({ icon: Icon, label, value, color }: { icon: any; label: strin
       </div>
     </div>
   );
-}
-
-function formatRelative(date: string | null, t: (k: string) => string) {
-  if (!date) return t('admin.devices.never');
-  const diff = Date.now() - new Date(date).getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return t('admin.devices.justNow');
-  if (min < 60) return `${t('admin.devices.ago')} ${min} ${t('common.minutes')}`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${t('admin.devices.ago')} ${hr} ${t('common.hours')}`;
-  const day = Math.floor(hr / 24);
-  return `${t('admin.devices.ago')} ${day} ${t('common.days')}`;
 }
 
 function DashboardIncidentRow({ inc }: { inc: any }) {
@@ -182,7 +170,6 @@ export default function AdminDashboard() {
   }, [queryClient]);
 
   const incidents = incidentsData?.items ?? [];
-  const offlineDevices: any[] = summary?.offlineDevices ?? [];
 
   const selectedBuildingName = buildings.find((b: any) => b.id === buildingId)?.name;
 
@@ -244,40 +231,6 @@ export default function AdminDashboard() {
           <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
             {urgentData.map((inc: any) => (
               <DashboardIncidentRow key={inc.id} inc={inc} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Offline tablets */}
-      {offlineDevices.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(239,68,68,0.25)' }}>
-          <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(239,68,68,0.15)' }}>
-            <WifiOff size={16} style={{ color: '#ef4444' }} />
-            <h2 className="font-semibold text-white">{t('admin.dashboard.offlineDevices')}</h2>
-            <span
-              className="text-xs px-2 py-0.5 rounded-full font-bold"
-              style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444' }}
-            >
-              {offlineDevices.length}
-            </span>
-          </div>
-          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-            {offlineDevices.map(d => (
-              <div key={d.id} className="px-5 py-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#ef4444' }} />
-                  <div className="min-w-0">
-                    <div className="text-sm font-mono font-medium text-white truncate">{d.deviceCode}</div>
-                    <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
-                      {d.buildingName} › {d.floorName} › {d.restroomName}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-xs flex-shrink-0" style={{ color: 'var(--color-text-secondary)' }}>
-                  {t('admin.dashboard.lastSeen')}: {formatRelative(d.lastHeartbeat, t)}
-                </div>
-              </div>
             ))}
           </div>
         </div>

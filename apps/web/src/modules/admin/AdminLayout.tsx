@@ -6,7 +6,7 @@ import { setLanguage } from '../../i18n';
 import api from '../../lib/api';
 import {
   LayoutDashboard, AlertCircle, BarChart2, Users, Settings, LogOut,
-  Sun, Moon, LayoutTemplate, Menu, X, ChevronLeft, ChevronRight,
+  Sun, Moon, LayoutTemplate, Menu, X, ChevronLeft, ChevronRight, WifiOff,
 } from 'lucide-react';
 import { getSocket, joinOrg } from '../../lib/socket';
 import toast from 'react-hot-toast';
@@ -136,6 +136,7 @@ export default function AdminLayout() {
 
   const NAV = [
     { to: '/admin', icon: LayoutDashboard, label: t('admin.nav.dashboard'), end: true },
+    { to: '/admin/devices', icon: WifiOff, label: t('admin.nav.devices') },
     { to: '/admin/incidents', icon: AlertCircle, label: t('admin.nav.incidents') },
     { to: '/admin/analytics', icon: BarChart2, label: t('admin.nav.analytics') },
     { to: '/admin/cleaners', icon: Users, label: t('admin.nav.cleaners') },
