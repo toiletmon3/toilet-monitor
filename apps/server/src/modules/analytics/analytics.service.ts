@@ -310,6 +310,115 @@ export class AnalyticsService {
     };
   }
 
+  /**
+   * Weighted health score per restroom (0-100, higher = worse).
+   * Weights:
+   *   frequency  40%  — incident count, normalised to the busiest restroom in scope
+   *   severity   25%  — average of issueType.priority (1=highest) mapped to 0-1
+   *   response   20%  — avg minutes from reportedAt → resolvedAt, clamped at 60 min
+   *   recurring  15%  — share of incidents that repeat the same issueType in <24h
+   */
+  async getRestroomScores(orgId: string, from: Date, to: Date = new Date()) {
+    const incidents = await this.prisma.incident.findMany({
+      where: {
+        restroom: { floor: { building: { orgId } } },
+        reportedAt: { gte: from, lte: to },
+      },
+      select: {
+        restroomId: true,
+        issueTypeId: true,
+        reportedAt: true,
+        resolvedAt: true,
+        issueType: { select: { priority: true } },
+        restroom: {
+          select: {
+            name: true,
+            floor: { select: { name: true, building: { select: { id: true, name: true } } } },
+          },
+        },
+      },
+      orderBy: { reportedAt: 'asc' },
+    });
+
+    type Bucket = {
+      restroomId: string;
+      location: string;
+      buildingId: string;
+      incidents: typeof incidents;
+    };
+    const byRestroom = new Map<string, Bucket>();
+    for (const inc of incidents) {
+      const b = byRestroom.get(inc.restroomId) ?? {
+        restroomId: inc.restroomId,
+        location: [inc.restroom.floor.building.name, inc.restroom.floor.name, inc.restroom.name].filter(Boolean).join(' › '),
+        buildingId: inc.restroom.floor.building.id,
+        incidents: [] as typeof incidents,
+      };
+      b.incidents.push(inc);
+      byRestroom.set(inc.restroomId, b);
+    }
+
+    const maxCount = Math.max(1, ...[...byRestroom.values()].map(b => b.incidents.length));
+
+    const results = [...byRestroom.values()].map(b => {
+      const count = b.incidents.length;
+
+      // 1) frequency 40%
+      const frequency = (count / maxCount) * 40;
+
+      // 2) severity 25% — priority 1=highest → severityNorm=1; priority 5+ → 0
+      const severityNorm = b.incidents.reduce((s, i) => {
+        const p = i.issueType?.priority ?? 3;
+        return s + Math.max(0, Math.min(1, (5 - p) / 4));
+      }, 0) / count;
+      const severity = severityNorm * 25;
+
+      // 3) response 20% — avg resolution minutes, clamped to 60
+      const resolved = b.incidents.filter(i => i.resolvedAt);
+      const avgMin = resolved.length
+        ? resolved.reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / resolved.length
+        : 0;
+      const response = Math.min(1, avgMin / 60) * 20;
+
+      // 4) recurring 15% — same issueType within 24h
+      const sortedByType = new Map<string, Date[]>();
+      for (const i of b.incidents) {
+        const arr = sortedByType.get(i.issueTypeId) ?? [];
+        arr.push(i.reportedAt);
+        sortedByType.set(i.issueTypeId, arr);
+      }
+      let recurringCount = 0;
+      for (const dates of sortedByType.values()) {
+        dates.sort((a, b) => a.getTime() - b.getTime());
+        for (let i = 1; i < dates.length; i++) {
+          if (dates[i].getTime() - dates[i - 1].getTime() < 24 * 60 * 60 * 1000) recurringCount++;
+        }
+      }
+      const recurring = Math.min(1, recurringCount / Math.max(1, count)) * 15;
+
+      const score = Math.round(frequency + severity + response + recurring);
+      const tier: 'good' | 'warning' | 'critical' = score >= 60 ? 'critical' : score >= 30 ? 'warning' : 'good';
+
+      return {
+        restroomId: b.restroomId,
+        location: b.location,
+        buildingId: b.buildingId,
+        score,
+        tier,
+        totalIncidents: count,
+        avgResolutionMinutes: Math.round(avgMin),
+        breakdown: {
+          frequency: Math.round(frequency * 10) / 10,
+          severity: Math.round(severity * 10) / 10,
+          response: Math.round(response * 10) / 10,
+          recurring: Math.round(recurring * 10) / 10,
+        },
+      };
+    });
+
+    return results.sort((a, b) => b.score - a.score);
+  }
+
   async getCleanerPerformance(orgId: string, from: Date, to: Date = new Date()) {
     const cleaners = await this.prisma.user.findMany({
       where: { orgId, role: 'CLEANER', isActive: true },

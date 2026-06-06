@@ -186,6 +186,21 @@
       <td class="status-yes">✔ קיים</td>
       <td>activeCleaners — על סמך CleanerArrival. כרטיס בדשבורד + דף עובדים.</td>
     </tr>
+    <tr>
+      <td>1.9</td>
+      <td><b>ציון משוקלל לכל תא שירותים (Health Score)</b></td>
+      <td class="status-partial">◐ רצוי</td>
+      <td class="status-yes">✔ קיים</td>
+      <td>
+        ציון 0-100 (גבוה = גרוע) המסכם את "בריאות" התא, מורכב מ-4 מדדים משוקללים:<br>
+        • <b>תדירות תקלות (40%)</b> — מספר קריאות בתא, מנורמל מול התא העמוס ביותר בטווח<br>
+        • <b>חומרת התקלות (25%)</b> — ממוצע <code>priority</code> של סוגי תקלה (1=קריטי, 5=שולי)<br>
+        • <b>זמן תגובה ממוצע (20%)</b> — דקות מפתיחה לסגירה, חתוך ב-60 דק'<br>
+        • <b>חזרתיות (15%)</b> — % תקלות שחזרו באותו סוג תוך 24 שעות<br>
+        סיווג ל-3 רמות: <span style="color:#22c55e">🟢 תקין (&lt;30)</span> · <span style="color:#f59e0b">🟠 בעייתי (30-59)</span> · <span style="color:#ef4444">🔴 קריטי (60+)</span>.<br>
+        מוצג בעמוד Analytics + ייצוא ל-PDF/Excel. API: <code>GET /analytics/restroom-scores?days=30</code>.
+      </td>
+    </tr>
   </tbody>
 </table>
 
@@ -475,8 +490,8 @@
       <td>7.1</td>
       <td>תחזוקה מנבאת (Predictive Maintenance)</td>
       <td class="status-yes">✔ נדרש</td>
-      <td class="status-no">✘ לא קיים</td>
-      <td><b>פער:</b> אין מודל חיזוי. ניתוח הוא תיאורי בלבד (ממוצעים, מגמות).</td>
+      <td class="status-partial">◐ חלקי</td>
+      <td><b>ציון משוקלל לכל תא שירותים</b> (0-100, גבוה = גרוע): תדירות 40% + חומרה 25% + זמן תגובה 20% + חזרתיות תוך 24ש' 15%. סיווג ל-3 רמות (תקין / בעייתי / קריטי). מהווה אינדיקטור מנבא לתאים שדורשים תשומת לב מוקדמת. API: <code>/analytics/restroom-scores</code>. ML מלא טרם מומש.</td>
     </tr>
     <tr>
       <td>7.2</td>
@@ -529,8 +544,8 @@
     </tr>
     <tr>
       <td>1. KPIs — לוח בקרה</td>
-      <td>8</td>
-      <td>6</td>
+      <td>9</td>
+      <td>7</td>
       <td>1</td>
       <td>1</td>
     </tr>
@@ -573,15 +588,15 @@
       <td>7. יכולות מתקדמות</td>
       <td>6</td>
       <td>2</td>
-      <td>0</td>
-      <td>4</td>
+      <td>1</td>
+      <td>3</td>
     </tr>
     <tr style="font-weight:bold; background:#eef8f6;">
       <td>סה"כ</td>
-      <td>41</td>
-      <td>24 (58%)</td>
-      <td>3 (7%)</td>
-      <td>14 (34%)</td>
+      <td>42</td>
+      <td>26 (62%)</td>
+      <td>4 (10%)</td>
+      <td>12 (28%)</td>
     </tr>
   </table>
 </div>
