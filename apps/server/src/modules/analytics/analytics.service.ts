@@ -466,11 +466,18 @@ export class AnalyticsService {
    * Single aggregated payload for the live Dashboard ("Overview").
    * Returns KPIs for the selected period vs the previous equal-length period,
    * three donut breakdowns, and a per-restroom table with score + arrival + status.
+   * `floorId` / `restroomId` further narrow the scope below the building.
    */
-  async getOverview(orgId: string, from: Date, to: Date = new Date(), buildingId?: string) {
+  async getOverview(orgId: string, from: Date, to: Date = new Date(), buildingId?: string, floorId?: string, restroomId?: string) {
     const periodMs = Math.max(1, to.getTime() - from.getTime());
     const prevFrom = new Date(from.getTime() - periodMs);
-    const restroomFilter = buildingId ? { floor: { buildingId } } : { floor: { building: { orgId } } };
+    const restroomFilter = restroomId
+      ? { id: restroomId }
+      : floorId
+        ? { floorId }
+        : buildingId
+          ? { floor: { buildingId } }
+          : { floor: { building: { orgId } } };
 
     // Fetch everything reported since the previous window opened (covers both periods).
     const all = (await this.prisma.incident.findMany({
@@ -589,7 +596,7 @@ export class AnalyticsService {
     // ── Rooms table — list ALL active restrooms, merge in scores/arrivals/status ──
     const [restrooms, openIncidents, arrivals] = await Promise.all([
       this.prisma.restroom.findMany({
-        where: buildingId ? { floor: { buildingId } } : { floor: { building: { orgId } } },
+        where: restroomFilter as any,
         select: { id: true, name: true, floor: { select: { name: true, building: { select: { id: true, name: true } } } } },
       }),
       this.prisma.incident.groupBy({
@@ -599,7 +606,7 @@ export class AnalyticsService {
       }),
       this.prisma.cleanerArrival.findMany({
         where: { restroomId: { not: null }, user: { orgId }, arrivedAt: { gte: from, lte: to } },
-        select: { restroomId: true, arrivedAt: true },
+        select: { restroomId: true, arrivedAt: true, user: { select: { role: true } } },
         orderBy: { arrivedAt: 'desc' },
       }),
     ]);
@@ -607,12 +614,14 @@ export class AnalyticsService {
     const curScores = this.computeRoomScores(curComplaints);
     const prevScores = this.computeRoomScores(prevComplaints);
     const openByRoom = new Map(openIncidents.map(o => [o.restroomId, o._count.id]));
-    const arrivalByRoom = new Map<string, { last: Date; count: number }>();
+    const arrivalByRoom = new Map<string, { last: Date; count: number; cleaners: number; supervisors: number }>();
     for (const a of arrivals) {
       if (!a.restroomId) continue;
-      const e = arrivalByRoom.get(a.restroomId) ?? { last: a.arrivedAt, count: 0 };
+      const e = arrivalByRoom.get(a.restroomId) ?? { last: a.arrivedAt, count: 0, cleaners: 0, supervisors: 0 };
       if (a.arrivedAt > e.last) e.last = a.arrivedAt;
       e.count++;
+      if (a.user?.role === 'SHIFT_SUPERVISOR') e.supervisors++;
+      else if (a.user?.role === 'CLEANER') e.cleaners++;
       arrivalByRoom.set(a.restroomId, e);
     }
 
@@ -637,6 +646,59 @@ export class AnalyticsService {
       };
     }).sort((a, b) => a.score - b.score);
 
+    // ── Glance (slide 6): bigger KPI row + per-day score/complaint series + top complaint ──
+    const visits = curAll.length; // total kiosk interactions (complaints + positive feedback)
+    const complaintRate = visits > 0 ? Math.round((curComplaints.length / visits) * 100 * 10) / 10 : 0;
+    const satisfactionPct = visits > 0 ? Math.round((likeCount / visits) * 100 * 10) / 10 : 0;
+
+    const dailySeries = dayKeysBetween(from, to).map(key => {
+      const day = curComplaints.filter(i => dayOf(i.reportedAt) === key);
+      const dayScores = [...this.computeRoomScores(day).values()];
+      const avgScore = dayScores.length ? Math.round(dayScores.reduce((s, r) => s + r.score, 0) / dayScores.length) : 100;
+      const tier: ScoreTier = avgScore >= 70 ? 'good' : avgScore >= 40 ? 'warning' : 'critical';
+      return { date: key, avgScore, complaints: day.length, tier };
+    });
+
+    const cleaningTop = groupByType(cleaningComplaints);
+    const topComplaint = cleaningTop[0]
+      ? { icon: cleaningTop[0].icon, nameI18n: cleaningTop[0].nameI18n, count: cleaningTop[0].count, percent: Math.round((cleaningTop[0].count / Math.max(1, curComplaints.length)) * 100) }
+      : null;
+
+    const glance = { visits, complaintRate, satisfactionPct, dailySeries, topComplaint };
+
+    // ── Deep Dive (slide 8): per-room wide table ──
+    const deepDive = rooms.map(r => {
+      const roomIncidents = curAll.filter(i => i.restroomId === r.restroomId);
+      const roomComplaints = roomIncidents.filter(i => !isLike(i));
+      const roomPositive = roomIncidents.length - roomComplaints.length;
+      const byType = new Map<string, { icon: string | null; nameI18n: any; count: number }>();
+      for (const i of roomComplaints) {
+        const k = i.issueTypeId;
+        const e = byType.get(k) ?? { icon: i.issueType?.icon ?? null, nameI18n: i.issueType?.nameI18n ?? { he: k }, count: 0 };
+        e.count++;
+        byType.set(k, e);
+      }
+      const top = [...byType.values()].sort((a, b) => b.count - a.count)[0];
+      const arr = arrivalByRoom.get(r.restroomId);
+      const satisfaction = roomIncidents.length > 0 ? Math.round((roomPositive / roomIncidents.length) * 100) : 0;
+      return {
+        restroomId: r.restroomId,
+        location: r.location,
+        buildingId: r.buildingId,
+        visits: roomIncidents.length,
+        complaints: roomComplaints.length,
+        topComplaint: top
+          ? { icon: top.icon, nameI18n: top.nameI18n, count: top.count, percent: Math.round((top.count / Math.max(1, roomComplaints.length)) * 100) }
+          : null,
+        cleanerArrivals: arr?.cleaners ?? 0,
+        supervisorArrivals: arr?.supervisors ?? 0,
+        avgResponseMinutes: r.avgResolutionMinutes,
+        satisfactionPct: satisfaction,
+        score: r.score,
+        tier: r.tier,
+      };
+    });
+
     return {
       range: { from, to, prevFrom, prevTo: from },
       baselinePatrolMinutes: BASELINE_PATROL_MIN,
@@ -646,6 +708,8 @@ export class AnalyticsService {
         cleaning: groupByType(cleaningComplaints),
         maintenance: groupByType(maintenanceComplaints),
       },
+      glance,
+      deepDive,
       roomCount: rooms.length,
       rooms,
     };
