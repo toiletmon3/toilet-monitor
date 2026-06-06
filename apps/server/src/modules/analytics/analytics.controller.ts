@@ -87,9 +87,15 @@ export class AnalyticsController {
   }
 
   @Get('restroom-scores')
-  getRestroomScores(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string) {
+  getRestroomScores(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('buildingId') buildingId?: string) {
     const r = resolveRange(days, from, to, 30);
-    return this.analyticsService.getRestroomScores(user.orgId, r.from, r.to);
+    return this.analyticsService.getRestroomScores(user.orgId, r.from, r.to, buildingId);
+  }
+
+  @Get('overview')
+  getOverview(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('buildingId') buildingId?: string) {
+    const r = resolveRange(days, from, to, 30);
+    return this.analyticsService.getOverview(user.orgId, r.from, r.to, buildingId);
   }
 
   @Public()

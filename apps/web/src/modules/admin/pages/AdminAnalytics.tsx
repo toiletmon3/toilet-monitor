@@ -442,10 +442,12 @@ export default function AdminAnalytics() {
                       📍 {translateLocationPath(s.location, i18n.language)}
                     </div>
                     <div className="w-full mt-1.5 rounded-full overflow-hidden flex" style={{ height: 6, background: 'rgba(255,255,255,0.06)' }}>
-                      <div style={{ width: `${s.breakdown.frequency}%`, background: '#00e5cc' }} title={`${t('admin.analytics.scoreFrequency')}: ${s.breakdown.frequency}`} />
-                      <div style={{ width: `${s.breakdown.severity}%`, background: '#f59e0b' }} title={`${t('admin.analytics.scoreSeverity')}: ${s.breakdown.severity}`} />
-                      <div style={{ width: `${s.breakdown.response}%`, background: '#a78bfa' }} title={`${t('admin.analytics.scoreResponse')}: ${s.breakdown.response}`} />
-                      <div style={{ width: `${s.breakdown.recurring}%`, background: '#ef4444' }} title={`${t('admin.analytics.scoreRecurring')}: ${s.breakdown.recurring}`} />
+                      {/* health (score) first, then the deductions that ate into it */}
+                      <div style={{ width: `${s.score}%`, background: '#22c55e' }} title={`${t('admin.analytics.scoreTitle')}: ${s.score}`} />
+                      <div style={{ width: `${s.deductions.frequency}%`, background: '#00e5cc' }} title={`${t('admin.analytics.scoreFrequency')}: -${s.deductions.frequency}`} />
+                      <div style={{ width: `${s.deductions.severity}%`, background: '#f59e0b' }} title={`${t('admin.analytics.scoreSeverity')}: -${s.deductions.severity}`} />
+                      <div style={{ width: `${s.deductions.response}%`, background: '#a78bfa' }} title={`${t('admin.analytics.scoreResponse')}: -${s.deductions.response}`} />
+                      <div style={{ width: `${s.deductions.recurring}%`, background: '#ef4444' }} title={`${t('admin.analytics.scoreRecurring')}: -${s.deductions.recurring}`} />
                     </div>
                     <div className="text-[10px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>
                       {s.totalIncidents} {t('admin.analytics.reports')} · {t('admin.analytics.slaAvg')}: {s.avgResolutionMinutes} {minutesUnit}
