@@ -1,29 +1,131 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, Clock, Users, Tablet, Building2, ChevronDown, ChevronRight } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import {
+  AlertCircle, ChevronDown, ChevronRight, Building2, Calendar,
+  ArrowUp, ArrowDown, Minus, CheckCircle2, AlertTriangle, Table2, LayoutGrid,
+} from 'lucide-react';
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
+  AreaChart, Area,
+} from 'recharts';
 import api from '../../../lib/api';
 import { getSocket, joinOrg } from '../../../lib/socket';
-import { translateFloorName, translateRestroomName } from '../../../lib/translate-name';
+import { translateFloorName, translateRestroomName, translateLocationPath } from '../../../lib/translate-name';
 
-function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) {
+const GENERAL_COLORS: Record<string, string> = { like: '#22c55e', cleaning: '#ef4444', maintenance: '#3b82f6' };
+const RED_SHADES = ['#ef4444', '#f87171', '#fca5a5', '#fb7185', '#e11d48', '#fecaca'];
+const BLUE_SHADES = ['#3b82f6', '#60a5fa', '#93c5fd', '#2563eb', '#1d4ed8', '#bfdbfe'];
+
+/** Numeric → traffic-light colour for the score pills (higher = better). */
+function scoreColor(score: number): string {
+  if (score >= 85) return '#22c55e';
+  if (score >= 70) return '#84cc16';
+  if (score >= 55) return '#f59e0b';
+  if (score >= 40) return '#f97316';
+  return '#ef4444';
+}
+
+function fmtNum(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return `${n}`;
+}
+
+function TrendBadge({ trend }: { trend?: { dir: 'up' | 'down' | 'flat'; pct: number; good: boolean } }) {
+  if (!trend) return null;
+  const color = trend.dir === 'flat' ? '#8a9bb0' : trend.good ? '#22c55e' : '#ef4444';
+  const Icon = trend.dir === 'up' ? ArrowUp : trend.dir === 'down' ? ArrowDown : Minus;
   return (
-    <div
-      className="rounded-2xl p-5 flex items-center gap-4"
-      style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}
-    >
-      <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center"
-        style={{ background: `${color}22`, border: `1px solid ${color}44` }}
-      >
-        <Icon size={22} style={{ color }} />
+    <span className="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full"
+      style={{ background: `${color}1f`, color }}>
+      <Icon size={12} />
+      {trend.dir !== 'flat' && `${Math.abs(trend.pct)}%`}
+    </span>
+  );
+}
+
+/** KPI card with a value, trend badge and a small area sparkline. */
+function KpiCard({ label, value, unit, color, trend, spark }: {
+  label: string; value: string | number; unit?: string; color: string;
+  trend?: any; spark?: number[];
+}) {
+  const data = (spark ?? []).map((v, i) => ({ i, v }));
+  const gid = `spark-${label.replace(/\W/g, '')}`;
+  return (
+    <div className="rounded-2xl p-4 flex flex-col gap-2 overflow-hidden relative"
+      style={{ background: `${color}14`, border: `1px solid ${color}3a` }}>
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
+        <TrendBadge trend={trend} />
       </div>
-      <div>
-        <div className="text-2xl font-bold text-white">{value}</div>
-        <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{label}</div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-3xl font-bold tabular-nums leading-none" style={{ color }}>{value}</span>
+        {unit && <span className="text-sm font-medium" style={{ color }}>{unit}</span>}
+      </div>
+      <div style={{ height: 44, marginInline: -16, marginBottom: -16 }}>
+        {data.length > 1 && (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
+              <defs>
+                <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.5} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Area type="monotone" dataKey="v" stroke={color} strokeWidth={2} fill={`url(#${gid})`} dot={false} isAnimationActive={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
+  );
+}
+
+/** Donut chart with a percentage legend. */
+function Donut({ title, data }: { title: string; data: { name: string; value: number; color: string }[] }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  return (
+    <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+      <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>{title}</h3>
+      {total === 0 ? (
+        <div className="flex-1 flex items-center justify-center py-8 text-sm" style={{ color: 'var(--color-text-secondary)' }}>—</div>
+      ) : (
+        <div className="flex items-center gap-4">
+          <div style={{ width: 130, height: 130, flexShrink: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={42} outerRadius={62} paddingAngle={2} isAnimationActive={false}>
+                  {data.map((d) => <Cell key={d.name} fill={d.color} stroke="transparent" />)}
+                </Pie>
+                <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid rgba(0,229,204,0.2)', borderRadius: 12, color: 'var(--color-text)' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+            {data.map((d) => (
+              <div key={d.name} className="flex items-center gap-2 text-xs">
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: d.color }} />
+                <span className="truncate flex-1" style={{ color: 'var(--color-text-secondary)' }}>{d.name}</span>
+                <span className="font-semibold tabular-nums" style={{ color: 'var(--color-text)' }}>
+                  {Math.round((d.value / total) * 100)}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScorePill({ score, trend }: { score: number; trend?: 'up' | 'down' | 'flat' }) {
+  const color = scoreColor(score);
+  const TrendIcon = trend === 'up' ? ArrowUp : trend === 'down' ? ArrowDown : null;
+  return (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold tabular-nums text-sm" style={{ background: color, color: '#0a0e1a' }}>
+      {score}
+      {TrendIcon && <TrendIcon size={13} strokeWidth={2.5} />}
+    </span>
   );
 }
 
@@ -128,17 +230,18 @@ export default function AdminDashboard() {
   const lang = i18n.language;
   const queryClient = useQueryClient();
   const [buildingId, setBuildingId] = useState<string>(''); // '' = all
+  const [days, setDays] = useState(30);
+  const [view, setView] = useState<'table' | 'cards'>('table');
 
   const { data: buildings = [] } = useQuery({
     queryKey: ['building-structure'],
     queryFn: async () => (await api.get('/buildings/structure')).data,
   });
 
-  const { data: summary } = useQuery({
-    queryKey: ['analytics-summary', buildingId],
-    queryFn: async () => (
-      await api.get('/analytics/summary', { params: buildingId ? { buildingId } : {} })
-    ).data,
+  const ovParams = `days=${days}${buildingId ? `&buildingId=${buildingId}` : ''}`;
+  const { data: ov } = useQuery({
+    queryKey: ['analytics-overview', days, buildingId],
+    queryFn: async () => (await api.get(`/analytics/overview?${ovParams}`)).data,
     refetchInterval: 30_000,
   });
 
@@ -154,7 +257,7 @@ export default function AdminDashboard() {
 
     const socket = getSocket();
     const refresh = () => {
-      queryClient.invalidateQueries({ queryKey: ['analytics-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics-overview'] });
     };
     socket.on('incident:created', refresh);
     socket.on('incident:resolved', refresh);
@@ -163,45 +266,65 @@ export default function AdminDashboard() {
   }, [queryClient]);
 
   const selectedBuildingName = buildings.find((b: any) => b.id === buildingId)?.name;
+  const minutesUnit = t('admin.dashboard.ovMinShort');
 
-  const PIE_COLORS = ['#00e5cc', '#8b5cf6', '#f59e0b', '#ef4444', '#22c55e', '#3b82f6', '#ec4899', '#eab308'];
-  const resolvedByType: any[] = summary?.resolvedByType ?? [];
-  const incidentBreakdown = resolvedByType.map((d, i) => ({
-    name: `${d.icon ? d.icon + ' ' : ''}${d.nameI18n?.[lang] ?? d.nameI18n?.he ?? d.issueTypeId}`,
-    value: d.count,
-    color: PIE_COLORS[i % PIE_COLORS.length],
+  const kpis = ov?.kpis;
+  const generalData = (ov?.donuts?.general ?? []).map((d: any) => ({
+    name: t(`admin.dashboard.ov${d.key.charAt(0).toUpperCase() + d.key.slice(1)}`),
+    value: d.count, color: GENERAL_COLORS[d.key] ?? '#8a9bb0',
   }));
-  const incidentTotal = incidentBreakdown.reduce((s, d) => s + d.value, 0);
+  const cleaningData = (ov?.donuts?.cleaning ?? []).map((d: any, i: number) => ({
+    name: `${d.icon ? d.icon + ' ' : ''}${d.nameI18n?.[lang] ?? d.nameI18n?.he ?? d.issueTypeId}`,
+    value: d.count, color: RED_SHADES[i % RED_SHADES.length],
+  }));
+  const maintenanceData = (ov?.donuts?.maintenance ?? []).map((d: any, i: number) => ({
+    name: `${d.icon ? d.icon + ' ' : ''}${d.nameI18n?.[lang] ?? d.nameI18n?.he ?? d.issueTypeId}`,
+    value: d.count, color: BLUE_SHADES[i % BLUE_SHADES.length],
+  }));
+
+  const rooms: any[] = ov?.rooms ?? [];
+  const fmtTime = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : '—';
+
+  const RANGES: { d: number; key: string }[] = [
+    { d: 7, key: 'ovLast7' }, { d: 30, key: 'ovLast30' }, { d: 90, key: 'ovLast90' },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header with building filter */}
+      {/* Header: title + range + building filter */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl font-bold text-white">{t('admin.title')}</h1>
-        <div
-          className="flex items-center gap-2 rounded-xl px-3 py-2"
-          style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}
-        >
-          <Building2 size={15} style={{ color: 'var(--color-accent)' }} />
-          <select
-            value={buildingId}
-            onChange={e => setBuildingId(e.target.value)}
-            className="bg-transparent text-sm outline-none"
-            style={{ color: 'var(--color-text)', minWidth: 160 }}
-          >
-            <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allBuildings')}</option>
-            {buildings.map((b: any) => (
-              <option key={b.id} value={b.id} style={{ background: '#0a0e1a' }}>{b.name}</option>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex gap-1 rounded-xl p-1" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.2)' }}>
+            <Calendar size={14} style={{ color: 'var(--color-accent)' }} className="self-center ms-1" />
+            {RANGES.map(r => (
+              <button key={r.d} onClick={() => setDays(r.d)}
+                className="text-xs px-2.5 py-1 rounded-lg transition-colors"
+                style={{
+                  background: days === r.d ? 'rgba(0,229,204,0.15)' : 'transparent',
+                  color: days === r.d ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                }}>
+                {t(`admin.dashboard.${r.key}`)}
+              </button>
             ))}
-          </select>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}>
+            <Building2 size={15} style={{ color: 'var(--color-accent)' }} />
+            <select value={buildingId} onChange={e => setBuildingId(e.target.value)}
+              className="bg-transparent text-sm outline-none" style={{ color: 'var(--color-text)', minWidth: 140 }}>
+              <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allBuildings')}</option>
+              {buildings.map((b: any) => (
+                <option key={b.id} value={b.id} style={{ background: '#0a0e1a' }}>{b.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
       {buildingId && (
-        <div
-          className="text-xs flex items-center gap-2 px-3 py-2 rounded-xl"
-          style={{ background: 'rgba(0,229,204,0.06)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-accent)' }}
-        >
+        <div className="text-xs flex items-center gap-2 px-3 py-2 rounded-xl"
+          style={{ background: 'rgba(0,229,204,0.06)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-accent)' }}>
           {t('admin.dashboard.filteredBy')}: <span className="font-semibold">{selectedBuildingName}</span>
           <button onClick={() => setBuildingId('')} className="ms-auto underline hover:text-white">
             {t('admin.dashboard.clearFilter')}
@@ -209,13 +332,20 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Summary cards */}
+      {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={AlertCircle} label={t('admin.summary.openIncidents')} value={summary?.openIncidents ?? 0} color="#ef4444" />
-        <StatCard icon={Clock} label={t('admin.summary.avgResolution')} value={`${summary?.avgResolutionMinutes ?? 0} ${t('common.minutes')}`} color="#f59e0b" />
-        <StatCard icon={Users} label={t('admin.summary.activeCleaners')} value={summary?.activeCleaners ?? 0} color="#00e5cc" />
-        <StatCard icon={Tablet} label={t('admin.summary.onlineDevices')} value={summary?.onlineDevices ?? 0} color="#8b5cf6" />
+        <KpiCard label={t('admin.dashboard.ovAvgScore')} value={kpis?.avgScore?.value ?? 100} color="#3b82f6"
+          trend={kpis?.avgScore?.trend} spark={kpis?.avgScore?.spark} />
+        <KpiCard label={t('admin.dashboard.ovComplaints')} value={fmtNum(kpis?.complaints?.value ?? 0)} color="#ef4444"
+          trend={kpis?.complaints?.trend} spark={kpis?.complaints?.spark} />
+        <KpiCard label={t('admin.dashboard.ovResponseTime')} value={kpis?.responseTime?.value ?? 0} unit={minutesUnit} color="#f59e0b"
+          trend={kpis?.responseTime?.trend} spark={kpis?.responseTime?.spark} />
+        <KpiCard label={t('admin.dashboard.ovTimeSaved')} value={kpis?.timeSaved?.value ?? 0} unit={t('admin.dashboard.ovHoursShort')} color="#eab308"
+          trend={kpis?.timeSaved?.trend} spark={kpis?.timeSaved?.spark} />
       </div>
+      <p className="text-[11px] -mt-3" style={{ color: 'var(--color-text-secondary)' }}>
+        {t('admin.dashboard.ovVsPrev')} · {t('admin.dashboard.ovTimeSavedHint', { min: ov?.baselinePatrolMinutes ?? 45 })}
+      </p>
 
       {/* Urgent alerts */}
       {urgentData.length > 0 && (
@@ -236,44 +366,98 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Incident breakdown (pie) */}
+      {/* Donuts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Donut title={t('admin.dashboard.ovGeneral')} data={generalData} />
+        <Donut title={t('admin.dashboard.ovCleaning')} data={cleaningData} />
+        <Donut title={t('admin.dashboard.ovMaintenance')} data={maintenanceData} />
+      </div>
+
+      {/* Rooms table / cards */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-        <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
-          <h2 className="font-semibold text-white">{t('admin.dashboard.incidentOverview')}</h2>
+        <div className="px-5 py-4 flex items-center justify-between gap-3 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-white">{t('admin.dashboard.ovRoomsTitle')}</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: 'rgba(0,229,204,0.15)', color: 'var(--color-accent)' }}>
+              {ov?.roomCount ?? 0} {t('admin.dashboard.ovRooms')}
+            </span>
+          </div>
+          <div className="flex gap-1 rounded-lg p-0.5" style={{ background: 'rgba(255,255,255,0.05)' }}>
+            <button onClick={() => setView('table')} className="px-2.5 py-1 rounded-md flex items-center gap-1 text-xs"
+              style={{ background: view === 'table' ? 'rgba(0,229,204,0.2)' : 'transparent', color: view === 'table' ? 'var(--color-accent)' : 'var(--color-text-secondary)' }}>
+              <Table2 size={13} /> {t('admin.dashboard.ovTableView')}
+            </button>
+            <button onClick={() => setView('cards')} className="px-2.5 py-1 rounded-md flex items-center gap-1 text-xs"
+              style={{ background: view === 'cards' ? 'rgba(0,229,204,0.2)' : 'transparent', color: view === 'cards' ? 'var(--color-accent)' : 'var(--color-text-secondary)' }}>
+              <LayoutGrid size={13} /> {t('admin.dashboard.ovCardsView')}
+            </button>
+          </div>
         </div>
 
-        {incidentTotal === 0 ? (
-          <div className="px-5 py-12 text-center" style={{ color: 'var(--color-text-secondary)' }}>
-            {t('admin.dashboard.noResolvedIncidents')}
+        {rooms.length === 0 ? (
+          <div className="px-5 py-12 text-center" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.dashboard.ovNoData')}</div>
+        ) : view === 'table' ? (
+          <div className="overflow-x-auto" style={{ maxHeight: 480 }}>
+            <table className="w-full text-sm">
+              <thead className="sticky top-0" style={{ background: 'var(--color-card)' }}>
+                <tr style={{ color: 'var(--color-text-secondary)' }}>
+                  <th className="text-start font-medium px-5 py-2.5 text-xs uppercase tracking-wide">{t('admin.dashboard.ovRoomName')}</th>
+                  <th className="text-start font-medium px-3 py-2.5 text-xs uppercase tracking-wide">{t('admin.dashboard.ovArrival')}</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-xs uppercase tracking-wide">{t('admin.dashboard.ovStatus')}</th>
+                  <th className="text-center font-medium px-5 py-2.5 text-xs uppercase tracking-wide">{t('admin.dashboard.ovScore')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rooms.map((r) => (
+                  <tr key={r.restroomId} className="border-t hover:bg-white/5 transition-colors" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                    <td className="px-5 py-3" style={{ color: 'var(--color-text)' }}>
+                      {translateLocationPath(r.location, lang)}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs px-2 py-0.5 rounded-md tabular-nums" style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>
+                          {fmtTime(r.lastArrival)}
+                        </span>
+                        {r.arrivalCount > 0 && (
+                          <span className="text-[10px] px-1.5 rounded-full font-bold" style={{ background: 'rgba(34,197,94,0.2)', color: '#22c55e' }}>
+                            {r.arrivalCount}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {r.status === 'ok'
+                        ? <CheckCircle2 size={18} style={{ color: '#22c55e', display: 'inline' }} />
+                        : <AlertTriangle size={18} style={{ color: '#f59e0b', display: 'inline' }} />}
+                    </td>
+                    <td className="px-5 py-3 text-center">
+                      <ScorePill score={r.score} trend={r.trend} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
-          <div className="p-5">
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={incidentBreakdown}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={2}
-                  label={({ value }) => (value > 0 ? value : '')}
-                >
-                  {incidentBreakdown.map((d) => (
-                    <Cell key={d.name} fill={d.color} stroke="transparent" />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ background: 'var(--color-surface)', border: '1px solid rgba(0,229,204,0.2)', borderRadius: 12, color: 'var(--color-text)' }}
-                />
-                <Legend
-                  iconType="circle"
-                  formatter={(val) => <span style={{ color: 'var(--color-text-secondary)' }}>{val}</span>}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" style={{ maxHeight: 480, overflowY: 'auto' }}>
+            {rooms.map((r) => (
+              <div key={r.restroomId} className="rounded-xl p-3 flex flex-col gap-2" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-xs font-medium leading-tight" style={{ color: 'var(--color-text)' }}>
+                    {translateLocationPath(r.location, lang)}
+                  </span>
+                  {r.status === 'ok'
+                    ? <CheckCircle2 size={15} style={{ color: '#22c55e', flexShrink: 0 }} />
+                    : <AlertTriangle size={15} style={{ color: '#f59e0b', flexShrink: 0 }} />}
+                </div>
+                <div className="flex items-center justify-between">
+                  <ScorePill score={r.score} trend={r.trend} />
+                  <span className="text-[11px] tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
+                    {fmtTime(r.lastArrival)}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

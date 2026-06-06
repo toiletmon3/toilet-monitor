@@ -86,6 +86,18 @@ export class AnalyticsController {
     return this.analyticsService.getPatterns(user.orgId, r.from, r.to);
   }
 
+  @Get('restroom-scores')
+  getRestroomScores(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('buildingId') buildingId?: string) {
+    const r = resolveRange(days, from, to, 30);
+    return this.analyticsService.getRestroomScores(user.orgId, r.from, r.to, buildingId);
+  }
+
+  @Get('overview')
+  getOverview(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('buildingId') buildingId?: string) {
+    const r = resolveRange(days, from, to, 30);
+    return this.analyticsService.getOverview(user.orgId, r.from, r.to, buildingId);
+  }
+
   @Public()
   @Get('kiosk-stats/building/:buildingId')
   getKioskStatsByBuilding(@Param('buildingId') buildingId: string) {

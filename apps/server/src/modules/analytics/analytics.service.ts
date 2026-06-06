@@ -1,6 +1,44 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
+/**
+ * Assumed minutes a routine patrol would take to detect/handle an issue.
+ * "Time Saved" credits each resolved complaint with the gap between this
+ * baseline and the actual response time — i.e. the responsiveness dividend
+ * of reactive, targeted cleaning over fixed patrol rounds. Tune as needed.
+ */
+const BASELINE_PATROL_MIN = 45;
+
+type ScoreTier = 'good' | 'warning' | 'critical';
+
+type ScoredIncident = {
+  restroomId: string;
+  issueTypeId: string;
+  reportedAt: Date;
+  resolvedAt: Date | null;
+  issueType: { priority: number; code: string; nameI18n: any; icon: string | null } | null;
+  restroom: { name: string; floor: { name: string; building: { id: string; name: string } } };
+};
+
+type RoomScore = {
+  restroomId: string;
+  location: string;
+  buildingId: string;
+  score: number;
+  tier: ScoreTier;
+  totalIncidents: number;
+  avgResolutionMinutes: number;
+  deductions: { frequency: number; severity: number; response: number; recurring: number };
+};
+
+/** Bucket an issue-type code into the three high-level dashboard categories. */
+function classifyIssue(code: string | null | undefined): 'like' | 'maintenance' | 'cleaning' {
+  const c = (code ?? '').toLowerCase();
+  if (c === 'positive_feedback' || c.includes('feedback') || c.includes('positive')) return 'like';
+  if (c.includes('fault') || c.includes('maintenance') || c.includes('repair') || c.includes('broken')) return 'maintenance';
+  return 'cleaning';
+}
+
 @Injectable()
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
@@ -307,6 +345,294 @@ export class AnalyticsService {
       weeklyReports: weeklyCount,
       dailyReports: dailyCount,
       avgResponseMinutes: avgResponseMinutes !== null ? Math.round(avgResponseMinutes) : null,
+    };
+  }
+
+  /**
+   * Weighted health score per restroom (0-100, higher = BETTER).
+   * Internally we compute a 0-100 "badness" from 4 weighted deductions, then
+   * the score is `100 - badness`. Deductions:
+   *   frequency  40%  — incident count, normalised to the busiest restroom in scope
+   *   severity   25%  — average of issueType.priority (1=highest) mapped to 0-1
+   *   response   20%  — avg minutes from reportedAt → resolvedAt, clamped at 60 min
+   *   recurring  15%  — share of incidents that repeat the same issueType in <24h
+   */
+  private computeRoomScores(complaints: ScoredIncident[]) {
+    type Bucket = { restroomId: string; location: string; buildingId: string; incidents: ScoredIncident[] };
+    const byRestroom = new Map<string, Bucket>();
+    for (const inc of complaints) {
+      const b = byRestroom.get(inc.restroomId) ?? {
+        restroomId: inc.restroomId,
+        location: [inc.restroom.floor.building.name, inc.restroom.floor.name, inc.restroom.name].filter(Boolean).join(' › '),
+        buildingId: inc.restroom.floor.building.id,
+        incidents: [] as ScoredIncident[],
+      };
+      b.incidents.push(inc);
+      byRestroom.set(inc.restroomId, b);
+    }
+
+    const maxCount = Math.max(1, ...[...byRestroom.values()].map(b => b.incidents.length));
+    const scored = new Map<string, RoomScore>();
+
+    for (const b of byRestroom.values()) {
+      const count = b.incidents.length;
+
+      // 1) frequency 40%
+      const frequency = (count / maxCount) * 40;
+
+      // 2) severity 25% — priority 1=highest → severityNorm=1; priority 5+ → 0
+      const severity = (b.incidents.reduce((s, i) => {
+        const p = i.issueType?.priority ?? 3;
+        return s + Math.max(0, Math.min(1, (5 - p) / 4));
+      }, 0) / count) * 25;
+
+      // 3) response 20% — avg resolution minutes, clamped to 60
+      const resolved = b.incidents.filter(i => i.resolvedAt);
+      const avgMin = resolved.length
+        ? resolved.reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / resolved.length
+        : 0;
+      const response = Math.min(1, avgMin / 60) * 20;
+
+      // 4) recurring 15% — same issueType within 24h
+      const byType = new Map<string, Date[]>();
+      for (const i of b.incidents) {
+        const arr = byType.get(i.issueTypeId) ?? [];
+        arr.push(i.reportedAt);
+        byType.set(i.issueTypeId, arr);
+      }
+      let recurringCount = 0;
+      for (const dates of byType.values()) {
+        dates.sort((a, b) => a.getTime() - b.getTime());
+        for (let i = 1; i < dates.length; i++) {
+          if (dates[i].getTime() - dates[i - 1].getTime() < 24 * 60 * 60 * 1000) recurringCount++;
+        }
+      }
+      const recurring = Math.min(1, recurringCount / Math.max(1, count)) * 15;
+
+      const badness = frequency + severity + response + recurring;
+      const score = Math.max(0, Math.min(100, Math.round(100 - badness)));
+      const tier: ScoreTier = score >= 70 ? 'good' : score >= 40 ? 'warning' : 'critical';
+
+      scored.set(b.restroomId, {
+        restroomId: b.restroomId,
+        location: b.location,
+        buildingId: b.buildingId,
+        score,
+        tier,
+        totalIncidents: count,
+        avgResolutionMinutes: Math.round(avgMin),
+        // points DEDUCTED from a perfect 100 — the bigger the slice, the more it hurt
+        deductions: {
+          frequency: Math.round(frequency * 10) / 10,
+          severity: Math.round(severity * 10) / 10,
+          response: Math.round(response * 10) / 10,
+          recurring: Math.round(recurring * 10) / 10,
+        },
+      });
+    }
+    return scored;
+  }
+
+  private scoreSelect = {
+    restroomId: true,
+    issueTypeId: true,
+    reportedAt: true,
+    resolvedAt: true,
+    issueType: { select: { priority: true, code: true, nameI18n: true, icon: true } },
+    restroom: {
+      select: {
+        name: true,
+        floor: { select: { name: true, building: { select: { id: true, name: true } } } },
+      },
+    },
+  } as const;
+
+  async getRestroomScores(orgId: string, from: Date, to: Date = new Date(), buildingId?: string) {
+    const complaints = (await this.prisma.incident.findMany({
+      where: {
+        restroom: buildingId ? { floor: { buildingId } } : { floor: { building: { orgId } } },
+        reportedAt: { gte: from, lte: to },
+        issueType: { code: { not: 'positive_feedback' } },
+      },
+      select: this.scoreSelect,
+      orderBy: { reportedAt: 'asc' },
+    })) as ScoredIncident[];
+
+    // worst first (ascending score) so problem rooms surface at the top
+    return [...this.computeRoomScores(complaints).values()].sort((a, b) => a.score - b.score);
+  }
+
+  /**
+   * Single aggregated payload for the live Dashboard ("Overview").
+   * Returns KPIs for the selected period vs the previous equal-length period,
+   * three donut breakdowns, and a per-restroom table with score + arrival + status.
+   */
+  async getOverview(orgId: string, from: Date, to: Date = new Date(), buildingId?: string) {
+    const periodMs = Math.max(1, to.getTime() - from.getTime());
+    const prevFrom = new Date(from.getTime() - periodMs);
+    const restroomFilter = buildingId ? { floor: { buildingId } } : { floor: { building: { orgId } } };
+
+    // Fetch everything reported since the previous window opened (covers both periods).
+    const all = (await this.prisma.incident.findMany({
+      where: { restroom: restroomFilter, reportedAt: { gte: prevFrom, lte: to } },
+      select: this.scoreSelect,
+      orderBy: { reportedAt: 'asc' },
+    })) as ScoredIncident[];
+
+    const inCurrent = (d: Date) => d >= from && d <= to;
+    const inPrev = (d: Date) => d >= prevFrom && d < from;
+    const isLike = (i: ScoredIncident) => classifyIssue(i.issueType?.code) === 'like';
+
+    const curAll = all.filter(i => inCurrent(i.reportedAt));
+    const prevAll = all.filter(i => inPrev(i.reportedAt));
+    const curComplaints = curAll.filter(i => !isLike(i));
+    const prevComplaints = prevAll.filter(i => !isLike(i));
+
+    const periodKpis = (complaints: ScoredIncident[]) => {
+      const scores = [...this.computeRoomScores(complaints).values()];
+      const avgScore = scores.length ? Math.round(scores.reduce((s, r) => s + r.score, 0) / scores.length) : 100;
+      const resolved = complaints.filter(i => i.resolvedAt);
+      const avgResponse = resolved.length
+        ? Math.round(resolved.reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / resolved.length)
+        : 0;
+      const timeSavedH = Math.round(
+        resolved.reduce((s, i) => s + Math.max(0, BASELINE_PATROL_MIN - (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000), 0) / 60 * 10,
+      ) / 10;
+      return { avgScore, complaints: complaints.length, avgResponse, timeSavedH };
+    };
+
+    const cur = periodKpis(curComplaints);
+    const prev = periodKpis(prevComplaints);
+
+    // Daily sparkline series across the current period (honest per-day aggregates).
+    // UTC-aligned so the keys match `dayOf` exactly.
+    const dayKeys: string[] = [];
+    const dayMs = 24 * 60 * 60 * 1000;
+    const dayOf = (d: Date) => d.toISOString().slice(0, 10);
+    const startDay = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate());
+    for (let t = startDay; t <= to.getTime(); t += dayMs) {
+      dayKeys.push(new Date(t).toISOString().slice(0, 10));
+    }
+    const spark = {
+      avgScore: [] as number[], complaints: [] as number[], avgResponse: [] as number[], timeSaved: [] as number[],
+    };
+    for (const key of dayKeys) {
+      const dayComplaints = curComplaints.filter(i => dayOf(i.reportedAt) === key);
+      const dayScores = [...this.computeRoomScores(dayComplaints).values()];
+      spark.avgScore.push(dayScores.length ? Math.round(dayScores.reduce((s, r) => s + r.score, 0) / dayScores.length) : 100);
+      spark.complaints.push(dayComplaints.length);
+      const dayResolved = dayComplaints.filter(i => i.resolvedAt);
+      spark.avgResponse.push(dayResolved.length
+        ? Math.round(dayResolved.reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / dayResolved.length)
+        : 0);
+      spark.timeSaved.push(Math.round(
+        dayResolved.reduce((s, i) => s + Math.max(0, BASELINE_PATROL_MIN - (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000), 0) / 60 * 10,
+      ) / 10);
+    }
+
+    const trend = (now: number, before: number, higherIsBetter: boolean) => {
+      const diff = now - before;
+      const pct = before === 0 ? (now === 0 ? 0 : 100) : Math.round((diff / before) * 100);
+      const dir: 'up' | 'down' | 'flat' = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
+      const good = diff === 0 ? true : higherIsBetter ? diff > 0 : diff < 0;
+      return { dir, pct, good };
+    };
+
+    const kpis = {
+      avgScore:     { value: cur.avgScore,    previous: prev.avgScore,    spark: spark.avgScore,    trend: trend(cur.avgScore, prev.avgScore, true) },
+      complaints:   { value: cur.complaints,  previous: prev.complaints,  spark: spark.complaints,  trend: trend(cur.complaints, prev.complaints, false) },
+      responseTime: { value: cur.avgResponse, previous: prev.avgResponse, spark: spark.avgResponse, trend: trend(cur.avgResponse, prev.avgResponse, false) },
+      timeSaved:    { value: cur.timeSavedH,  previous: prev.timeSavedH,  spark: spark.timeSaved,   trend: trend(cur.timeSavedH, prev.timeSavedH, true) },
+    };
+
+    // ── Donut breakdowns (current period) ──
+    const likeCount = curAll.filter(isLike).length;
+    const cleaningComplaints = curComplaints.filter(i => classifyIssue(i.issueType?.code) === 'cleaning');
+    const maintenanceComplaints = curComplaints.filter(i => classifyIssue(i.issueType?.code) === 'maintenance');
+
+    const general = [
+      { key: 'like', count: likeCount },
+      { key: 'cleaning', count: cleaningComplaints.length },
+      { key: 'maintenance', count: maintenanceComplaints.length },
+    ].filter(d => d.count > 0);
+
+    const groupByType = (list: ScoredIncident[]) => {
+      const m = new Map<string, { issueTypeId: string; nameI18n: any; icon: string | null; count: number }>();
+      for (const i of list) {
+        const e = m.get(i.issueTypeId) ?? {
+          issueTypeId: i.issueTypeId,
+          nameI18n: (i.issueType as any)?.nameI18n ?? { he: i.issueTypeId },
+          icon: (i.issueType as any)?.icon ?? null,
+          count: 0,
+        };
+        e.count++;
+        m.set(i.issueTypeId, e);
+      }
+      return [...m.values()].sort((a, b) => b.count - a.count);
+    };
+
+    // ── Rooms table — list ALL active restrooms, merge in scores/arrivals/status ──
+    const [restrooms, openIncidents, arrivals] = await Promise.all([
+      this.prisma.restroom.findMany({
+        where: buildingId ? { floor: { buildingId } } : { floor: { building: { orgId } } },
+        select: { id: true, name: true, floor: { select: { name: true, building: { select: { id: true, name: true } } } } },
+      }),
+      this.prisma.incident.groupBy({
+        by: ['restroomId'],
+        where: { restroom: restroomFilter, status: { in: ['OPEN', 'IN_PROGRESS'] } },
+        _count: { id: true },
+      }),
+      this.prisma.cleanerArrival.findMany({
+        where: { restroomId: { not: null }, user: { orgId }, arrivedAt: { gte: from, lte: to } },
+        select: { restroomId: true, arrivedAt: true },
+        orderBy: { arrivedAt: 'desc' },
+      }),
+    ]);
+
+    const curScores = this.computeRoomScores(curComplaints);
+    const prevScores = this.computeRoomScores(prevComplaints);
+    const openByRoom = new Map(openIncidents.map(o => [o.restroomId, o._count.id]));
+    const arrivalByRoom = new Map<string, { last: Date; count: number }>();
+    for (const a of arrivals) {
+      if (!a.restroomId) continue;
+      const e = arrivalByRoom.get(a.restroomId) ?? { last: a.arrivedAt, count: 0 };
+      if (a.arrivedAt > e.last) e.last = a.arrivedAt;
+      e.count++;
+      arrivalByRoom.set(a.restroomId, e);
+    }
+
+    const rooms = restrooms.map(r => {
+      const sc = curScores.get(r.id);
+      const score = sc?.score ?? 100;
+      const tier: ScoreTier = sc?.tier ?? 'good';
+      const prevScore = prevScores.get(r.id)?.score ?? 100;
+      const arr = arrivalByRoom.get(r.id);
+      return {
+        restroomId: r.id,
+        location: [r.floor.building.name, r.floor.name, r.name].filter(Boolean).join(' › '),
+        buildingId: r.floor.building.id,
+        score,
+        tier,
+        trend: trend(score, prevScore, true).dir,
+        totalIncidents: sc?.totalIncidents ?? 0,
+        avgResolutionMinutes: sc?.avgResolutionMinutes ?? 0,
+        status: (openByRoom.get(r.id) ?? 0) > 0 ? 'attention' : 'ok',
+        lastArrival: arr?.last ?? null,
+        arrivalCount: arr?.count ?? 0,
+      };
+    }).sort((a, b) => a.score - b.score);
+
+    return {
+      range: { from, to, prevFrom, prevTo: from },
+      baselinePatrolMinutes: BASELINE_PATROL_MIN,
+      kpis,
+      donuts: {
+        general,
+        cleaning: groupByType(cleaningComplaints),
+        maintenance: groupByType(maintenanceComplaints),
+      },
+      roomCount: rooms.length,
+      rooms,
     };
   }
 

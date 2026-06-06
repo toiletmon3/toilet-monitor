@@ -99,6 +99,7 @@ export default function AdminAnalytics() {
   const { data: sla }       = useQuery({ queryKey: ['sla', rkey, slaTarget], queryFn: async () => (await api.get(`/analytics/sla?${params}&targetMinutes=${slaTarget}`)).data });
   const { data: dow }       = useQuery({ queryKey: ['dow', rkey], queryFn: async () => (await api.get(`/analytics/day-of-week?${params}`)).data });
   const { data: patterns }  = useQuery({ queryKey: ['patterns', rkey], queryFn: async () => (await api.get(`/analytics/patterns?${params}`)).data });
+  const { data: scores }    = useQuery({ queryKey: ['scores', rkey], queryFn: async () => (await api.get(`/analytics/restroom-scores?${params}`)).data });
 
   const slaColor = !sla ? CYAN : sla.slaPercent >= 80 ? GREEN : sla.slaPercent >= 50 ? AMBER : RED;
 
@@ -152,6 +153,14 @@ export default function AdminAnalytics() {
         title: t('admin.analytics.cleanerTitle').replace(/[^\w\u0590-\u05FF ]/g, ''),
         headers: ['#', t('admin.cleaners.fullName'), t('admin.analytics.resolved'), t('admin.analytics.avgTime')],
         rows: cleaners.map((c: any, i: number) => [i + 1, c.name, c.totalResolved, `${Math.round(c.avgResolutionMinutes)} ${minutesUnit}`]),
+      });
+    }
+
+    if (scores?.length) {
+      sections.push({
+        title: t('admin.analytics.scoreTitle'),
+        headers: ['#', t('admin.analytics.busiestRestrooms'), t('admin.analytics.scoreTitle'), t('admin.analytics.count'), t('admin.analytics.avgTime')],
+        rows: scores.slice(0, 20).map((s: any, i: number) => [i + 1, translateLocationPath(s.location, i18n.language), s.score, s.totalIncidents, `${s.avgResolutionMinutes} ${minutesUnit}`]),
       });
     }
 
@@ -404,6 +413,52 @@ export default function AdminAnalytics() {
           </div>
         </Card>
       </div>
+
+      {/* ── Weighted restroom score ── */}
+      <Card title={t('admin.analytics.scoreTitle')}>
+        <div className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+          {t('admin.analytics.scoreIntro')}
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px] mt-1">
+          <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,229,204,0.12)', color: CYAN }}>{t('admin.analytics.scoreFrequency')} · 40%</span>
+          <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,229,204,0.12)', color: CYAN }}>{t('admin.analytics.scoreSeverity')} · 25%</span>
+          <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,229,204,0.12)', color: CYAN }}>{t('admin.analytics.scoreResponse')} · 20%</span>
+          <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,229,204,0.12)', color: CYAN }}>{t('admin.analytics.scoreRecurring')} · 15%</span>
+        </div>
+        {(scores ?? []).length === 0 ? (
+          <div className="text-center py-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.analytics.noData')}</div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {(scores ?? []).slice(0, 10).map((s: any) => {
+              const color = s.tier === 'critical' ? RED : s.tier === 'warning' ? AMBER : GREEN;
+              return (
+                <div key={s.restroomId} className="flex items-center gap-3 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  <div className="rounded-lg flex flex-col items-center justify-center flex-shrink-0" style={{ width: 52, height: 52, background: `${color}22`, border: `1px solid ${color}55` }}>
+                    <span className="text-xl font-bold tabular-nums leading-none" style={{ color }}>{s.score}</span>
+                    <span className="text-[9px] uppercase tracking-wide" style={{ color }}>{t(`admin.analytics.scoreTier_${s.tier}`)}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>
+                      📍 {translateLocationPath(s.location, i18n.language)}
+                    </div>
+                    <div className="w-full mt-1.5 rounded-full overflow-hidden flex" style={{ height: 6, background: 'rgba(255,255,255,0.06)' }}>
+                      {/* health (score) first, then the deductions that ate into it */}
+                      <div style={{ width: `${s.score}%`, background: '#22c55e' }} title={`${t('admin.analytics.scoreTitle')}: ${s.score}`} />
+                      <div style={{ width: `${s.deductions.frequency}%`, background: '#00e5cc' }} title={`${t('admin.analytics.scoreFrequency')}: -${s.deductions.frequency}`} />
+                      <div style={{ width: `${s.deductions.severity}%`, background: '#f59e0b' }} title={`${t('admin.analytics.scoreSeverity')}: -${s.deductions.severity}`} />
+                      <div style={{ width: `${s.deductions.response}%`, background: '#a78bfa' }} title={`${t('admin.analytics.scoreResponse')}: -${s.deductions.response}`} />
+                      <div style={{ width: `${s.deductions.recurring}%`, background: '#ef4444' }} title={`${t('admin.analytics.scoreRecurring')}: -${s.deductions.recurring}`} />
+                    </div>
+                    <div className="text-[10px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                      {s.totalIncidents} {t('admin.analytics.reports')} · {t('admin.analytics.slaAvg')}: {s.avgResolutionMinutes} {minutesUnit}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
 
       {/* ── Hourly + DoW ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
