@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
-  AreaChart, Area,
+  AreaChart, Area, LineChart, Line, LabelList,
 } from 'recharts';
 import api from '../../../lib/api';
 import { getSocket, joinOrg } from '../../../lib/socket';
@@ -15,7 +15,6 @@ import { translateFloorName, translateRestroomName, translateLocationPath } from
 
 const GENERAL_COLORS: Record<string, string> = { like: '#22c55e', cleaning: '#ef4444', maintenance: '#3b82f6' };
 const RED_SHADES = ['#ef4444', '#f87171', '#fca5a5', '#fb7185', '#e11d48', '#fecaca'];
-const BLUE_SHADES = ['#3b82f6', '#60a5fa', '#93c5fd', '#2563eb', '#1d4ed8', '#bfdbfe'];
 
 /** Numeric → traffic-light colour for the score pills (higher = better). */
 function scoreColor(score: number): string {
@@ -31,49 +30,76 @@ function fmtNum(n: number): string {
   return `${n}`;
 }
 
-function TrendBadge({ trend }: { trend?: { dir: 'up' | 'down' | 'flat'; pct: number; good: boolean } }) {
-  if (!trend) return null;
-  const color = trend.dir === 'flat' ? '#8a9bb0' : trend.good ? '#22c55e' : '#ef4444';
-  const Icon = trend.dir === 'up' ? ArrowUp : trend.dir === 'down' ? ArrowDown : Minus;
-  return (
-    <span className="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full"
-      style={{ background: `${color}1f`, color }}>
-      <Icon size={12} />
-      {trend.dir !== 'flat' && `${Math.abs(trend.pct)}%`}
-    </span>
-  );
+/** Downsample a daily series to ~n evenly-spaced points (for the labeled line charts). */
+function downsample(arr: number[], n = 5): number[] {
+  if (arr.length <= n) return arr;
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) out.push(arr[Math.round((i * (arr.length - 1)) / (n - 1))]);
+  return out;
 }
 
-/** KPI card with a value, trend badge and a small area sparkline. */
-function KpiCard({ label, value, unit, color, trend, spark }: {
-  label: string; value: string | number; unit?: string; color: string;
-  trend?: any; spark?: number[];
+/** Top-row ("previous period") KPI — light card with a filled area sparkline. */
+function KpiCardLight({ label, value, unit, color, spark }: {
+  label: string; value: string | number; unit?: string; color: string; spark?: number[];
 }) {
   const data = (spark ?? []).map((v, i) => ({ i, v }));
-  const gid = `spark-${label.replace(/\W/g, '')}`;
+  const gid = `sparkL-${label.replace(/\W/g, '')}`;
   return (
-    <div className="rounded-2xl p-4 flex flex-col gap-2 overflow-hidden relative"
-      style={{ background: `${color}14`, border: `1px solid ${color}3a` }}>
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
-        <TrendBadge trend={trend} />
-      </div>
+    <div className="rounded-2xl p-4 flex flex-col gap-1 overflow-hidden"
+      style={{ background: 'var(--color-card)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <span className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
       <div className="flex items-baseline gap-1">
-        <span className="text-3xl font-bold tabular-nums leading-none" style={{ color }}>{value}</span>
-        {unit && <span className="text-sm font-medium" style={{ color }}>{unit}</span>}
+        <span className="text-2xl font-bold tabular-nums leading-none" style={{ color: 'var(--color-text)' }}>{value}</span>
+        {unit && <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{unit}</span>}
       </div>
-      <div style={{ height: 44, marginInline: -16, marginBottom: -16 }}>
+      <div style={{ height: 38, marginInline: -16, marginBottom: -16 }}>
         {data.length > 1 && (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={color} stopOpacity={0.5} />
+                  <stop offset="0%" stopColor={color} stopOpacity={0.35} />
                   <stop offset="100%" stopColor={color} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <Area type="monotone" dataKey="v" stroke={color} strokeWidth={2} fill={`url(#${gid})`} dot={false} isAnimationActive={false} />
+              <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} fill={`url(#${gid})`} dot={false} isAnimationActive={false} />
             </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Bottom-row ("current period") KPI — bold solid-colored card with a labeled line chart + trend arrow. */
+function KpiCardBold({ label, value, unit, color, trend, spark }: {
+  label: string; value: string | number; unit?: string; color: string; trend?: any; spark?: number[];
+}) {
+  const data = downsample(spark ?? []).map((v, i) => ({ i, v }));
+  const Icon = trend ? (trend.dir === 'up' ? ArrowUp : trend.dir === 'down' ? ArrowDown : Minus) : null;
+  return (
+    <div className="rounded-2xl p-4 flex flex-col gap-2 overflow-hidden relative" style={{ background: color }}>
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm font-semibold text-white/90">{label}</span>
+        {Icon && (
+          <span className="w-6 h-6 rounded-full flex items-center justify-center bg-white/25">
+            <Icon size={14} className="text-white" strokeWidth={2.5} />
+          </span>
+        )}
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-3xl font-bold tabular-nums leading-none text-white">{value}</span>
+        {unit && <span className="text-sm font-medium text-white/80">{unit}</span>}
+      </div>
+      <div style={{ height: 52, marginInline: -8, marginBottom: -8 }}>
+        {data.length > 1 && (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{ top: 14, right: 12, bottom: 4, left: 12 }}>
+              <Line type="monotone" dataKey="v" stroke="rgba(255,255,255,0.95)" strokeWidth={2}
+                dot={{ r: 2.5, fill: '#fff' }} isAnimationActive={false}>
+                <LabelList dataKey="v" position="top" style={{ fill: '#fff', fontSize: 10, fontWeight: 600 }} />
+              </Line>
+            </LineChart>
           </ResponsiveContainer>
         )}
       </div>
@@ -268,7 +294,8 @@ export default function AdminDashboard() {
   const selectedBuildingName = buildings.find((b: any) => b.id === buildingId)?.name;
   const minutesUnit = t('admin.dashboard.ovMinShort');
 
-  const kpis = ov?.kpis;
+  const prevKpis = ov?.kpis?.previous;
+  const curKpis = ov?.kpis?.current;
   const generalData = (ov?.donuts?.general ?? []).map((d: any) => ({
     name: t(`admin.dashboard.ov${d.key.charAt(0).toUpperCase() + d.key.slice(1)}`),
     value: d.count, color: GENERAL_COLORS[d.key] ?? '#8a9bb0',
@@ -277,14 +304,12 @@ export default function AdminDashboard() {
     name: `${d.icon ? d.icon + ' ' : ''}${d.nameI18n?.[lang] ?? d.nameI18n?.he ?? d.issueTypeId}`,
     value: d.count, color: RED_SHADES[i % RED_SHADES.length],
   }));
-  const maintenanceData = (ov?.donuts?.maintenance ?? []).map((d: any, i: number) => ({
-    name: `${d.icon ? d.icon + ' ' : ''}${d.nameI18n?.[lang] ?? d.nameI18n?.he ?? d.issueTypeId}`,
-    value: d.count, color: BLUE_SHADES[i % BLUE_SHADES.length],
-  }));
 
   const rooms: any[] = ov?.rooms ?? [];
   const fmtTime = (iso: string | null) =>
     iso ? new Date(iso).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : '—';
+  const fmtRange = (a?: string, b?: string) =>
+    a && b ? `${new Date(a).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { day: '2-digit', month: '2-digit' })} – ${new Date(b).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { day: '2-digit', month: '2-digit' })}` : '';
 
   const RANGES: { d: number; key: string }[] = [
     { d: 7, key: 'ovLast7' }, { d: 30, key: 'ovLast30' }, { d: 90, key: 'ovLast90' },
@@ -332,20 +357,36 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label={t('admin.dashboard.ovAvgScore')} value={kpis?.avgScore?.value ?? 100} color="#3b82f6"
-          trend={kpis?.avgScore?.trend} spark={kpis?.avgScore?.spark} />
-        <KpiCard label={t('admin.dashboard.ovComplaints')} value={fmtNum(kpis?.complaints?.value ?? 0)} color="#ef4444"
-          trend={kpis?.complaints?.trend} spark={kpis?.complaints?.spark} />
-        <KpiCard label={t('admin.dashboard.ovResponseTime')} value={kpis?.responseTime?.value ?? 0} unit={minutesUnit} color="#f59e0b"
-          trend={kpis?.responseTime?.trend} spark={kpis?.responseTime?.spark} />
-        <KpiCard label={t('admin.dashboard.ovTimeSaved')} value={kpis?.timeSaved?.value ?? 0} unit={t('admin.dashboard.ovHoursShort')} color="#eab308"
-          trend={kpis?.timeSaved?.trend} spark={kpis?.timeSaved?.spark} />
+      {/* KPI row 1 — previous period (baseline, light cards) */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.dashboard.ovPrevPeriod')}</span>
+          <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)', opacity: 0.7 }}>{fmtRange(prevKpis?.from, prevKpis?.to)}</span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCardLight label={t('admin.dashboard.ovAvgScore')} value={prevKpis?.avgScore?.value ?? 100} color="#3b82f6" spark={prevKpis?.avgScore?.spark} />
+          <KpiCardLight label={t('admin.dashboard.ovComplaints')} value={fmtNum(prevKpis?.complaints?.value ?? 0)} color="#ef4444" spark={prevKpis?.complaints?.spark} />
+          <KpiCardLight label={t('admin.dashboard.ovResponseTime')} value={prevKpis?.responseTime?.value ?? 0} unit={minutesUnit} color="#f59e0b" spark={prevKpis?.responseTime?.spark} />
+          <KpiCardLight label={t('admin.dashboard.ovTimeSaved')} value={prevKpis?.timeSaved?.value ?? 0} unit={t('admin.dashboard.ovHoursShort')} color="#eab308" spark={prevKpis?.timeSaved?.spark} />
+        </div>
       </div>
-      <p className="text-[11px] -mt-3" style={{ color: 'var(--color-text-secondary)' }}>
-        {t('admin.dashboard.ovVsPrev')} · {t('admin.dashboard.ovTimeSavedHint', { min: ov?.baselinePatrolMinutes ?? 45 })}
-      </p>
+
+      {/* KPI row 2 — current selected period (bold colored cards, trend vs previous) */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-accent)' }}>{t('admin.dashboard.ovCurrentPeriod')}</span>
+          <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>{fmtRange(curKpis?.from, curKpis?.to)}</span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCardBold label={t('admin.dashboard.ovAvgScore')} value={curKpis?.avgScore?.value ?? 100} color="#3b82f6" trend={curKpis?.avgScore?.trend} spark={curKpis?.avgScore?.spark} />
+          <KpiCardBold label={t('admin.dashboard.ovComplaints')} value={fmtNum(curKpis?.complaints?.value ?? 0)} color="#ef4444" trend={curKpis?.complaints?.trend} spark={curKpis?.complaints?.spark} />
+          <KpiCardBold label={t('admin.dashboard.ovResponseTime')} value={curKpis?.responseTime?.value ?? 0} unit={minutesUnit} color="#f97316" trend={curKpis?.responseTime?.trend} spark={curKpis?.responseTime?.spark} />
+          <KpiCardBold label={t('admin.dashboard.ovTimeSaved')} value={curKpis?.timeSaved?.value ?? 0} unit={t('admin.dashboard.ovHoursShort')} color="#eab308" trend={curKpis?.timeSaved?.trend} spark={curKpis?.timeSaved?.spark} />
+        </div>
+        <p className="text-[11px] mt-2" style={{ color: 'var(--color-text-secondary)' }}>
+          {t('admin.dashboard.ovVsPrev')} · {t('admin.dashboard.ovTimeSavedHint', { min: ov?.baselinePatrolMinutes ?? 45 })}
+        </p>
+      </div>
 
       {/* Urgent alerts */}
       {urgentData.length > 0 && (
@@ -367,10 +408,9 @@ export default function AdminDashboard() {
       )}
 
       {/* Donuts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Donut title={t('admin.dashboard.ovGeneral')} data={generalData} />
         <Donut title={t('admin.dashboard.ovCleaning')} data={cleaningData} />
-        <Donut title={t('admin.dashboard.ovMaintenance')} data={maintenanceData} />
       </div>
 
       {/* Rooms table / cards */}

@@ -504,31 +504,35 @@ export class AnalyticsService {
     const cur = periodKpis(curComplaints);
     const prev = periodKpis(prevComplaints);
 
-    // Daily sparkline series across the current period (honest per-day aggregates).
-    // UTC-aligned so the keys match `dayOf` exactly.
-    const dayKeys: string[] = [];
+    // Daily sparkline series for a complaint list over an explicit set of UTC day keys.
     const dayMs = 24 * 60 * 60 * 1000;
     const dayOf = (d: Date) => d.toISOString().slice(0, 10);
-    const startDay = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate());
-    for (let t = startDay; t <= to.getTime(); t += dayMs) {
-      dayKeys.push(new Date(t).toISOString().slice(0, 10));
-    }
-    const spark = {
-      avgScore: [] as number[], complaints: [] as number[], avgResponse: [] as number[], timeSaved: [] as number[],
+    const dayKeysBetween = (a: Date, b: Date) => {
+      const keys: string[] = [];
+      const start = Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate());
+      for (let t = start; t <= b.getTime(); t += dayMs) keys.push(new Date(t).toISOString().slice(0, 10));
+      return keys;
     };
-    for (const key of dayKeys) {
-      const dayComplaints = curComplaints.filter(i => dayOf(i.reportedAt) === key);
-      const dayScores = [...this.computeRoomScores(dayComplaints).values()];
-      spark.avgScore.push(dayScores.length ? Math.round(dayScores.reduce((s, r) => s + r.score, 0) / dayScores.length) : 100);
-      spark.complaints.push(dayComplaints.length);
-      const dayResolved = dayComplaints.filter(i => i.resolvedAt);
-      spark.avgResponse.push(dayResolved.length
-        ? Math.round(dayResolved.reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / dayResolved.length)
-        : 0);
-      spark.timeSaved.push(Math.round(
-        dayResolved.reduce((s, i) => s + Math.max(0, BASELINE_PATROL_MIN - (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000), 0) / 60 * 10,
-      ) / 10);
-    }
+    const buildSpark = (complaints: ScoredIncident[], keys: string[]) => {
+      const out = { avgScore: [] as number[], complaints: [] as number[], avgResponse: [] as number[], timeSaved: [] as number[] };
+      for (const key of keys) {
+        const day = complaints.filter(i => dayOf(i.reportedAt) === key);
+        const dayScores = [...this.computeRoomScores(day).values()];
+        out.avgScore.push(dayScores.length ? Math.round(dayScores.reduce((s, r) => s + r.score, 0) / dayScores.length) : 100);
+        out.complaints.push(day.length);
+        const dayResolved = day.filter(i => i.resolvedAt);
+        out.avgResponse.push(dayResolved.length
+          ? Math.round(dayResolved.reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / dayResolved.length)
+          : 0);
+        out.timeSaved.push(Math.round(
+          dayResolved.reduce((s, i) => s + Math.max(0, BASELINE_PATROL_MIN - (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000), 0) / 60 * 10,
+        ) / 10);
+      }
+      return out;
+    };
+
+    const curSpark = buildSpark(curComplaints, dayKeysBetween(from, to));
+    const prevSpark = buildSpark(prevComplaints, dayKeysBetween(prevFrom, from));
 
     const trend = (now: number, before: number, higherIsBetter: boolean) => {
       const diff = now - before;
@@ -538,11 +542,22 @@ export class AnalyticsService {
       return { dir, pct, good };
     };
 
+    // Two KPI rows: `previous` = baseline period, `current` = selected range (with trend vs previous).
     const kpis = {
-      avgScore:     { value: cur.avgScore,    previous: prev.avgScore,    spark: spark.avgScore,    trend: trend(cur.avgScore, prev.avgScore, true) },
-      complaints:   { value: cur.complaints,  previous: prev.complaints,  spark: spark.complaints,  trend: trend(cur.complaints, prev.complaints, false) },
-      responseTime: { value: cur.avgResponse, previous: prev.avgResponse, spark: spark.avgResponse, trend: trend(cur.avgResponse, prev.avgResponse, false) },
-      timeSaved:    { value: cur.timeSavedH,  previous: prev.timeSavedH,  spark: spark.timeSaved,   trend: trend(cur.timeSavedH, prev.timeSavedH, true) },
+      previous: {
+        from: prevFrom, to: from,
+        avgScore:     { value: prev.avgScore,    spark: prevSpark.avgScore },
+        complaints:   { value: prev.complaints,  spark: prevSpark.complaints },
+        responseTime: { value: prev.avgResponse, spark: prevSpark.avgResponse },
+        timeSaved:    { value: prev.timeSavedH,  spark: prevSpark.timeSaved },
+      },
+      current: {
+        from, to,
+        avgScore:     { value: cur.avgScore,    spark: curSpark.avgScore,    trend: trend(cur.avgScore, prev.avgScore, true) },
+        complaints:   { value: cur.complaints,  spark: curSpark.complaints,  trend: trend(cur.complaints, prev.complaints, false) },
+        responseTime: { value: cur.avgResponse, spark: curSpark.avgResponse, trend: trend(cur.avgResponse, prev.avgResponse, false) },
+        timeSaved:    { value: cur.timeSavedH,  spark: curSpark.timeSaved,   trend: trend(cur.timeSavedH, prev.timeSavedH, true) },
+      },
     };
 
     // ── Donut breakdowns (current period) ──

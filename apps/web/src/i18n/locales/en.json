@@ -235,6 +235,8 @@
       "ovResponseTime": "Response time",
       "ovTimeSaved": "Time saved",
       "ovVsPrev": "vs previous period",
+      "ovPrevPeriod": "Previous period",
+      "ovCurrentPeriod": "Current range",
       "ovGeneral": "General",
       "ovCleaning": "Cleaning",
       "ovMaintenance": "Maintenance",

@@ -235,6 +235,8 @@
       "ovResponseTime": "זמן תגובה",
       "ovTimeSaved": "זמן שנחסך",
       "ovVsPrev": "מול התקופה הקודמת",
+      "ovPrevPeriod": "תקופה קודמת",
+      "ovCurrentPeriod": "טווח נוכחי",
       "ovGeneral": "כללי",
       "ovCleaning": "ניקיון",
       "ovMaintenance": "תחזוקה",
