@@ -23,6 +23,22 @@ export interface ReportStrings {
   emptyDash: string;
   footer: string;
   dateLocale: string;
+  // Overview (slide-5) block
+  overviewTitle: string;
+  yesterdayTitle: string;
+  ovLastNDays: (n: number) => string;
+  ovAvgScore: string;
+  ovComplaints: string;
+  ovResponseTime: string;
+  ovTimeSaved: string;
+  ovHoursShort: string;
+  ovLike: string;
+  ovCleaning: string;
+  ovMaintenance: string;
+  ovRoomsTitle: string;
+  ovRoomName: string;
+  ovStatus: string;
+  ovScore: string;
 }
 
 const HE: ReportStrings = {
@@ -48,6 +64,21 @@ const HE: ReportStrings = {
   emptyDash: '—',
   footer: 'דוח זה נשלח אוטומטית מ-ToiletMon',
   dateLocale: 'he-IL',
+  overviewTitle: '🎯 סקירה כללית',
+  yesterdayTitle: '📅 פעילות אתמול',
+  ovLastNDays: (n) => `${n} ימים אחרונים`,
+  ovAvgScore: 'ציון ממוצע',
+  ovComplaints: 'תקלות',
+  ovResponseTime: 'זמן תגובה',
+  ovTimeSaved: 'זמן שנחסך',
+  ovHoursShort: 'ש׳',
+  ovLike: 'שביעות רצון',
+  ovCleaning: 'ניקיון',
+  ovMaintenance: 'תחזוקה',
+  ovRoomsTitle: '🚻 ציון לכל תא שירותים',
+  ovRoomName: 'תא שירותים',
+  ovStatus: 'סטטוס',
+  ovScore: 'ציון',
 };
 
 const EN: ReportStrings = {
@@ -73,6 +104,21 @@ const EN: ReportStrings = {
   emptyDash: '—',
   footer: 'This report was sent automatically by ToiletMon',
   dateLocale: 'en-US',
+  overviewTitle: '🎯 Overview',
+  yesterdayTitle: '📅 Yesterday’s Activity',
+  ovLastNDays: (n) => `Last ${n} days`,
+  ovAvgScore: 'Avg score',
+  ovComplaints: 'Complaints',
+  ovResponseTime: 'Response time',
+  ovTimeSaved: 'Time saved',
+  ovHoursShort: 'h',
+  ovLike: 'Satisfaction',
+  ovCleaning: 'Cleaning',
+  ovMaintenance: 'Maintenance',
+  ovRoomsTitle: '🚻 Score per Restroom',
+  ovRoomName: 'Restroom',
+  ovStatus: 'Status',
+  ovScore: 'Score',
 };
 
 export function getReportStrings(lang: string): ReportStrings {

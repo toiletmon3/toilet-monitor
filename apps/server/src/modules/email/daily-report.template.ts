@@ -1,8 +1,25 @@
 import { getReportStrings, ReportStrings } from './daily-report.i18n';
 
+export interface TrendInfo {
+  dir: 'up' | 'down' | 'flat';
+  pct: number;
+  good: boolean;
+}
+
+export interface OverviewData {
+  rangeDays: number;
+  avgScore: { value: number; trend: TrendInfo };
+  complaints: { value: number; trend: TrendInfo };
+  responseTime: { value: number; trend: TrendInfo };
+  timeSaved: { value: number; trend: TrendInfo };
+  general: { key: 'like' | 'cleaning' | 'maintenance'; count: number }[];
+  rooms: { location: string; score: number; tier: 'good' | 'warning' | 'critical'; status: 'ok' | 'attention' }[];
+}
+
 export interface DailyReportData {
   orgName: string;
   date: string;
+  overview?: OverviewData;
   totalIncidents: number;
   resolvedIncidents: number;
   openIncidents: number;
@@ -14,6 +31,33 @@ export interface DailyReportData {
   hotspots: { location: string; count: number }[];
   cleaners: { name: string; resolved: number; avgMinutes: number }[];
   idleCleaners: { name: string; minutes: number }[];
+}
+
+/** Score → traffic-light colour (higher = better). Mirrors the web dashboard. */
+function scoreColor(score: number): string {
+  if (score >= 85) return '#22c55e';
+  if (score >= 70) return '#84cc16';
+  if (score >= 55) return '#f59e0b';
+  if (score >= 40) return '#f97316';
+  return '#ef4444';
+}
+
+/** KPI card for the overview block: value + a coloured trend chip. */
+function kpiCard(label: string, value: string | number, unit: string, trend: TrendInfo, accent: string): string {
+  const tColor = trend.dir === 'flat' ? '#64748b' : trend.good ? '#22c55e' : '#ef4444';
+  const arrow = trend.dir === 'up' ? '▲' : trend.dir === 'down' ? '▼' : '—';
+  const chip = trend.dir === 'flat' ? '' :
+    `<span style="color:${tColor};font-size:11px;font-weight:bold;white-space:nowrap;">${arrow} ${Math.abs(trend.pct)}%</span>`;
+  return `
+    <td style="padding:6px;width:50%;">
+      <div style="background:${accent}15;border:1px solid ${accent}40;border-radius:12px;padding:14px;">
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${label}</div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;">
+          <span style="font-size:24px;font-weight:bold;color:${accent};">${value}<span style="font-size:12px;font-weight:normal;">${unit}</span></span>
+          ${chip}
+        </div>
+      </div>
+    </td>`;
 }
 
 function statCard(label: string, value: string | number, color: string): string {
@@ -39,6 +83,67 @@ export function buildDailyReportHtml(data: DailyReportData, lang: string = 'he')
   const nameAlign = s.dir === 'rtl' ? 'right' : 'left';
   const valueAlign = s.dir === 'rtl' ? 'left' : 'right';
   const minutesText = (m: number) => m > 0 ? `${m} ${s.minutesShort}` : s.emptyDash;
+
+  // ── Overview block (slide-5 style: KPIs + General split + per-room score) ──
+  const ov = data.overview;
+  const GENERAL_LABEL: Record<string, string> = { like: s.ovLike, cleaning: s.ovCleaning, maintenance: s.ovMaintenance };
+  const GENERAL_COLOR: Record<string, string> = { like: '#22c55e', cleaning: '#ef4444', maintenance: '#3b82f6' };
+  const generalTotal = (ov?.general ?? []).reduce((a, b) => a + b.count, 0);
+
+  const generalBar = ov && generalTotal > 0 ? `
+    <tr><td style="padding:4px 6px 12px;">
+      <div style="display:flex;border-radius:8px;overflow:hidden;height:16px;background:#1e293b;">
+        ${ov.general.map(g => `<div style="width:${Math.round((g.count / generalTotal) * 100)}%;background:${GENERAL_COLOR[g.key]};"></div>`).join('')}
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:#94a3b8;">
+        ${ov.general.map(g => `<span style="margin-${nameAlign === 'right' ? 'left' : 'right'}:14px;"><span style="color:${GENERAL_COLOR[g.key]};">●</span> ${GENERAL_LABEL[g.key]} ${Math.round((g.count / generalTotal) * 100)}%</span>`).join('')}
+      </div>
+    </td></tr>` : '';
+
+  const roomRows = (ov?.rooms ?? []).slice(0, 10).map((r, idx) => {
+    const c = scoreColor(r.score);
+    const statusIcon = r.status === 'ok' ? '<span style="color:#22c55e;">✔</span>' : '<span style="color:#f59e0b;">⚠</span>';
+    return `
+    <tr style="border-bottom:1px solid #1e293b;">
+      <td style="padding:9px 8px;color:#94a3b8;font-size:12px;">${idx + 1}</td>
+      <td style="padding:9px 8px;color:#e2e8f0;font-size:13px;">${r.location}</td>
+      <td style="padding:9px 8px;text-align:center;font-size:14px;">${statusIcon}</td>
+      <td style="padding:9px 8px;text-align:${valueAlign};">
+        <span style="display:inline-block;min-width:34px;text-align:center;background:${c};color:#0a0e1a;font-weight:bold;font-size:13px;border-radius:7px;padding:3px 8px;">${r.score}</span>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const overviewBlock = ov ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      ${sectionTitle(`${s.overviewTitle} · ${s.ovLastNDays(ov.rangeDays)}`)}
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      <tr>
+        ${kpiCard(s.ovAvgScore, ov.avgScore.value, '', ov.avgScore.trend, '#3b82f6')}
+        ${kpiCard(s.ovComplaints, ov.complaints.value, '', ov.complaints.trend, '#ef4444')}
+      </tr>
+      <tr>
+        ${kpiCard(s.ovResponseTime, ov.responseTime.value, ` ${s.minutesShort}`, ov.responseTime.trend, '#f97316')}
+        ${kpiCard(s.ovTimeSaved, ov.timeSaved.value, ` ${s.ovHoursShort}`, ov.timeSaved.trend, '#eab308')}
+      </tr>
+    </table>
+    ${generalBar ? `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${generalBar}</table>` : ''}
+    ${roomRows ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      ${sectionTitle(s.ovRoomsTitle)}
+      <tr><td>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#0f172a;border-radius:10px;overflow:hidden;">
+          <tr style="border-bottom:1px solid #1e293b;">
+            <th style="padding:9px 8px;color:#64748b;font-size:11px;font-weight:normal;text-align:${nameAlign};">#</th>
+            <th style="padding:9px 8px;color:#64748b;font-size:11px;font-weight:normal;text-align:${nameAlign};">${s.ovRoomName}</th>
+            <th style="padding:9px 8px;color:#64748b;font-size:11px;font-weight:normal;text-align:center;">${s.ovStatus}</th>
+            <th style="padding:9px 8px;color:#64748b;font-size:11px;font-weight:normal;text-align:${valueAlign};">${s.ovScore}</th>
+          </tr>
+          ${roomRows}
+        </table>
+      </td></tr>
+    </table>` : ''}` : '';
 
   const issueRows = data.topIssues.slice(0, 5).map((i, idx) => `
     <tr style="border-bottom:1px solid #1e293b;">
@@ -78,6 +183,14 @@ export function buildDailyReportHtml(data: DailyReportData, lang: string = 'he')
       <h1 style="color:#00e5cc;font-size:20px;margin:8px 0 4px;">${s.dailySummary} — ${data.orgName}</h1>
       <div style="color:#64748b;font-size:13px;">${data.date}</div>
     </div>
+
+    <!-- Overview (slide-5 style) -->
+    ${overviewBlock}
+
+    <!-- Yesterday section title -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      ${sectionTitle(s.yesterdayTitle)}
+    </table>
 
     <!-- Stats Grid -->
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">

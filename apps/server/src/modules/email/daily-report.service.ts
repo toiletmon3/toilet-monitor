@@ -2,12 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from './email.service';
-import { buildDailyReportHtml, DailyReportData } from './daily-report.template';
+import { buildDailyReportHtml, DailyReportData, OverviewData } from './daily-report.template';
 import { getReportStrings } from './daily-report.i18n';
 import { translateLocationPath } from '../../common/locale/translate-name';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 const DEFAULT_REPORT_HOUR = 8;
 const DEFAULT_TZ = 'Asia/Jerusalem';
+const OVERVIEW_RANGE_DAYS = 30;
 
 @Injectable()
 export class DailyReportService {
@@ -17,6 +19,7 @@ export class DailyReportService {
   constructor(
     private prisma: PrismaService,
     private email: EmailService,
+    private analytics: AnalyticsService,
   ) {}
 
   @Cron('0 * * * *')
@@ -150,7 +153,33 @@ export class DailyReportService {
       ...data,
       date: this.formatDate(data._yesterdayStart, s.dateLocale),
       hotspots: data.hotspots.map(h => ({ ...h, location: translateLocationPath(h.location, lang) })),
+      overview: data.overview
+        ? { ...data.overview, rooms: data.overview.rooms.map(r => ({ ...r, location: translateLocationPath(r.location, lang) })) }
+        : undefined,
     };
+  }
+
+  /** Slide-5 overview for the org over the trailing N days (KPIs + general split + per-room scores). */
+  private async gatherOverview(orgId: string): Promise<OverviewData | undefined> {
+    try {
+      const to = new Date();
+      const from = new Date(Date.now() - OVERVIEW_RANGE_DAYS * 24 * 60 * 60 * 1000);
+      const ov = await this.analytics.getOverview(orgId, from, to);
+      const cur = ov.kpis.current;
+      return {
+        rangeDays: OVERVIEW_RANGE_DAYS,
+        avgScore: { value: cur.avgScore.value, trend: cur.avgScore.trend },
+        complaints: { value: cur.complaints.value, trend: cur.complaints.trend },
+        responseTime: { value: cur.responseTime.value, trend: cur.responseTime.trend },
+        timeSaved: { value: cur.timeSaved.value, trend: cur.timeSaved.trend },
+        general: ov.donuts.general as OverviewData['general'],
+        // worst-first; show the rooms that most need attention
+        rooms: ov.rooms.map((r: any) => ({ location: r.location, score: r.score, tier: r.tier, status: r.status })),
+      };
+    } catch (err) {
+      this.logger.warn(`Overview gather failed for org ${orgId}: ${err}`);
+      return undefined;
+    }
   }
 
   private formatDate(d: Date, locale: string): string {
@@ -302,10 +331,13 @@ export class DailyReportService {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     });
 
+    const overview = await this.gatherOverview(orgId);
+
     return {
       _yesterdayStart: yesterdayStart,
       orgName: orgName,
       date: dateStr,
+      overview,
       totalIncidents: total,
       resolvedIncidents: resolved,
       openIncidents: open,
