@@ -4,10 +4,12 @@ import { useTranslation } from 'react-i18next';
 import {
   AlertCircle, ChevronDown, ChevronRight, Building2, Calendar,
   ArrowUp, ArrowDown, Minus, CheckCircle2, AlertTriangle, Table2, LayoutGrid,
+  Layers, DoorOpen,
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   AreaChart, Area, LineChart, Line, LabelList,
+  ComposedChart, Bar, XAxis, YAxis,
 } from 'recharts';
 import api from '../../../lib/api';
 import { getSocket, joinOrg } from '../../../lib/socket';
@@ -144,6 +146,170 @@ function Donut({ title, data }: { title: string; data: { name: string; value: nu
   );
 }
 
+/** Custom dot for the Glance line chart that labels only local maxima. */
+function PeakDot(props: any) {
+  const { cx, cy, value, payload, color } = props;
+  if (cx == null || cy == null) return null;
+  const isPeak = payload?.__isPeak;
+  if (!isPeak) return <circle cx={cx} cy={cy} r={2} fill={color} />;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={3.5} fill={color} />
+      <g transform={`translate(${cx},${cy - 18})`}>
+        <rect x={-14} y={-9} width={28} height={16} rx={8} fill={color} />
+        <text x={0} y={2} textAnchor="middle" fill="#fff" fontSize={10} fontWeight={700}>{value}</text>
+      </g>
+    </g>
+  );
+}
+
+/** Slide-6 "Performance at a Glance" — KPI strip, combined bars+line chart, top-complaint donut. */
+function GlanceBlock({ glance, lang, t, minutesUnit }: any) {
+  if (!glance) return null;
+  // Annotate peaks (local maxima) so the line chart can pin labels there.
+  const series = (glance.dailySeries ?? []).map((d: any, i: number, arr: any[]) => {
+    const prev = arr[i - 1]?.complaints ?? -1;
+    const next = arr[i + 1]?.complaints ?? -1;
+    return { ...d, __isPeak: d.complaints > 0 && d.complaints >= prev && d.complaints > next };
+  });
+  const TIER_COLOR: Record<string, string> = { good: '#22c55e', warning: '#f59e0b', critical: '#ef4444' };
+  const top = glance.topComplaint;
+  const topName = top?.nameI18n?.[lang] ?? top?.nameI18n?.he ?? top?.nameI18n?.en ?? '';
+  return (
+    <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+      <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>{t('admin.dashboard.glanceTitle')}</h3>
+      {/* KPI strip */}
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+        <GlanceChip label={t('admin.dashboard.ovAvgScore')} value={glance.avgScore ?? '—'} color="#3b82f6" />
+        <GlanceChip label={t('admin.dashboard.ovComplaints')} value={glance.complaintsTotal ?? '—'} color="#ef4444" />
+        <GlanceChip label={t('admin.dashboard.ovVisits')} value={glance.visits ?? 0} color="#22c55e" />
+        <GlanceChip label={t('admin.dashboard.ovResponseTime')} value={`${glance.avgResponse ?? 0} ${minutesUnit}`} color="#f97316" />
+        <GlanceChip label={t('admin.dashboard.ovComplaintRate')} value={`${glance.complaintRate ?? 0}%`} color="#a855f7" />
+        <GlanceChip label={t('admin.dashboard.ovTimeSaved')} value={`${glance.timeSaved ?? 0} ${t('admin.dashboard.ovHoursShort')}`} color="#eab308" />
+      </div>
+      {/* Combined chart + donut */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4">
+        <div style={{ height: 260 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={series} margin={{ top: 18, right: 12, bottom: 8, left: 0 }}>
+              <XAxis dataKey="date" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 10 }} interval="preserveStartEnd"
+                tickFormatter={(s: string) => s.slice(5)} />
+              <YAxis yAxisId="left" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 10 }} domain={[0, 100]} />
+              <YAxis yAxisId="right" orientation="right" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 10 }} />
+              <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid rgba(0,229,204,0.2)', borderRadius: 12, color: 'var(--color-text)', fontSize: 11 }} />
+              <Bar yAxisId="left" dataKey="avgScore" name={t('admin.dashboard.ovAvgScore')} fillOpacity={0.85} isAnimationActive={false}>
+                {series.map((d: any, i: number) => <Cell key={i} fill={TIER_COLOR[d.tier]} />)}
+              </Bar>
+              <Line yAxisId="right" type="monotone" dataKey="complaints" name={t('admin.dashboard.ovComplaints')}
+                stroke="#ef4444" strokeWidth={2} isAnimationActive={false}
+                dot={<PeakDot color="#ef4444" />}
+                activeDot={{ r: 4, fill: '#ef4444' }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex flex-col items-center justify-center" style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: 12 }}>
+          <span className="text-[11px] uppercase tracking-wide mb-2" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.dashboard.ovTopComplaint')}</span>
+          {top ? (
+            <>
+              <div style={{ width: 130, height: 130 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={[{ name: 'top', value: top.percent }, { name: 'rest', value: Math.max(0, 100 - top.percent) }]}
+                      dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={60} startAngle={90} endAngle={-270} isAnimationActive={false}>
+                      <Cell fill="#ef4444" /><Cell fill="rgba(239,68,68,0.15)" />
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="text-2xl font-bold tabular-nums" style={{ color: '#ef4444' }}>{top.percent}%</div>
+              <div className="text-xs text-center mt-1" style={{ color: 'var(--color-text)' }}>
+                {top.icon && <span>{top.icon} </span>}{topName}
+              </div>
+              <div className="text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>{top.count} {t('admin.dashboard.ovComplaints')}</div>
+            </>
+          ) : (
+            <div className="py-8 text-sm" style={{ color: 'var(--color-text-secondary)' }}>—</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GlanceChip({ label, value, color }: { label: string; value: any; color: string }) {
+  return (
+    <div className="rounded-xl px-3 py-2" style={{ background: `${color}14`, border: `1px solid ${color}40` }}>
+      <div className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>{label}</div>
+      <div className="text-lg font-bold tabular-nums" style={{ color }}>{value}</div>
+    </div>
+  );
+}
+
+/** Slide-8 "Deep Dive" — wide per-restroom table. */
+function DeepDiveTable({ rows, lang, t, minutesUnit }: any) {
+  const data: any[] = rows ?? [];
+  if (data.length === 0) return null;
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+      <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
+        <h2 className="font-semibold text-white">{t('admin.dashboard.deepDiveTitle')}</h2>
+        <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.dashboard.deepDiveSubtitle')}</p>
+      </div>
+      <div className="overflow-x-auto" style={{ maxHeight: 520 }}>
+        <table className="w-full text-sm" style={{ minWidth: 920 }}>
+          <thead className="sticky top-0" style={{ background: 'var(--color-card)' }}>
+            <tr style={{ color: 'var(--color-text-secondary)' }}>
+              {[
+                'ddRoomName','ddVisits','ddComplaints','ddTopComplaint','ddCleaners','ddSupervisors','ddAvgResponse','ddSatisfaction','ddScore',
+              ].map(k => (
+                <th key={k} className="text-start font-medium px-3 py-2.5 text-[10px] uppercase tracking-wide whitespace-nowrap">{t(`admin.dashboard.${k}`)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.map(r => {
+              const topName = r.topComplaint?.nameI18n?.[lang] ?? r.topComplaint?.nameI18n?.he ?? r.topComplaint?.nameI18n?.en ?? '—';
+              const satColor = r.satisfactionPct >= 80 ? '#22c55e' : r.satisfactionPct >= 50 ? '#f59e0b' : '#ef4444';
+              return (
+                <tr key={r.restroomId} className="border-t hover:bg-white/5" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: 'var(--color-text)' }}>{translateLocationPath(r.location, lang)}</td>
+                  <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>{r.visits}</td>
+                  <td className="px-3 py-2.5 tabular-nums" style={{ color: '#ef4444' }}>{r.complaints}</td>
+                  <td className="px-3 py-2.5" style={{ minWidth: 160 }}>
+                    {r.topComplaint ? (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span style={{ color: 'var(--color-text)' }}>{r.topComplaint.icon} {topName}</span>
+                          <span className="font-bold" style={{ color: '#ef4444' }}>{r.topComplaint.percent}%</span>
+                        </div>
+                        <div style={{ height: 4, background: 'rgba(239,68,68,0.15)', borderRadius: 3 }}>
+                          <div style={{ width: `${r.topComplaint.percent}%`, height: '100%', background: '#ef4444', borderRadius: 3 }} />
+                        </div>
+                      </div>
+                    ) : <span style={{ color: 'var(--color-text-secondary)' }}>—</span>}
+                  </td>
+                  <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>{r.cleanerArrivals}</td>
+                  <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>{r.supervisorArrivals}</td>
+                  <td className="px-3 py-2.5 tabular-nums whitespace-nowrap" style={{ color: '#f97316' }}>{r.avgResponseMinutes} {minutesUnit}</td>
+                  <td className="px-3 py-2.5" style={{ minWidth: 110 }}>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1" style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 3 }}>
+                        <div style={{ width: `${r.satisfactionPct}%`, height: '100%', background: satColor, borderRadius: 3 }} />
+                      </div>
+                      <span className="text-xs font-bold tabular-nums" style={{ color: satColor }}>{r.satisfactionPct}%</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 text-center"><ScorePill score={r.score} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function ScorePill({ score, trend }: { score: number; trend?: 'up' | 'down' | 'flat' }) {
   const color = scoreColor(score);
   const TrendIcon = trend === 'up' ? ArrowUp : trend === 'down' ? ArrowDown : null;
@@ -256,6 +422,8 @@ export default function AdminDashboard() {
   const lang = i18n.language;
   const queryClient = useQueryClient();
   const [buildingId, setBuildingId] = useState<string>(''); // '' = all
+  const [floorId, setFloorId] = useState<string>('');
+  const [restroomId, setRestroomId] = useState<string>('');
   const [days, setDays] = useState(30);
   const [view, setView] = useState<'table' | 'cards'>('table');
 
@@ -264,9 +432,19 @@ export default function AdminDashboard() {
     queryFn: async () => (await api.get('/buildings/structure')).data,
   });
 
-  const ovParams = `days=${days}${buildingId ? `&buildingId=${buildingId}` : ''}`;
+  // Floors/restrooms cascade from the building filter.
+  const selectedBuilding = buildings.find((b: any) => b.id === buildingId);
+  const floors: any[] = selectedBuilding?.floors ?? [];
+  const selectedFloor = floors.find((f: any) => f.id === floorId);
+  const restrooms: any[] = selectedFloor?.restrooms ?? [];
+
+  // Reset child filters when parent changes.
+  useEffect(() => { setFloorId(''); setRestroomId(''); }, [buildingId]);
+  useEffect(() => { setRestroomId(''); }, [floorId]);
+
+  const ovParams = `days=${days}${buildingId ? `&buildingId=${buildingId}` : ''}${floorId ? `&floorId=${floorId}` : ''}${restroomId ? `&restroomId=${restroomId}` : ''}`;
   const { data: ov } = useQuery({
-    queryKey: ['analytics-overview', days, buildingId],
+    queryKey: ['analytics-overview', days, buildingId, floorId, restroomId],
     queryFn: async () => (await api.get(`/analytics/overview?${ovParams}`)).data,
     refetchInterval: 30_000,
   });
@@ -344,6 +522,30 @@ export default function AdminDashboard() {
               ))}
             </select>
           </div>
+          {buildingId && floors.length > 0 && (
+            <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}>
+              <Layers size={15} style={{ color: 'var(--color-accent)' }} />
+              <select value={floorId} onChange={e => setFloorId(e.target.value)}
+                className="bg-transparent text-sm outline-none" style={{ color: 'var(--color-text)', minWidth: 120 }}>
+                <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allFloors')}</option>
+                {floors.map((f: any) => (
+                  <option key={f.id} value={f.id} style={{ background: '#0a0e1a' }}>{f.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {floorId && restrooms.length > 0 && (
+            <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}>
+              <DoorOpen size={15} style={{ color: 'var(--color-accent)' }} />
+              <select value={restroomId} onChange={e => setRestroomId(e.target.value)}
+                className="bg-transparent text-sm outline-none" style={{ color: 'var(--color-text)', minWidth: 120 }}>
+                <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allRestrooms')}</option>
+                {restrooms.map((r: any) => (
+                  <option key={r.id} value={r.id} style={{ background: '#0a0e1a' }}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
@@ -412,6 +614,20 @@ export default function AdminDashboard() {
         <Donut title={t('admin.dashboard.ovGeneral')} data={generalData} />
         <Donut title={t('admin.dashboard.ovCleaning')} data={cleaningData} />
       </div>
+
+      {/* Slide 6 — Performance at a Glance */}
+      <GlanceBlock
+        glance={ov?.glance ? {
+          ...ov.glance,
+          avgScore: curKpis?.avgScore?.value,
+          complaintsTotal: curKpis?.complaints?.value,
+          avgResponse: curKpis?.responseTime?.value,
+          timeSaved: curKpis?.timeSaved?.value,
+        } : null}
+        lang={lang}
+        t={t}
+        minutesUnit={minutesUnit}
+      />
 
       {/* Rooms table / cards */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
@@ -501,6 +717,9 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* Slide 8 — Deep Dive */}
+      <DeepDiveTable rows={ov?.deepDive} lang={lang} t={t} minutesUnit={minutesUnit} />
     </div>
   );
 }

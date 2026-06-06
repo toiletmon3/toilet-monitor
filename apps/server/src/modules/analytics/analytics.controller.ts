@@ -93,9 +93,17 @@ export class AnalyticsController {
   }
 
   @Get('overview')
-  getOverview(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('buildingId') buildingId?: string) {
+  getOverview(
+    @CurrentUser() user: any,
+    @Query('days') days?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('buildingId') buildingId?: string,
+    @Query('floorId') floorId?: string,
+    @Query('restroomId') restroomId?: string,
+  ) {
     const r = resolveRange(days, from, to, 30);
-    return this.analyticsService.getOverview(user.orgId, r.from, r.to, buildingId);
+    return this.analyticsService.getOverview(user.orgId, r.from, r.to, buildingId, floorId, restroomId);
   }
 
   @Public()
