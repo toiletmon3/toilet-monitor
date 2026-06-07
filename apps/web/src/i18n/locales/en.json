@@ -250,6 +250,8 @@
       "ovCardsView": "Cards",
       "ovStatusOk": "OK",
       "ovStatusAttention": "Needs attention",
+      "ovToday": "Today",
+      "ovYesterday": "Yesterday",
       "ovLast7": "7 days",
       "ovLast30": "30 days",
       "ovLast90": "90 days",
