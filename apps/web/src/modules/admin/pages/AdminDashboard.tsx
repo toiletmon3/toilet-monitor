@@ -424,7 +424,7 @@ export default function AdminDashboard() {
   const [buildingId, setBuildingId] = useState<string>(''); // '' = all
   const [floorId, setFloorId] = useState<string>('');
   const [restroomId, setRestroomId] = useState<string>('');
-  const [days, setDays] = useState(30);
+  const [range, setRange] = useState<string>('30'); // 'today' | 'yesterday' | '7' | '30' | '90'
   const [view, setView] = useState<'table' | 'cards'>('table');
 
   const { data: buildings = [] } = useQuery({
@@ -443,9 +443,23 @@ export default function AdminDashboard() {
   useEffect(() => { setFloorId(''); setRestroomId(''); }, [buildingId]);
   useEffect(() => { setRestroomId(''); }, [floorId]);
 
-  const ovParams = `days=${days}${buildingId ? `&buildingId=${buildingId}` : ''}${floorId ? `&floorId=${floorId}` : ''}${restroomId ? `&restroomId=${restroomId}` : ''}`;
+  // 'today'/'yesterday' resolve to explicit from/to; numeric presets use days=N.
+  const rangeParam = (() => {
+    if (range === 'today' || range === 'yesterday') {
+      const start = new Date(); start.setHours(0, 0, 0, 0);
+      if (range === 'today') {
+        return `from=${encodeURIComponent(start.toISOString())}&to=${encodeURIComponent(new Date().toISOString())}`;
+      }
+      const yStart = new Date(start); yStart.setDate(yStart.getDate() - 1);
+      const yEnd = new Date(start.getTime() - 1);
+      return `from=${encodeURIComponent(yStart.toISOString())}&to=${encodeURIComponent(yEnd.toISOString())}`;
+    }
+    return `days=${range}`;
+  })();
+  const scopeParam = `${buildingId ? `&buildingId=${buildingId}` : ''}${floorId ? `&floorId=${floorId}` : ''}${restroomId ? `&restroomId=${restroomId}` : ''}`;
+  const ovParams = `${rangeParam}${scopeParam}`;
   const { data: ov } = useQuery({
-    queryKey: ['analytics-overview', days, buildingId, floorId, restroomId],
+    queryKey: ['analytics-overview', range, buildingId, floorId, restroomId],
     queryFn: async () => (await api.get(`/analytics/overview?${ovParams}`)).data,
     refetchInterval: 30_000,
   });
@@ -490,8 +504,9 @@ export default function AdminDashboard() {
   const fmtRange = (a?: string, b?: string) =>
     a && b ? `${new Date(a).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { day: '2-digit', month: '2-digit' })} – ${new Date(b).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { day: '2-digit', month: '2-digit' })}` : '';
 
-  const RANGES: { d: number; key: string }[] = [
-    { d: 7, key: 'ovLast7' }, { d: 30, key: 'ovLast30' }, { d: 90, key: 'ovLast90' },
+  const RANGES: { v: string; key: string }[] = [
+    { v: 'today', key: 'ovToday' }, { v: 'yesterday', key: 'ovYesterday' },
+    { v: '7', key: 'ovLast7' }, { v: '30', key: 'ovLast30' }, { v: '90', key: 'ovLast90' },
   ];
 
   return (
@@ -503,11 +518,11 @@ export default function AdminDashboard() {
           <div className="flex gap-1 rounded-xl p-1" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.2)' }}>
             <Calendar size={14} style={{ color: 'var(--color-accent)' }} className="self-center ms-1" />
             {RANGES.map(r => (
-              <button key={r.d} onClick={() => setDays(r.d)}
+              <button key={r.v} onClick={() => setRange(r.v)}
                 className="text-xs px-2.5 py-1 rounded-lg transition-colors"
                 style={{
-                  background: days === r.d ? 'rgba(0,229,204,0.15)' : 'transparent',
-                  color: days === r.d ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                  background: range === r.v ? 'rgba(0,229,204,0.15)' : 'transparent',
+                  color: range === r.v ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                 }}>
                 {t(`admin.dashboard.${r.key}`)}
               </button>
