@@ -437,6 +437,7 @@ export default function AdminDashboard() {
   const floors: any[] = selectedBuilding?.floors ?? [];
   const selectedFloor = floors.find((f: any) => f.id === floorId);
   const restrooms: any[] = selectedFloor?.restrooms ?? [];
+  const selectedRestroom = restrooms.find((r: any) => r.id === restroomId);
 
   // Reset child filters when parent changes.
   useEffect(() => { setFloorId(''); setRestroomId(''); }, [buildingId]);
@@ -522,37 +523,40 @@ export default function AdminDashboard() {
               ))}
             </select>
           </div>
-          {buildingId && floors.length > 0 && (
-            <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}>
-              <Layers size={15} style={{ color: 'var(--color-accent)' }} />
-              <select value={floorId} onChange={e => setFloorId(e.target.value)}
-                className="bg-transparent text-sm outline-none" style={{ color: 'var(--color-text)', minWidth: 120 }}>
-                <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allFloors')}</option>
-                {floors.map((f: any) => (
-                  <option key={f.id} value={f.id} style={{ background: '#0a0e1a' }}>{f.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          {floorId && restrooms.length > 0 && (
-            <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}>
-              <DoorOpen size={15} style={{ color: 'var(--color-accent)' }} />
-              <select value={restroomId} onChange={e => setRestroomId(e.target.value)}
-                className="bg-transparent text-sm outline-none" style={{ color: 'var(--color-text)', minWidth: 120 }}>
-                <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allRestrooms')}</option>
-                {restrooms.map((r: any) => (
-                  <option key={r.id} value={r.id} style={{ background: '#0a0e1a' }}>{r.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2"
+            style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)', opacity: buildingId ? 1 : 0.45 }}>
+            <Layers size={15} style={{ color: 'var(--color-accent)' }} />
+            <select value={floorId} onChange={e => setFloorId(e.target.value)} disabled={!buildingId}
+              title={!buildingId ? t('admin.dashboard.pickBuildingFirst') : undefined}
+              className="bg-transparent text-sm outline-none disabled:cursor-not-allowed" style={{ color: 'var(--color-text)', minWidth: 120 }}>
+              <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allFloors')}</option>
+              {floors.map((f: any) => (
+                <option key={f.id} value={f.id} style={{ background: '#0a0e1a' }}>{f.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2"
+            style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)', opacity: floorId ? 1 : 0.45 }}>
+            <DoorOpen size={15} style={{ color: 'var(--color-accent)' }} />
+            <select value={restroomId} onChange={e => setRestroomId(e.target.value)} disabled={!floorId}
+              title={!floorId ? t('admin.dashboard.pickFloorFirst') : undefined}
+              className="bg-transparent text-sm outline-none disabled:cursor-not-allowed" style={{ color: 'var(--color-text)', minWidth: 120 }}>
+              <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allRestrooms')}</option>
+              {restrooms.map((r: any) => (
+                <option key={r.id} value={r.id} style={{ background: '#0a0e1a' }}>{r.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
       {buildingId && (
         <div className="text-xs flex items-center gap-2 px-3 py-2 rounded-xl"
           style={{ background: 'rgba(0,229,204,0.06)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-accent)' }}>
-          {t('admin.dashboard.filteredBy')}: <span className="font-semibold">{selectedBuildingName}</span>
+          {t('admin.dashboard.filteredBy')}:{' '}
+          <span className="font-semibold">
+            {[selectedBuildingName, selectedFloor?.name, selectedRestroom?.name].filter(Boolean).join(' › ')}
+          </span>
           <button onClick={() => setBuildingId('')} className="ms-auto underline hover:text-white">
             {t('admin.dashboard.clearFilter')}
           </button>

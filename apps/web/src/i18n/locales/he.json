@@ -260,6 +260,8 @@
       "ovRoomsTitle": "ציון לכל תא שירותים",
       "allFloors": "כל הקומות",
       "allRestrooms": "כל התאים",
+      "pickBuildingFirst": "בחר בניין תחילה",
+      "pickFloorFirst": "בחר קומה תחילה",
       "ovVisits": "אינטראקציות",
       "ovComplaintRate": "% תקלות",
       "ovTopComplaint": "בעיה מובילה",
