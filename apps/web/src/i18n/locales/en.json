@@ -260,6 +260,8 @@
       "ovRoomsTitle": "Score per Restroom",
       "allFloors": "All floors",
       "allRestrooms": "All restrooms",
+      "pickBuildingFirst": "Pick a building first",
+      "pickFloorFirst": "Pick a floor first",
       "ovVisits": "Interactions",
       "ovComplaintRate": "Complaint rate",
       "ovTopComplaint": "Top complaint",
