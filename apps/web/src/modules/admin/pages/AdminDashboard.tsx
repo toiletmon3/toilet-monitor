@@ -191,10 +191,10 @@ function GlanceBlock({ glance, lang, t, minutesUnit }: any) {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4">
         <div style={{ height: 260 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={series} margin={{ top: 18, right: 12, bottom: 8, left: 0 }}>
+            <ComposedChart data={series} margin={{ top: 30, right: 12, bottom: 8, left: 0 }}>
               <XAxis dataKey="date" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 10 }} interval="preserveStartEnd"
                 tickFormatter={(s: string) => s.slice(5)} />
-              <YAxis yAxisId="left" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 10 }} domain={[0, 100]} />
+              <YAxis yAxisId="left" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 10 }} domain={[0, 110]} ticks={[0, 25, 50, 75, 100]} />
               <YAxis yAxisId="right" orientation="right" stroke="#8a9bb0" tick={{ fill: '#8a9bb0', fontSize: 10 }} />
               <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid rgba(0,229,204,0.2)', borderRadius: 12, color: 'var(--color-text)', fontSize: 11 }} />
               <Bar yAxisId="left" dataKey="avgScore" name={t('admin.dashboard.ovAvgScore')} fillOpacity={0.85} isAnimationActive={false}>
