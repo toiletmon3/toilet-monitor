@@ -9,7 +9,6 @@ import { AnalyticsService } from '../analytics/analytics.service';
 
 const DEFAULT_REPORT_HOUR = 8;
 const DEFAULT_TZ = 'Asia/Jerusalem';
-const OVERVIEW_RANGE_DAYS = 30;
 
 @Injectable()
 export class DailyReportService {
@@ -159,15 +158,16 @@ export class DailyReportService {
     };
   }
 
-  /** Slide-5 overview for the org over the trailing N days (KPIs + general split + per-room scores). */
-  private async gatherOverview(orgId: string): Promise<OverviewData | undefined> {
+  /**
+   * Slide-5 overview for the org over an explicit window (default: yesterday).
+   * The KPI trends compare this window against the previous equal-length window
+   * (e.g. yesterday vs the day before).
+   */
+  private async gatherOverview(orgId: string, from: Date, to: Date): Promise<OverviewData | undefined> {
     try {
-      const to = new Date();
-      const from = new Date(Date.now() - OVERVIEW_RANGE_DAYS * 24 * 60 * 60 * 1000);
       const ov = await this.analytics.getOverview(orgId, from, to);
       const cur = ov.kpis.current;
       return {
-        rangeDays: OVERVIEW_RANGE_DAYS,
         avgScore: { value: cur.avgScore.value, trend: cur.avgScore.trend },
         complaints: { value: cur.complaints.value, trend: cur.complaints.trend },
         responseTime: { value: cur.responseTime.value, trend: cur.responseTime.trend },
@@ -331,7 +331,7 @@ export class DailyReportService {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     });
 
-    const overview = await this.gatherOverview(orgId);
+    const overview = await this.gatherOverview(orgId, from, to);
 
     return {
       _yesterdayStart: yesterdayStart,

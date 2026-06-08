@@ -7,7 +7,6 @@ export interface TrendInfo {
 }
 
 export interface OverviewData {
-  rangeDays: number;
   avgScore: { value: number; trend: TrendInfo };
   complaints: { value: number; trend: TrendInfo };
   responseTime: { value: number; trend: TrendInfo };
@@ -121,7 +120,7 @@ export function buildDailyReportHtml(data: DailyReportData, lang: string = 'he')
 
   const overviewBlock = ov ? `
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-      ${sectionTitle(`${s.overviewTitle} · ${s.ovLastNDays(ov.rangeDays)}`)}
+      ${sectionTitle(`${s.overviewTitle} · ${s.overviewSubtitle}`)}
     </table>
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
       <tr>
