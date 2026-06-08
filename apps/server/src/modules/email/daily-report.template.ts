@@ -42,20 +42,23 @@ function scoreColor(score: number): string {
   return '#ef4444';
 }
 
-/** KPI card for the overview block: value + a coloured trend chip. */
-function kpiCard(label: string, value: string | number, unit: string, trend: TrendInfo, accent: string): string {
+/** KPI card for the overview block: value + a coloured trend chip. Email-safe RTL (no flexbox). */
+function kpiCard(label: string, value: string | number, unit: string, trend: TrendInfo, accent: string, dir: 'rtl' | 'ltr', align: 'right' | 'left'): string {
+  const opposite = align === 'right' ? 'left' : 'right';
   const tColor = trend.dir === 'flat' ? '#64748b' : trend.good ? '#22c55e' : '#ef4444';
-  const arrow = trend.dir === 'up' ? '▲' : trend.dir === 'down' ? '▼' : '—';
+  const arrow = trend.dir === 'up' ? '▲' : trend.dir === 'down' ? '▼' : '';
   const chip = trend.dir === 'flat' ? '' :
     `<span style="color:${tColor};font-size:11px;font-weight:bold;white-space:nowrap;">${arrow} ${Math.abs(trend.pct)}%</span>`;
   return `
-    <td style="padding:6px;width:50%;">
-      <div style="background:${accent}15;border:1px solid ${accent}40;border-radius:12px;padding:14px;">
-        <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${label}</div>
-        <div style="display:flex;align-items:baseline;justify-content:space-between;">
-          <span style="font-size:24px;font-weight:bold;color:${accent};">${value}<span style="font-size:12px;font-weight:normal;">${unit}</span></span>
-          ${chip}
-        </div>
+    <td style="padding:6px;width:50%;" dir="${dir}" align="${align}">
+      <div dir="${dir}" style="background:${accent}15;border:1px solid ${accent}40;border-radius:12px;padding:14px;text-align:${align};">
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;text-align:${align};">${label}</div>
+        <table dir="${dir}" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr>
+            <td style="text-align:${align};font-size:24px;font-weight:bold;color:${accent};white-space:nowrap;">${value}<span style="font-size:12px;font-weight:normal;">${unit}</span></td>
+            <td style="text-align:${opposite};white-space:nowrap;vertical-align:bottom;">${chip}</td>
+          </tr>
+        </table>
       </div>
     </td>`;
 }
@@ -91,12 +94,14 @@ export function buildDailyReportHtml(data: DailyReportData, lang: string = 'he')
   const generalTotal = (ov?.general ?? []).reduce((a, b) => a + b.count, 0);
 
   const generalBar = ov && generalTotal > 0 ? `
-    <tr><td style="padding:4px 6px 12px;">
-      <div style="display:flex;border-radius:8px;overflow:hidden;height:16px;background:#1e293b;">
-        ${ov.general.map(g => `<div style="width:${Math.round((g.count / generalTotal) * 100)}%;background:${GENERAL_COLOR[g.key]};"></div>`).join('')}
-      </div>
-      <div style="margin-top:8px;font-size:12px;color:#94a3b8;">
-        ${ov.general.map(g => `<span style="margin-${nameAlign === 'right' ? 'left' : 'right'}:14px;"><span style="color:${GENERAL_COLOR[g.key]};">●</span> ${GENERAL_LABEL[g.key]} ${Math.round((g.count / generalTotal) * 100)}%</span>`).join('')}
+    <tr><td style="padding:4px 6px 12px;" dir="${s.dir}" align="${nameAlign}">
+      <table dir="${s.dir}" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-radius:8px;overflow:hidden;">
+        <tr>
+          ${ov.general.map(g => `<td height="16" width="${Math.round((g.count / generalTotal) * 100)}%" style="background:${GENERAL_COLOR[g.key]};font-size:0;line-height:0;">&nbsp;</td>`).join('')}
+        </tr>
+      </table>
+      <div dir="${s.dir}" style="margin-top:8px;font-size:12px;color:#94a3b8;text-align:${nameAlign};">
+        ${ov.general.map(g => `<span style="margin-${nameAlign === 'right' ? 'left' : 'right'}:14px;white-space:nowrap;"><span style="color:${GENERAL_COLOR[g.key]};">●</span> ${GENERAL_LABEL[g.key]} ${Math.round((g.count / generalTotal) * 100)}%</span>`).join('')}
       </div>
     </td></tr>` : '';
 
@@ -120,12 +125,12 @@ export function buildDailyReportHtml(data: DailyReportData, lang: string = 'he')
     </table>
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
       <tr>
-        ${kpiCard(s.ovAvgScore, ov.avgScore.value, '', ov.avgScore.trend, '#3b82f6')}
-        ${kpiCard(s.ovComplaints, ov.complaints.value, '', ov.complaints.trend, '#ef4444')}
+        ${kpiCard(s.ovAvgScore, ov.avgScore.value, '', ov.avgScore.trend, '#3b82f6', s.dir, nameAlign)}
+        ${kpiCard(s.ovComplaints, ov.complaints.value, '', ov.complaints.trend, '#ef4444', s.dir, nameAlign)}
       </tr>
       <tr>
-        ${kpiCard(s.ovResponseTime, ov.responseTime.value, ` ${s.minutesShort}`, ov.responseTime.trend, '#f97316')}
-        ${kpiCard(s.ovTimeSaved, ov.timeSaved.value, ` ${s.ovHoursShort}`, ov.timeSaved.trend, '#eab308')}
+        ${kpiCard(s.ovResponseTime, ov.responseTime.value, ` ${s.minutesShort}`, ov.responseTime.trend, '#f97316', s.dir, nameAlign)}
+        ${kpiCard(s.ovTimeSaved, ov.timeSaved.value, ` ${s.ovHoursShort}`, ov.timeSaved.trend, '#eab308', s.dir, nameAlign)}
       </tr>
     </table>
     ${generalBar ? `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${generalBar}</table>` : ''}
@@ -175,7 +180,7 @@ export function buildDailyReportHtml(data: DailyReportData, lang: string = 'he')
 <html lang="${s.htmlLang}" dir="${s.dir}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#0b1120;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+  <div dir="${s.dir}" style="max-width:600px;margin:0 auto;padding:24px 16px;text-align:${nameAlign};">
 
     <!-- Header -->
     <div style="text-align:center;padding:24px 0 16px;">
