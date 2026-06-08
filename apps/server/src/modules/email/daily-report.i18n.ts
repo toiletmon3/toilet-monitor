@@ -26,7 +26,7 @@ export interface ReportStrings {
   // Overview (slide-5) block
   overviewTitle: string;
   yesterdayTitle: string;
-  ovLastNDays: (n: number) => string;
+  overviewSubtitle: string;
   ovAvgScore: string;
   ovComplaints: string;
   ovResponseTime: string;
@@ -66,7 +66,7 @@ const HE: ReportStrings = {
   dateLocale: 'he-IL',
   overviewTitle: '🎯 סקירה כללית',
   yesterdayTitle: '📅 פעילות אתמול',
-  ovLastNDays: (n) => `${n} ימים אחרונים`,
+  overviewSubtitle: 'אתמול',
   ovAvgScore: 'ציון ממוצע',
   ovComplaints: 'תקלות',
   ovResponseTime: 'זמן תגובה',
@@ -106,7 +106,7 @@ const EN: ReportStrings = {
   dateLocale: 'en-US',
   overviewTitle: '🎯 Overview',
   yesterdayTitle: '📅 Yesterday’s Activity',
-  ovLastNDays: (n) => `Last ${n} days`,
+  overviewSubtitle: 'Yesterday',
   ovAvgScore: 'Avg score',
   ovComplaints: 'Complaints',
   ovResponseTime: 'Response time',
