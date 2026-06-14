@@ -16,9 +16,21 @@ import { getSocket, joinOrg } from '../../../lib/socket';
 import { translateFloorName, translateRestroomName, translateLocationPath } from '../../../lib/translate-name';
 
 const GENERAL_COLORS: Record<string, string> = { like: '#22c55e', cleaning: '#ef4444', maintenance: '#3b82f6' };
-// Distinct hues, ordered so adjacent slices are far apart on the colour wheel
-// (red, blue, green, purple first) → easy to tell fault types apart.
-const DONUT_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#06b6d4', '#ec4899', '#eab308'];
+
+// A FIXED, clearly-distinct colour per fault type (keyed by issue code) so each
+// type always has the same, easily-told-apart colour regardless of slice order.
+const ISSUE_COLORS: Record<string, string> = {
+  soap_refill:     '#ef4444', // red
+  toilet_paper:    '#3b82f6', // blue
+  trash_empty:     '#22c55e', // green
+  toilet_cleaning: '#a855f7', // purple
+  floor_cleaning:  '#f59e0b', // orange
+  fault_report:    '#06b6d4', // cyan
+};
+// For any custom/unknown issue codes — distinct hues not used above.
+const DONUT_FALLBACK = ['#ec4899', '#eab308', '#14b8a6', '#f97316', '#8b5cf6', '#84cc16'];
+const donutColor = (code: string | null | undefined, i: number): string =>
+  (code && ISSUE_COLORS[code]) || DONUT_FALLBACK[i % DONUT_FALLBACK.length];
 
 /** Numeric → traffic-light colour for the score pills (higher = better). */
 function scoreColor(score: number): string {
@@ -497,7 +509,7 @@ export default function AdminDashboard() {
   }));
   const cleaningData = (ov?.donuts?.cleaning ?? []).map((d: any, i: number) => ({
     name: `${d.icon ? d.icon + ' ' : ''}${d.nameI18n?.[lang] ?? d.nameI18n?.he ?? d.issueTypeId}`,
-    value: d.count, color: DONUT_COLORS[i % DONUT_COLORS.length],
+    value: d.count, color: donutColor(d.code, i),
   }));
 
   const rooms: any[] = ov?.rooms ?? [];
