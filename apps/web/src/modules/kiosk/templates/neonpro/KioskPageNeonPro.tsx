@@ -61,11 +61,28 @@ export default function KioskPageNeonPro() {
   const [showCleanerMode, setShowCleanerMode] = useState(false);
   const [stats, setStats] = useState<{ weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null } | null>(null);
   const [statsView, setStatsView] = useState<'week' | 'today'>('week');
+  // Fill the screen in any orientation: 2 columns when the screen is portrait,
+  // 3 when it is landscape (e.g. a wall-mounted tablet) so tiles stay roughly
+  // square and we don't get wide tiles or black side margins.
+  const [isLandscape, setIsLandscape] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth > window.innerHeight,
+  );
   const lang = i18n.language as 'he' | 'en';
 
   useEffect(() => {
     const id = setInterval(() => setStatsView(v => (v === 'week' ? 'today' : 'week')), 10_000);
     return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const update = () => setIsLandscape(window.innerWidth > window.innerHeight);
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+    };
   }, []);
 
   useEffect(() => {
@@ -200,32 +217,14 @@ export default function KioskPageNeonPro() {
   const gridBtns = kioskButtons.filter(b => b.code !== 'positive_feedback' && b.enabled !== false)
     .sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99));
   const posBtn = kioskButtons.find(b => b.code === 'positive_feedback' && b.enabled !== false);
+  const cols = isLandscape ? Math.min(3, gridBtns.length || 1) : 2;
 
   return (
-    <div
-      style={{
-        height: '100dvh',
-        minHeight: '-webkit-fill-available',
-        width: '100vw',
-        background: '#000000',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-      }}
-    >
-    {/*
-      Lock the kiosk to the reference's portrait proportions and centre it, so
-      the layout looks identical on a phone and on a big tablet regardless of
-      orientation. On a landscape screen this leaves dark side margins (the
-      cost of keeping "the same proportions"); in portrait it fills the screen.
-    */}
     <div
       className="kiosk-root flex flex-col overflow-hidden"
       style={{
         height: '100dvh',
-        width: 'min(100vw, calc(100dvh * 0.52))',
-        maxWidth: '100vw',
+        minHeight: '-webkit-fill-available',
         background: 'radial-gradient(ellipse at top, #0a1416 0%, #020608 70%, #000000 100%)',
       }}
       dir="rtl"
@@ -329,8 +328,12 @@ export default function KioskPageNeonPro() {
         })()}
 
         <div
-          className="flex-1 grid grid-cols-2 gap-4"
-          style={{ gridTemplateRows: `repeat(${Math.ceil(gridBtns.length / 2)}, minmax(0, 1fr))`, minHeight: 0 }}
+          className="flex-1 grid gap-4"
+          style={{
+            gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${Math.ceil(gridBtns.length / cols)}, minmax(0, 1fr))`,
+            minHeight: 0,
+          }}
         >
           {gridBtns.map((btn) => {
             const issueType = issueTypes.find(it => it.code === btn.code);
@@ -342,7 +345,6 @@ export default function KioskPageNeonPro() {
           })}
         </div>
       </div>
-    </div>
     </div>
   );
 }
