@@ -134,3 +134,47 @@
   0%   { opacity: 0; transform: translateY(4px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Kiosk Neon Pro: animated RGB "LED strip" tile border ──────────────────
+   A neon gradient (cyan → blue → purple → magenta → cyan) rotates around each
+   tile's border. Each tile gets a different animation-delay so the colour
+   appears to flow from one cube to the next, like an LED strip. */
+@property --kiosk-led-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes kioskLedSpin {
+  to { --kiosk-led-angle: 360deg; }
+}
+
+@keyframes kioskLedPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.72; }
+}
+
+.kiosk-led-border {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2.5px; /* LED strip thickness */
+  background: conic-gradient(
+    from var(--kiosk-led-angle),
+    #00e5cc, #22d3ee, #3b82f6, #a855f7, #ec4899, #a855f7, #3b82f6, #22d3ee, #00e5cc
+  );
+  /* Show only the padding ring, punch out the centre → a glowing border. */
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  filter: drop-shadow(0 0 5px rgba(124, 246, 232, 0.55))
+          drop-shadow(0 0 12px rgba(168, 85, 247, 0.4));
+  pointer-events: none;
+  animation: kioskLedSpin 4.5s linear infinite, kioskLedPulse 3s ease-in-out infinite;
+}
+
+/* Respect users / kiosks that prefer no motion: keep the glow, drop the spin. */
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-led-border { animation: none; }
+}

@@ -327,7 +327,7 @@ export default function KioskPageNeonPro() {
           const Icon = ICON_BY_CODE['positive_feedback'];
           return (
             <div style={{ flex: '0 0 14%', minHeight: 90 }}>
-              <KioskButton IconCmp={Icon} color={NEON} label={label} scale={iconScale} onPress={() => handleIssuePress('positive_feedback')} fullWidth />
+              <KioskButton IconCmp={Icon} color={NEON} label={label} scale={iconScale} ledIndex={0} onPress={() => handleIssuePress('positive_feedback')} fullWidth />
             </div>
           );
         })()}
@@ -340,12 +340,12 @@ export default function KioskPageNeonPro() {
             minHeight: 0,
           }}
         >
-          {gridBtns.map((btn) => {
+          {gridBtns.map((btn, i) => {
             const issueType = issueTypes.find(it => it.code === btn.code);
             const label = issueType ? (issueType.nameI18n[lang] ?? issueType.nameI18n['he']) : (lang === 'he' ? btn.nameHe : btn.nameEn);
             const Icon = ICON_BY_CODE[btn.code] ?? WrenchIcon;
             return (
-              <KioskButton key={btn.code} IconCmp={Icon} color={NEON} label={label} scale={iconScale} onPress={() => handleIssuePress(btn.code)} />
+              <KioskButton key={btn.code} IconCmp={Icon} color={NEON} label={label} scale={iconScale} ledIndex={i + 1} onPress={() => handleIssuePress(btn.code)} />
             );
           })}
         </div>

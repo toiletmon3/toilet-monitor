@@ -8,6 +8,8 @@ interface Props {
   color?: string;
   /** Icon/label size multiplier set per template in admin (1 = 100%). */
   scale?: number;
+  /** Tile position — offsets the LED animation so colour flows between cubes. */
+  ledIndex?: number;
 }
 
 /**
@@ -15,7 +17,7 @@ interface Props {
  * the hand-drawn cleaning-icon mockup: slimmer border, softer outer glow,
  * thinner stroke icons rendered via CSS color.
  */
-export default function KioskButtonNeonPro({ IconCmp, label, onPress, fullWidth, color = '#7CF6E8', scale = 1 }: Props) {
+export default function KioskButtonNeonPro({ IconCmp, label, onPress, fullWidth, color = '#7CF6E8', scale = 1, ledIndex = 0 }: Props) {
   const [pressed, setPressed] = useState(false);
 
   const handlePress = () => {
@@ -65,6 +67,14 @@ export default function KioskButtonNeonPro({ IconCmp, label, onPress, fullWidth,
         padding: fullWidth ? '0 clamp(1rem, 2.6vh, 2rem)' : 'clamp(0.35rem, 1vh, 0.8rem)',
       }}
     >
+      {/* Animated RGB LED strip border — colour flows between cubes via the
+          per-tile animation-delay. */}
+      <span
+        className="kiosk-led-border"
+        aria-hidden
+        style={{ animationDelay: `${-ledIndex * 0.45}s, ${-ledIndex * 0.3}s` }}
+      />
+
       <span
         style={{
           flexShrink: 0,
