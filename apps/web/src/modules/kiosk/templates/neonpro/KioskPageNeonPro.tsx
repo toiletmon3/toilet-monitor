@@ -276,9 +276,10 @@ export default function KioskPageNeonPro() {
       <div className="px-6 pt-2 pb-3 flex-shrink-0 text-center">
         <h1
           className="mb-3"
+          dir="rtl"
           style={{
             color: NEON,
-            fontSize: 'clamp(1.6rem, 4.6vh, 3rem)',
+            fontSize: 'clamp(2rem, 6vh, 4rem)',
             fontWeight: 700,
             textShadow: `0 0 14px rgba(124,246,232,0.55), 0 0 28px rgba(124,246,232,0.3)`,
           }}
@@ -294,7 +295,7 @@ export default function KioskPageNeonPro() {
                 color: NEON,
                 border: `1px solid rgba(124,246,232,0.4)`,
                 boxShadow: `0 0 10px rgba(124,246,232,0.2), inset 0 0 8px rgba(124,246,232,0.05)`,
-                fontSize: 'clamp(0.85rem, 1.7vh, 1.25rem)',
+                fontSize: 'clamp(1rem, 2.3vh, 1.6rem)',
                 animation: 'kioskStatFade 0.5s ease',
               }}
             >
@@ -311,7 +312,7 @@ export default function KioskPageNeonPro() {
                 color: NEON,
                 border: `1px solid rgba(124,246,232,0.4)`,
                 boxShadow: `0 0 10px rgba(124,246,232,0.2), inset 0 0 8px rgba(124,246,232,0.05)`,
-                fontSize: 'clamp(0.85rem, 1.7vh, 1.25rem)',
+                fontSize: 'clamp(1rem, 2.3vh, 1.6rem)',
               }}
             >
               <span>{stats.avgResponseMinutes ?? '—'} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
