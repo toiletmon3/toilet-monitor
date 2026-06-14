@@ -149,54 +149,62 @@
   to { --kiosk-led-angle: 360deg; }
 }
 
-/* Shared: both LED layers are a masked ring (border only, centre punched out). */
-.kiosk-led-color,
-.kiosk-led-comet {
+/* Layer 1 — the colour-changing border: a full neon rainbow, masked to the
+   tile border, that rotates slowly so the border is always lit and its colour
+   gently and continuously shifts (cyan → blue → purple → magenta → cyan). */
+.kiosk-led-color {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  padding: 3px; /* LED strip thickness */
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-  pointer-events: none;
-}
-
-/* Layer 1 — the colour-changing border: a full neon rainbow that rotates
-   slowly around the whole ring, so the border is always lit and its colour
-   continuously shifts (cyan → blue → purple → magenta → cyan). */
-.kiosk-led-color {
+  padding: 2.5px;
   background: conic-gradient(
     from var(--kiosk-led-angle),
     #00e5cc, #22d3ee, #3b82f6, #a855f7, #ec4899, #a855f7, #3b82f6, #22d3ee, #00e5cc
   );
-  filter: drop-shadow(0 0 5px rgba(124, 246, 232, 0.6))
-          drop-shadow(0 0 12px rgba(168, 85, 247, 0.4));
-  animation: kioskLedSpin 9s linear infinite;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  filter: drop-shadow(0 0 4px rgba(124, 246, 232, 0.45))
+          drop-shadow(0 0 10px rgba(168, 85, 247, 0.3));
+  pointer-events: none;
+  animation: kioskLedSpin 16s linear infinite; /* slow, gentle colour flow */
 }
 
-/* Layer 2 — the running strip: a wide, smooth bright band that glides
-   continuously around the channel (no blink). A per-tile delay makes it flow
-   from one cube to the next. */
-.kiosk-led-comet {
-  background: conic-gradient(
-    from var(--kiosk-led-angle),
-    rgba(255, 255, 255, 0) 0deg,
-    rgba(255, 255, 255, 0) 210deg,
-    rgba(255, 255, 255, 0.12) 250deg,
-    rgba(255, 255, 255, 0.55) 312deg,
-    #ffffff 350deg,
-    rgba(255, 255, 255, 0) 360deg
-  );
-  filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.85))
-          drop-shadow(0 0 16px rgba(124, 246, 232, 0.6));
-  animation: kioskLedSpin 4.5s linear infinite;
+/* Layer 2 — the "snake": one bright light that crawls continuously along a
+   single serpentine path running through the channels between the cubes.
+   pathLength=100 normalises the dash units; one short dash + long gap means a
+   single bright segment travels the whole grid (no blink). */
+@keyframes kioskSnakeRun {
+  to { stroke-dashoffset: -100; }
+}
+
+.kiosk-snake {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2;
+}
+
+.kiosk-snake-path {
+  fill: none;
+  stroke: #d7fffb;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 12 88; /* bright head 12% of path, dark gap 88% */
+  filter: drop-shadow(0 0 5px rgba(215, 255, 251, 0.95))
+          drop-shadow(0 0 12px rgba(124, 246, 232, 0.7))
+          drop-shadow(0 0 22px rgba(124, 246, 232, 0.4));
+  animation: kioskSnakeRun 5.5s linear infinite;
 }
 
 /* Respect users / kiosks that prefer no motion: keep a steady lit border,
-   drop the moving strip. */
+   drop the moving snake. */
 @media (prefers-reduced-motion: reduce) {
   .kiosk-led-color { animation: none; }
-  .kiosk-led-comet { display: none; }
+  .kiosk-snake { display: none; }
 }

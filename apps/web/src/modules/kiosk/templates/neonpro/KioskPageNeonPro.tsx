@@ -48,6 +48,26 @@ const DEFAULT_BUTTONS = [
 
 type ConnectionStatus = 'online' | 'offline' | 'syncing';
 
+/**
+ * A single serpentine path (in a 0–100 viewBox) that snakes through the grid:
+ * across the top, then weaving left↔right through each horizontal channel
+ * between the cube rows. A bright dash animated along it reads as one light
+ * crawling between the cubes.
+ */
+function buildSnakePath(rows: number): string {
+  const seg: string[] = ['M 0 0', 'L 100 0'];
+  for (let r = 1; r <= rows; r++) {
+    const y = +((r / rows) * 100).toFixed(3);
+    if (r % 2 === 1) seg.push(`L 100 ${y}`, `L 0 ${y}`);
+    else seg.push(`L 0 ${y}`, `L 100 ${y}`);
+  }
+  // Close the loop cleanly along the edges (no diagonal) so the travelling
+  // dash circulates forever without a jump.
+  if (rows % 2 === 0) seg.push('L 0 100');
+  seg.push('L 0 0', 'Z');
+  return seg.join(' ');
+}
+
 export default function KioskPageNeonPro() {
   const { deviceCode } = useParams<{ deviceCode: string }>();
   const { t, i18n } = useTranslation();
@@ -336,11 +356,28 @@ export default function KioskPageNeonPro() {
         <div
           className="flex-1 grid gap-4"
           style={{
+            position: 'relative',
             gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
             gridTemplateRows: `repeat(${Math.ceil(gridBtns.length / cols)}, minmax(0, 1fr))`,
             minHeight: 0,
           }}
         >
+          {/* One bright "snake" of light crawling through the channels between
+              the cubes (a single dash travelling a serpentine path). */}
+          <svg
+            className="kiosk-snake"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden
+          >
+            <path
+              className="kiosk-snake-path"
+              d={buildSnakePath(Math.ceil(gridBtns.length / cols))}
+              pathLength={100}
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+
           {gridBtns.map((btn, i) => {
             const issueType = issueTypes.find(it => it.code === btn.code);
             const label = issueType ? (issueType.nameI18n[lang] ?? issueType.nameI18n['he']) : (lang === 'he' ? btn.nameHe : btn.nameEn);
