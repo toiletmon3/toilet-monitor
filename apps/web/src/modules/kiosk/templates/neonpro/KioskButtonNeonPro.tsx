@@ -67,18 +67,13 @@ export default function KioskButtonNeonPro({ IconCmp, label, onPress, fullWidth,
         padding: fullWidth ? '0 clamp(1rem, 2.6vh, 2rem)' : 'clamp(0.35rem, 1vh, 0.8rem)',
       }}
     >
-      {/* Animated LED border: a colour-changing rainbow ring (layer 1) plus a
-          bright strip that runs around the channel (layer 2). Per-tile delays
-          make both flow from one cube to the next. */}
+      {/* Gentle colour-changing neon border. The bright running "snake" is a
+          single grid-wide overlay (see KioskPageNeonPro), not per-tile. The
+          per-tile delay offsets the colour so it drifts across the grid. */}
       <span
         className="kiosk-led-color"
         aria-hidden
-        style={{ animationDelay: `${-ledIndex * 0.7}s` }}
-      />
-      <span
-        className="kiosk-led-comet"
-        aria-hidden
-        style={{ animationDelay: `${-ledIndex * 0.45}s` }}
+        style={{ animationDelay: `${-ledIndex * 0.9}s` }}
       />
 
       <span
