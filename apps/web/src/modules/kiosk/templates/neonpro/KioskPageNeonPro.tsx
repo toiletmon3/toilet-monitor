@@ -203,10 +203,29 @@ export default function KioskPageNeonPro() {
 
   return (
     <div
-      className="kiosk-root flex flex-col overflow-hidden"
       style={{
         height: '100dvh',
         minHeight: '-webkit-fill-available',
+        width: '100vw',
+        background: '#000000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+      }}
+    >
+    {/*
+      Lock the kiosk to the reference's portrait proportions and centre it, so
+      the layout looks identical on a phone and on a big tablet regardless of
+      orientation. On a landscape screen this leaves dark side margins (the
+      cost of keeping "the same proportions"); in portrait it fills the screen.
+    */}
+    <div
+      className="kiosk-root flex flex-col overflow-hidden"
+      style={{
+        height: '100dvh',
+        width: 'min(100vw, calc(100dvh * 0.52))',
+        maxWidth: '100vw',
         background: 'radial-gradient(ellipse at top, #0a1416 0%, #020608 70%, #000000 100%)',
       }}
       dir="rtl"
@@ -255,7 +274,7 @@ export default function KioskPageNeonPro() {
           className="mb-3"
           style={{
             color: NEON,
-            fontSize: 'clamp(2rem, 4.5vw, 3.5rem)',
+            fontSize: 'clamp(1.6rem, 4.6vh, 3rem)',
             fontWeight: 700,
             textShadow: `0 0 14px rgba(124,246,232,0.55), 0 0 28px rgba(124,246,232,0.3)`,
           }}
@@ -271,7 +290,7 @@ export default function KioskPageNeonPro() {
                 color: NEON,
                 border: `1px solid rgba(124,246,232,0.4)`,
                 boxShadow: `0 0 10px rgba(124,246,232,0.2), inset 0 0 8px rgba(124,246,232,0.05)`,
-                fontSize: 'clamp(0.95rem, 1.4vw, 1.1rem)',
+                fontSize: 'clamp(0.85rem, 1.7vh, 1.25rem)',
                 animation: 'kioskStatFade 0.5s ease',
               }}
             >
@@ -288,7 +307,7 @@ export default function KioskPageNeonPro() {
                 color: NEON,
                 border: `1px solid rgba(124,246,232,0.4)`,
                 boxShadow: `0 0 10px rgba(124,246,232,0.2), inset 0 0 8px rgba(124,246,232,0.05)`,
-                fontSize: 'clamp(0.95rem, 1.4vw, 1.1rem)',
+                fontSize: 'clamp(0.85rem, 1.7vh, 1.25rem)',
               }}
             >
               <span>{stats.avgResponseMinutes ?? '—'} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
@@ -323,6 +342,7 @@ export default function KioskPageNeonPro() {
           })}
         </div>
       </div>
+    </div>
     </div>
   );
 }
