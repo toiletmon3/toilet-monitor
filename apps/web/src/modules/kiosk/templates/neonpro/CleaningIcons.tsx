@@ -5,12 +5,12 @@
  */
 
 interface IconProps {
-  size?: number;
+  size?: number | string;
   className?: string;
   style?: React.CSSProperties;
 }
 
-const base = (size: number, style?: React.CSSProperties): React.SVGProps<SVGSVGElement> => ({
+const base = (size: number | string, style?: React.CSSProperties): React.SVGProps<SVGSVGElement> => ({
   width: size,
   height: size,
   viewBox: '0 0 64 64',
