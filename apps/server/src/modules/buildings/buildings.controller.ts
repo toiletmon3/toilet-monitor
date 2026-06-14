@@ -99,7 +99,7 @@ export class BuildingsController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('kiosk-templates/:id')
-  updateTemplate(@Param('id') id: string, @Body() dto: { name?: string; buttons?: any[]; theme?: string }) {
+  updateTemplate(@Param('id') id: string, @Body() dto: { name?: string; buttons?: any[]; theme?: string; iconScale?: number }) {
     return this.buildingsService.updateTemplate(id, dto);
   }
 

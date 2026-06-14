@@ -54,6 +54,7 @@ export default function KioskPageNeonPro() {
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
   const [issueTypes, setIssueTypes] = useState<any[]>([]);
   const [kioskButtons, setKioskButtons] = useState<any[]>(DEFAULT_BUTTONS);
+  const [iconScale, setIconScale] = useState(1);
   const [confirmed, setConfirmed] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('online');
@@ -96,6 +97,10 @@ export default function KioskPageNeonPro() {
         try {
           const { data: btns } = await api.get(`/buildings/kiosk-buttons/${deviceCode}`);
           if (btns?.length) setKioskButtons(btns);
+        } catch {}
+        try {
+          const { data: cfg } = await api.get(`/buildings/kiosk-config/${deviceCode}`);
+          if (cfg?.iconScale) setIconScale(cfg.iconScale);
         } catch {}
         api.get('/auth/default-org').then(r => {
           if (r.data?.kioskLang) import('../../../../i18n').then(m => m.setLanguage(r.data.kioskLang));
@@ -322,7 +327,7 @@ export default function KioskPageNeonPro() {
           const Icon = ICON_BY_CODE['positive_feedback'];
           return (
             <div style={{ flex: '0 0 14%', minHeight: 90 }}>
-              <KioskButton IconCmp={Icon} color={NEON} label={label} onPress={() => handleIssuePress('positive_feedback')} fullWidth />
+              <KioskButton IconCmp={Icon} color={NEON} label={label} scale={iconScale} onPress={() => handleIssuePress('positive_feedback')} fullWidth />
             </div>
           );
         })()}
@@ -340,7 +345,7 @@ export default function KioskPageNeonPro() {
             const label = issueType ? (issueType.nameI18n[lang] ?? issueType.nameI18n['he']) : (lang === 'he' ? btn.nameHe : btn.nameEn);
             const Icon = ICON_BY_CODE[btn.code] ?? WrenchIcon;
             return (
-              <KioskButton key={btn.code} IconCmp={Icon} color={NEON} label={label} onPress={() => handleIssuePress(btn.code)} />
+              <KioskButton key={btn.code} IconCmp={Icon} color={NEON} label={label} scale={iconScale} onPress={() => handleIssuePress(btn.code)} />
             );
           })}
         </div>

@@ -6,6 +6,8 @@ interface Props {
   onPress: () => void;
   fullWidth?: boolean;
   color?: string;
+  /** Icon/label size multiplier set per template in admin (1 = 100%). */
+  scale?: number;
 }
 
 /**
@@ -13,7 +15,7 @@ interface Props {
  * the hand-drawn cleaning-icon mockup: slimmer border, softer outer glow,
  * thinner stroke icons rendered via CSS color.
  */
-export default function KioskButtonNeonPro({ IconCmp, label, onPress, fullWidth, color = '#7CF6E8' }: Props) {
+export default function KioskButtonNeonPro({ IconCmp, label, onPress, fullWidth, color = '#7CF6E8', scale = 1 }: Props) {
   const [pressed, setPressed] = useState(false);
 
   const handlePress = () => {
@@ -32,8 +34,14 @@ export default function KioskButtonNeonPro({ IconCmp, label, onPress, fullWidth,
   // on a phone and on a big tablet (was a fixed 64px → looked tiny on large
   // screens). Grid tiles stack icon-over-label (column); the full-width
   // positive-feedback button keeps icon-beside-label (row), matching the mockup.
-  const labelSize = fullWidth ? 'clamp(1.5rem, 3.6vh, 2.6rem)' : 'clamp(1.25rem, 3.1vh, 2.3rem)';
-  const iconBox = fullWidth ? 'min(82%, 120px)' : 'min(64%, 210px)';
+  const s = Math.min(2.5, Math.max(0.5, scale || 1));
+  const labelSize = fullWidth
+    ? `calc(clamp(1.5rem, 3.6vh, 2.6rem) * ${s})`
+    : `calc(clamp(1.25rem, 3.1vh, 2.3rem) * ${s})`;
+  // Cap the height at 96% so a large multiplier can't overflow the tile.
+  const iconBox = fullWidth
+    ? `min(96%, calc(min(82%, 120px) * ${s}))`
+    : `min(96%, calc(min(64%, 210px) * ${s}))`;
 
   return (
     <button
