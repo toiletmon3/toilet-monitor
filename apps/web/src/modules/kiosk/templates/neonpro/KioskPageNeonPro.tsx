@@ -26,7 +26,7 @@ import {
 
 const NEON = '#7CF6E8';
 
-const ICON_BY_CODE: Record<string, (props: { size?: number; style?: React.CSSProperties }) => React.ReactElement> = {
+const ICON_BY_CODE: Record<string, (props: { size?: number | string; style?: React.CSSProperties }) => React.ReactElement> = {
   toilet_paper: ToiletPaperIcon,
   floor_cleaning: FloorCleaningIcon,
   toilet_cleaning: ToiletIcon,
