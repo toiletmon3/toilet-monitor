@@ -191,15 +191,16 @@
 
 .kiosk-snake-path {
   fill: none;
-  stroke: #d7fffb;
-  stroke-width: 3;
+  stroke: #eafffd;
+  stroke-width: 4;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-dasharray: 12 88; /* bright head 12% of path, dark gap 88% */
-  filter: drop-shadow(0 0 5px rgba(215, 255, 251, 0.95))
-          drop-shadow(0 0 12px rgba(124, 246, 232, 0.7))
-          drop-shadow(0 0 22px rgba(124, 246, 232, 0.4));
-  animation: kioskSnakeRun 5.5s linear infinite;
+  /* One bright body (18% of the loop) + long gap → a single snake crawling. */
+  stroke-dasharray: 18 82;
+  filter: drop-shadow(0 0 5px rgba(234, 255, 253, 0.95))
+          drop-shadow(0 0 12px rgba(124, 246, 232, 0.75))
+          drop-shadow(0 0 22px rgba(124, 246, 232, 0.45));
+  animation: kioskSnakeRun 3.2s linear infinite;
 }
 
 /* Respect users / kiosks that prefer no motion: keep a steady lit border,
