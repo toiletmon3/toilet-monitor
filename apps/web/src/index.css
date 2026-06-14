@@ -165,8 +165,7 @@
           mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
-  filter: drop-shadow(0 0 4px rgba(124, 246, 232, 0.45))
-          drop-shadow(0 0 10px rgba(168, 85, 247, 0.3));
+  filter: drop-shadow(0 0 5px rgba(124, 246, 232, 0.4));
   pointer-events: none;
   animation: kioskLedSpin 16s linear infinite; /* slow, gentle colour flow */
 }
@@ -184,11 +183,16 @@
   top: 0;
   left: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, #ffffff 0%, rgba(180, 255, 247, 0.9) 38%, rgba(124, 246, 232, 0) 72%);
+  /* Glow is baked into the gradient (no drop-shadow filter → no per-frame
+     repaint), so the motion stays smooth on low-power tablets. */
+  background: radial-gradient(circle,
+    #ffffff 0%,
+    rgba(190, 255, 248, 0.95) 26%,
+    rgba(124, 246, 232, 0.5) 50%,
+    rgba(124, 246, 232, 0) 72%);
   offset-anchor: center;
   offset-rotate: 0deg;
-  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.95))
-          drop-shadow(0 0 14px rgba(124, 246, 232, 0.8));
+  will-change: offset-distance;
   pointer-events: none;
   animation: kioskBeam 3.4s linear infinite;
 }
