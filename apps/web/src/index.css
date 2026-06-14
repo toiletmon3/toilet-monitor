@@ -149,36 +149,54 @@
   to { --kiosk-led-angle: 360deg; }
 }
 
-/* The travelling "LED": a bright comet (head + fading tail) that runs around
-   the tile border. A different animation-delay per tile makes the light appear
-   to flow from one cube to the next. */
-.kiosk-led-border {
+/* Shared: both LED layers are a masked ring (border only, centre punched out). */
+.kiosk-led-color,
+.kiosk-led-comet {
   position: absolute;
   inset: 0;
   border-radius: inherit;
   padding: 3px; /* LED strip thickness */
-  background: conic-gradient(
-    from var(--kiosk-led-angle),
-    rgba(124, 246, 232, 0) 0deg,
-    rgba(124, 246, 232, 0) 250deg,
-    rgba(124, 246, 232, 0.5) 312deg,
-    rgba(180, 255, 247, 0.95) 344deg,
-    #ffffff 358deg,
-    #ffffff 360deg
-  );
-  /* Show only the padding ring, punch out the centre → a glowing border. */
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
           mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
-  filter: drop-shadow(0 0 6px rgba(124, 246, 232, 0.9))
-          drop-shadow(0 0 16px rgba(124, 246, 232, 0.5));
   pointer-events: none;
-  animation: kioskLedSpin 3s linear infinite;
 }
 
-/* Respect users / kiosks that prefer no motion: keep the steady outline,
-   drop the travelling comet. */
+/* Layer 1 — the colour-changing border: a full neon rainbow that rotates
+   slowly around the whole ring, so the border is always lit and its colour
+   continuously shifts (cyan → blue → purple → magenta → cyan). */
+.kiosk-led-color {
+  background: conic-gradient(
+    from var(--kiosk-led-angle),
+    #00e5cc, #22d3ee, #3b82f6, #a855f7, #ec4899, #a855f7, #3b82f6, #22d3ee, #00e5cc
+  );
+  filter: drop-shadow(0 0 5px rgba(124, 246, 232, 0.6))
+          drop-shadow(0 0 12px rgba(168, 85, 247, 0.4));
+  animation: kioskLedSpin 9s linear infinite;
+}
+
+/* Layer 2 — the running strip: a wide, smooth bright band that glides
+   continuously around the channel (no blink). A per-tile delay makes it flow
+   from one cube to the next. */
+.kiosk-led-comet {
+  background: conic-gradient(
+    from var(--kiosk-led-angle),
+    rgba(255, 255, 255, 0) 0deg,
+    rgba(255, 255, 255, 0) 210deg,
+    rgba(255, 255, 255, 0.12) 250deg,
+    rgba(255, 255, 255, 0.55) 312deg,
+    #ffffff 350deg,
+    rgba(255, 255, 255, 0) 360deg
+  );
+  filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.85))
+          drop-shadow(0 0 16px rgba(124, 246, 232, 0.6));
+  animation: kioskLedSpin 4.5s linear infinite;
+}
+
+/* Respect users / kiosks that prefer no motion: keep a steady lit border,
+   drop the moving strip. */
 @media (prefers-reduced-motion: reduce) {
-  .kiosk-led-border { animation: none; opacity: 0; }
+  .kiosk-led-color { animation: none; }
+  .kiosk-led-comet { display: none; }
 }

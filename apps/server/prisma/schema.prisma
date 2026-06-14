@@ -38,7 +38,7 @@ model KioskTemplate {
   isDefault Boolean @default(false)
   theme     String  @default("default") // "default" | "neon"
   buttons   Json
-  iconScale Float   @default(1.0) // kiosk icon/label size multiplier (1 = 100%)
+  iconScale Float   @default(1.5) // kiosk icon/label size multiplier (1 = 100%)
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   buildings    Building[]
