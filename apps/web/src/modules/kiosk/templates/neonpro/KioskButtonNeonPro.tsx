@@ -32,7 +32,7 @@ export default function KioskButtonNeonPro({ IconCmp, label, onPress, fullWidth,
   // on a phone and on a big tablet (was a fixed 64px → looked tiny on large
   // screens). Grid tiles stack icon-over-label (column); the full-width
   // positive-feedback button keeps icon-beside-label (row), matching the mockup.
-  const labelSize = fullWidth ? 'clamp(1.4rem, 3.4vmin, 2.2rem)' : 'clamp(1.15rem, 2.6vmin, 1.8rem)';
+  const labelSize = fullWidth ? 'clamp(1.3rem, 3vh, 2rem)' : 'clamp(1.05rem, 2.4vh, 1.7rem)';
   const iconBox = fullWidth ? 'min(74%, 96px)' : 'min(52%, 150px)';
 
   return (
@@ -53,8 +53,8 @@ export default function KioskButtonNeonPro({ IconCmp, label, onPress, fullWidth,
         flexDirection: fullWidth ? 'row' : 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: fullWidth ? 'clamp(1rem, 3vmin, 2rem)' : 'clamp(0.4rem, 1.5vmin, 1rem)',
-        padding: fullWidth ? '0 clamp(1rem, 3vmin, 2rem)' : 'clamp(0.6rem, 2vmin, 1.4rem)',
+        gap: fullWidth ? 'clamp(1rem, 2.6vh, 2rem)' : 'clamp(0.4rem, 1.4vh, 1rem)',
+        padding: fullWidth ? '0 clamp(1rem, 2.6vh, 2rem)' : 'clamp(0.6rem, 1.8vh, 1.4rem)',
       }}
     >
       <span
