@@ -16,7 +16,8 @@ import { getSocket, joinOrg } from '../../../lib/socket';
 import { translateFloorName, translateRestroomName, translateLocationPath } from '../../../lib/translate-name';
 
 const GENERAL_COLORS: Record<string, string> = { like: '#22c55e', cleaning: '#ef4444', maintenance: '#3b82f6' };
-const RED_SHADES = ['#ef4444', '#f87171', '#fca5a5', '#fb7185', '#e11d48', '#fecaca'];
+// Distinct hues so each fault type is easy to tell apart (was all red shades).
+const DONUT_COLORS = ['#ef4444', '#f59e0b', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899'];
 
 /** Numeric → traffic-light colour for the score pills (higher = better). */
 function scoreColor(score: number): string {
@@ -495,7 +496,7 @@ export default function AdminDashboard() {
   }));
   const cleaningData = (ov?.donuts?.cleaning ?? []).map((d: any, i: number) => ({
     name: `${d.icon ? d.icon + ' ' : ''}${d.nameI18n?.[lang] ?? d.nameI18n?.he ?? d.issueTypeId}`,
-    value: d.count, color: RED_SHADES[i % RED_SHADES.length],
+    value: d.count, color: DONUT_COLORS[i % DONUT_COLORS.length],
   }));
 
   const rooms: any[] = ov?.rooms ?? [];

@@ -267,15 +267,17 @@ export default function AdminAnalytics() {
 
       {/* ── SLA ── */}
       <Card title={t('admin.analytics.slaTitle')}>
-        {/* Top header — explanation + target picker */}
-        <div className="flex items-start justify-between flex-wrap gap-3">
-          <div className="flex items-start gap-2 flex-1 min-w-0 max-w-2xl">
+        {/* Top header — explanation + target picker.
+            Stack vertically on mobile so the description keeps full width
+            (otherwise it gets squeezed into a sliver and wraps word-per-line). */}
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+          <div className="flex items-start gap-2 md:flex-1 md:max-w-2xl">
             <Info size={14} className="mt-0.5 flex-shrink-0" style={{ color: CYAN }} />
             <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
               {t('admin.analytics.slaIntro')}
             </p>
           </div>
-          <div className="flex flex-col gap-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+          <div className="flex flex-col gap-1 text-xs md:flex-shrink-0" style={{ color: 'var(--color-text-secondary)' }}>
             <span>{t('admin.analytics.slaTarget')}</span>
             <div className="flex gap-1">
               {[10, 15, 20, 30].map(tv => (

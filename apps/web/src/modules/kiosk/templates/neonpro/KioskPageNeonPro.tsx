@@ -3,7 +3,7 @@
  * cleaning-icon mockup. Uses custom CleaningIcons SVGs, soft cyan glow,
  * thinner borders, and shows the same stats (weekly users + avg response).
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { setLanguage } from '../../../../i18n';
@@ -49,23 +49,36 @@ const DEFAULT_BUTTONS = [
 type ConnectionStatus = 'online' | 'offline' | 'syncing';
 
 /**
- * A single serpentine path (in a 0–100 viewBox) that snakes through the grid:
- * across the top, then weaving left↔right through each horizontal channel
- * between the cube rows. A bright dash animated along it reads as one light
- * crawling between the cubes.
+ * A single serpentine path in real pixel coordinates (so the SVG renders 1:1
+ * with no axis stretching → smooth, even motion). It runs across the top, then
+ * weaves left↔right through each horizontal channel between the cube rows, and
+ * closes up the left edge — one continuous loop a light can crawl along like a
+ * snake. `GAP` matches the grid's gap-4 (16px); `R` rounds the corners so the
+ * snake turns smoothly instead of with hard angles.
  */
-function buildSnakePath(rows: number): string {
-  const seg: string[] = ['M 0 0', 'L 100 0'];
-  for (let r = 1; r <= rows; r++) {
-    const y = +((r / rows) * 100).toFixed(3);
-    if (r % 2 === 1) seg.push(`L 100 ${y}`, `L 0 ${y}`);
-    else seg.push(`L 0 ${y}`, `L 100 ${y}`);
+function buildSnakePath(w: number, h: number, rows: number): string {
+  if (w <= 0 || h <= 0) return '';
+  const GAP = 16;
+  const tileH = (h - (rows - 1) * GAP) / rows;
+  // y of each horizontal line the snake travels along: top edge, the centre of
+  // each channel between rows, then the bottom edge.
+  const ys = [0];
+  for (let r = 1; r < rows; r++) ys.push(r * tileH + (r - 0.5) * GAP);
+  ys.push(h);
+
+  let d = `M 0 ${ys[0]}`;
+  let atRight: boolean = false;
+  for (let i = 0; i < ys.length; i++) {
+    const y = ys[i];
+    const goRight: boolean = i === 0 ? true : !atRight;
+    d += goRight ? ` L ${w} ${y}` : ` L 0 ${y}`;
+    atRight = goRight;
+    const ny = ys[i + 1];
+    if (ny !== undefined) d += atRight ? ` L ${w} ${ny}` : ` L 0 ${ny}`;
   }
-  // Close the loop cleanly along the edges (no diagonal) so the travelling
-  // dash circulates forever without a jump.
-  if (rows % 2 === 0) seg.push('L 0 100');
-  seg.push('L 0 0', 'Z');
-  return seg.join(' ');
+  if (atRight) d += ` L 0 ${h}`;
+  d += ` L 0 ${ys[0]} Z`;
+  return d;
 }
 
 export default function KioskPageNeonPro() {
@@ -88,6 +101,10 @@ export default function KioskPageNeonPro() {
   const [isLandscape, setIsLandscape] = useState(
     () => typeof window !== 'undefined' && window.innerWidth > window.innerHeight,
   );
+  // Measure the grid so the LED "snake" path is built in real pixels (1:1, no
+  // axis stretching → smooth motion).
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridSize, setGridSize] = useState({ w: 0, h: 0 });
   const lang = i18n.language as 'he' | 'en';
 
   useEffect(() => {
@@ -104,6 +121,17 @@ export default function KioskPageNeonPro() {
       window.removeEventListener('resize', update);
       window.removeEventListener('orientationchange', update);
     };
+  }, []);
+
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      setGridSize({ w: el.clientWidth, h: el.clientHeight });
+    });
+    ro.observe(el);
+    setGridSize({ w: el.clientWidth, h: el.clientHeight });
+    return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
@@ -354,6 +382,7 @@ export default function KioskPageNeonPro() {
         })()}
 
         <div
+          ref={gridRef}
           className="flex-1 grid gap-4"
           style={{
             position: 'relative',
@@ -363,20 +392,21 @@ export default function KioskPageNeonPro() {
           }}
         >
           {/* One bright "snake" of light crawling through the channels between
-              the cubes (a single dash travelling a serpentine path). */}
-          <svg
-            className="kiosk-snake"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-            aria-hidden
-          >
-            <path
-              className="kiosk-snake-path"
-              d={buildSnakePath(Math.ceil(gridBtns.length / cols))}
-              pathLength={100}
-              vectorEffect="non-scaling-stroke"
-            />
-          </svg>
+              the cubes. Built in real px (viewBox = grid size) so it moves at a
+              constant, natural speed with no stretching. */}
+          {gridSize.w > 0 && (
+            <svg
+              className="kiosk-snake"
+              viewBox={`0 0 ${gridSize.w} ${gridSize.h}`}
+              aria-hidden
+            >
+              <path
+                className="kiosk-snake-path"
+                d={buildSnakePath(gridSize.w, gridSize.h, Math.ceil(gridBtns.length / cols))}
+                pathLength={100}
+              />
+            </svg>
+          )}
 
           {gridBtns.map((btn, i) => {
             const issueType = issueTypes.find(it => it.code === btn.code);
