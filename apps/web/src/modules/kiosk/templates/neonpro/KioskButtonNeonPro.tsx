@@ -72,7 +72,7 @@ export default function KioskButtonNeonPro({ IconCmp, label, onPress, fullWidth,
       <span
         className="kiosk-led-border"
         aria-hidden
-        style={{ animationDelay: `${-ledIndex * 0.45}s, ${-ledIndex * 0.3}s` }}
+        style={{ animationDelay: `${-ledIndex * 0.4}s` }}
       />
 
       <span
