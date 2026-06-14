@@ -579,10 +579,11 @@ export class AnalyticsService {
     ].filter(d => d.count > 0);
 
     const groupByType = (list: ScoredIncident[]) => {
-      const m = new Map<string, { issueTypeId: string; nameI18n: any; icon: string | null; count: number }>();
+      const m = new Map<string, { issueTypeId: string; code: string | null; nameI18n: any; icon: string | null; count: number }>();
       for (const i of list) {
         const e = m.get(i.issueTypeId) ?? {
           issueTypeId: i.issueTypeId,
+          code: (i.issueType as any)?.code ?? null,
           nameI18n: (i.issueType as any)?.nameI18n ?? { he: i.issueTypeId },
           icon: (i.issueType as any)?.icon ?? null,
           count: 0,
