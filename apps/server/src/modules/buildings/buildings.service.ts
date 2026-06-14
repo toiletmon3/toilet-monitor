@@ -156,8 +156,13 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  async updateTemplate(templateId: string, dto: { name?: string; buttons?: any[]; theme?: string }) {
-    const template = await this.prisma.kioskTemplate.update({ where: { id: templateId }, data: dto });
+  async updateTemplate(templateId: string, dto: { name?: string; buttons?: any[]; theme?: string; iconScale?: number }) {
+    // Clamp the icon scale to a sane range so the kiosk can never be made unusable.
+    const data: typeof dto = { ...dto };
+    if (typeof data.iconScale === 'number') {
+      data.iconScale = Math.min(2.5, Math.max(0.5, data.iconScale));
+    }
+    const template = await this.prisma.kioskTemplate.update({ where: { id: templateId }, data });
     await this.notifyKiosksOfTemplate(templateId);
     return template;
   }
@@ -261,6 +266,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     return {
       theme: template?.theme ?? 'default',
       buttons: template ? (template.buttons as any[]) : this.defaultButtons(),
+      iconScale: template?.iconScale ?? 1,
       templateId: template?.id ?? null,
       templateName: template?.name ?? null,
     };

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, Pencil, Check, X, LayoutTemplate, Palette, Tablet } from 'lucide-react';
+import { Plus, Minus, Trash2, Pencil, Check, X, LayoutTemplate, Palette, Tablet, Scaling } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -139,6 +139,22 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
     onError: () => toast.error(t('common.error')),
   });
 
+  // Live icon-size control: each +/- click saves immediately and the kiosk
+  // reloads via the `kiosk:config-changed` socket event, so the admin sees the
+  // new size on the tablet right away.
+  const [scale, setScale] = useState<number>(template.iconScale ?? 1);
+  const scaleMut = useMutation({
+    mutationFn: (next: number) => api.patch(`/buildings/kiosk-templates/${template.id}`, { iconScale: next }),
+    onSuccess: () => onRefresh(),
+    onError: () => toast.error(t('common.error')),
+  });
+  const applyScale = (delta: number) => {
+    const next = Math.min(2.5, Math.max(0.5, Math.round((scale + delta) * 100) / 100));
+    if (next === scale) return;
+    setScale(next);
+    scaleMut.mutate(next);
+  };
+
   const deleteMut = useMutation({
     mutationFn: () => api.delete(`/buildings/kiosk-templates/${template.id}`),
     onSuccess: () => { setConfirmDelete(false); onRefresh(); toast.success(t('admin.kiosk.deleted')); },
@@ -259,6 +275,36 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
                 </button>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {!editing && (template.theme ?? 'default') === 'neon-pro' && (
+        <div className="px-5 py-3 flex items-center gap-2 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+          <Scaling size={13} style={{ color: 'var(--color-text-secondary)' }} />
+          <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>גודל אייקונים וטקסט</span>
+          <div className="flex items-center gap-2 mr-auto">
+            <button
+              onClick={() => applyScale(-0.1)}
+              disabled={scaleMut.isPending || scale <= 0.5}
+              className="w-7 h-7 flex items-center justify-center rounded-lg transition-all disabled:opacity-40"
+              style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text)' }}
+              title="הקטן"
+            >
+              <Minus size={14} />
+            </button>
+            <span className="text-sm font-bold tabular-nums text-center" style={{ color: 'var(--color-accent)', minWidth: 48 }}>
+              {Math.round(scale * 100)}%
+            </span>
+            <button
+              onClick={() => applyScale(+0.1)}
+              disabled={scaleMut.isPending || scale >= 2.5}
+              className="w-7 h-7 flex items-center justify-center rounded-lg transition-all disabled:opacity-40"
+              style={{ background: 'rgba(0,229,204,0.12)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
+              title="הגדל"
+            >
+              <Plus size={14} />
+            </button>
           </div>
         </div>
       )}
