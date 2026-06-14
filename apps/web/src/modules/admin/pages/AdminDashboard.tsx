@@ -16,8 +16,9 @@ import { getSocket, joinOrg } from '../../../lib/socket';
 import { translateFloorName, translateRestroomName, translateLocationPath } from '../../../lib/translate-name';
 
 const GENERAL_COLORS: Record<string, string> = { like: '#22c55e', cleaning: '#ef4444', maintenance: '#3b82f6' };
-// Distinct hues so each fault type is easy to tell apart (was all red shades).
-const DONUT_COLORS = ['#ef4444', '#f59e0b', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899'];
+// Distinct hues, ordered so adjacent slices are far apart on the colour wheel
+// (red, blue, green, purple first) → easy to tell fault types apart.
+const DONUT_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#06b6d4', '#ec4899', '#eab308'];
 
 /** Numeric → traffic-light colour for the score pills (higher = better). */
 function scoreColor(score: number): string {
