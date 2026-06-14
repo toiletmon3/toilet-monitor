@@ -391,22 +391,29 @@ export default function KioskPageNeonPro() {
             minHeight: 0,
           }}
         >
-          {/* One bright "snake" of light crawling through the channels between
-              the cubes. Built in real px (viewBox = grid size) so it moves at a
-              constant, natural speed with no stretching. */}
-          {gridSize.w > 0 && (
-            <svg
-              className="kiosk-snake"
-              viewBox={`0 0 ${gridSize.w} ${gridSize.h}`}
-              aria-hidden
-            >
-              <path
-                className="kiosk-snake-path"
-                d={buildSnakePath(gridSize.w, gridSize.h, Math.ceil(gridBtns.length / cols))}
-                pathLength={100}
-              />
-            </svg>
-          )}
+          {/* One bright "snake" of light gliding through the channels between
+              the cubes. Uses CSS offset-path (motion path) so it moves at a
+              constant, natural speed; several trailing dots form the tail. */}
+          {gridSize.w > 0 && (() => {
+            const d = buildSnakePath(gridSize.w, gridSize.h, Math.ceil(gridBtns.length / cols));
+            return (
+              <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}>
+                {Array.from({ length: 7 }).map((_, k) => (
+                  <span
+                    key={k}
+                    className="kiosk-beam"
+                    style={{
+                      offsetPath: `path('${d}')`,
+                      animationDelay: `${-k * 0.06}s`,
+                      width: 18 - k * 1.7,
+                      height: 18 - k * 1.7,
+                      opacity: 1 - k * 0.12,
+                    }}
+                  />
+                ))}
+              </div>
+            );
+          })()}
 
           {gridBtns.map((btn, i) => {
             const issueType = issueTypes.find(it => it.code === btn.code);
