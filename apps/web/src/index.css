@@ -171,41 +171,31 @@
   animation: kioskLedSpin 16s linear infinite; /* slow, gentle colour flow */
 }
 
-/* Layer 2 — the "snake": one bright light that crawls continuously along a
-   single serpentine path running through the channels between the cubes.
-   pathLength=100 normalises the dash units; one short dash + long gap means a
-   single bright segment travels the whole grid (no blink). */
-@keyframes kioskSnakeRun {
-  to { stroke-dashoffset: -100; }
+/* Layer 2 — the "snake": one bright light that glides along a single
+   serpentine motion path through the channels between the cubes. CSS
+   offset-path moves it at a constant speed (no stretching / no jumping); a few
+   trailing dots (rendered with staggered delays) form the tail. */
+@keyframes kioskBeam {
+  to { offset-distance: 100%; }
 }
 
-.kiosk-snake {
+.kiosk-beam {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, rgba(180, 255, 247, 0.9) 38%, rgba(124, 246, 232, 0) 72%);
+  offset-anchor: center;
+  offset-rotate: 0deg;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.95))
+          drop-shadow(0 0 14px rgba(124, 246, 232, 0.8));
   pointer-events: none;
-  overflow: visible;
-  z-index: 2;
-}
-
-.kiosk-snake-path {
-  fill: none;
-  stroke: #eafffd;
-  stroke-width: 4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  /* One bright body (18% of the loop) + long gap → a single snake crawling. */
-  stroke-dasharray: 18 82;
-  filter: drop-shadow(0 0 5px rgba(234, 255, 253, 0.95))
-          drop-shadow(0 0 12px rgba(124, 246, 232, 0.75))
-          drop-shadow(0 0 22px rgba(124, 246, 232, 0.45));
-  animation: kioskSnakeRun 3.2s linear infinite;
+  animation: kioskBeam 3.4s linear infinite;
 }
 
 /* Respect users / kiosks that prefer no motion: keep a steady lit border,
    drop the moving snake. */
 @media (prefers-reduced-motion: reduce) {
   .kiosk-led-color { animation: none; }
-  .kiosk-snake { display: none; }
+  .kiosk-beam { display: none; }
 }
