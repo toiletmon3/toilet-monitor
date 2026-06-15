@@ -404,6 +404,7 @@ export default function KioskPageNeonPro() {
                 viewBox={`0 0 ${gridSize.w} ${gridSize.h}`}
                 aria-hidden
               >
+                <path className="kiosk-strip-halo" d={d} pathLength={100} />
                 <path className="kiosk-strip-glow" d={d} pathLength={100} />
                 <path className="kiosk-strip-core" d={d} pathLength={100} />
               </svg>

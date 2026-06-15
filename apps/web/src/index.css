@@ -189,24 +189,32 @@
   z-index: 2;
 }
 
+.kiosk-strip-halo,
 .kiosk-strip-glow,
 .kiosk-strip-core {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  /* One continuous segment (~32% of the loop) + gap → a single gap-free snake. */
-  stroke-dasharray: 32 68;
-  animation: kioskStripRun 14s linear infinite;
+  /* One short continuous segment (~16% of the loop) + gap → a gap-free snake. */
+  stroke-dasharray: 16 84;
+  animation: kioskStripRun 20s linear infinite; /* slow */
+}
+
+/* Soft blurred halo of light around the strip (like the old dots' glow). */
+.kiosk-strip-halo {
+  stroke: rgba(124, 246, 232, 0.22);
+  stroke-width: 16;
+  filter: blur(6px);
 }
 
 .kiosk-strip-glow {
-  stroke: rgba(124, 246, 232, 0.35);
-  stroke-width: 9;
+  stroke: rgba(150, 248, 238, 0.22);
+  stroke-width: 6;
 }
 
 .kiosk-strip-core {
-  stroke: #eafffd;
-  stroke-width: 2.5;
+  stroke: rgba(240, 255, 253, 0.7);
+  stroke-width: 2;
 }
 
 /* Respect users / kiosks that prefer no motion: keep a steady lit border,
