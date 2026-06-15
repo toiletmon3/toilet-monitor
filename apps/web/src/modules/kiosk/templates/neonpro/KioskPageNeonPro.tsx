@@ -391,29 +391,22 @@ export default function KioskPageNeonPro() {
             minHeight: 0,
           }}
         >
-          {/* One bright "snake" of light gliding through the channels between
-              the cubes. Uses CSS offset-path (motion path) so it moves at a
-              constant, natural speed; several trailing dots form the tail. */}
+          {/* One continuous "snake" strip of light gliding through the channels
+              between the cubes. SVG stroke in real px (viewBox = grid size →
+              1:1, no stretching) = a smooth, gap-free line. Two stacked strokes
+              (wide translucent glow + thin bright core) give the neon glow
+              without a filter, so it stays smooth on the tablet. */}
           {gridSize.w > 0 && (() => {
             const d = buildSnakePath(gridSize.w, gridSize.h, Math.ceil(gridBtns.length / cols));
             return (
-              <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}>
-                {Array.from({ length: 16 }).map((_, k) => (
-                  <span
-                    key={k}
-                    className="kiosk-beam"
-                    style={{
-                      offsetPath: `path('${d}')`,
-                      // Tightly-spaced dots overlap into one continuous glowing
-                      // strip; the small step keeps them connected.
-                      animationDelay: `${-k * 0.05}s`,
-                      width: 22 - k * 0.6,
-                      height: 22 - k * 0.6,
-                      opacity: 1 - k * 0.045,
-                    }}
-                  />
-                ))}
-              </div>
+              <svg
+                className="kiosk-strip"
+                viewBox={`0 0 ${gridSize.w} ${gridSize.h}`}
+                aria-hidden
+              >
+                <path className="kiosk-strip-glow" d={d} pathLength={100} />
+                <path className="kiosk-strip-core" d={d} pathLength={100} />
+              </svg>
             );
           })()}
 
