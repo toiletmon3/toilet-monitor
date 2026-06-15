@@ -189,33 +189,17 @@
   z-index: 2;
 }
 
-.kiosk-strip-halo,
-.kiosk-strip-glow,
-.kiosk-strip-core {
+/* Only a soft blurred halo of light glides along the path — no visible line. */
+.kiosk-strip-halo {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
   /* One very short continuous segment (~8% of the loop) + gap. */
   stroke-dasharray: 8 92;
-  animation: kioskStripRun 20s linear infinite; /* slow */
-}
-
-/* Soft blurred halo of light around the strip (like the old dots' glow). */
-.kiosk-strip-halo {
-  stroke: rgba(124, 246, 232, 0.2);
+  stroke: rgba(150, 250, 240, 0.3);
   stroke-width: 26;
-  filter: blur(11px);
-}
-
-.kiosk-strip-glow {
-  stroke: rgba(150, 248, 238, 0.13);
-  stroke-width: 8;
-  filter: blur(1px);
-}
-
-.kiosk-strip-core {
-  stroke: rgba(240, 255, 253, 0.5);
-  stroke-width: 1.8;
+  filter: blur(12px);
+  animation: kioskStripRun 20s linear infinite; /* slow */
 }
 
 /* Respect users / kiosks that prefer no motion: keep a steady lit border,

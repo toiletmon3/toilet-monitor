@@ -405,8 +405,6 @@ export default function KioskPageNeonPro() {
                 aria-hidden
               >
                 <path className="kiosk-strip-halo" d={d} pathLength={100} />
-                <path className="kiosk-strip-glow" d={d} pathLength={100} />
-                <path className="kiosk-strip-core" d={d} pathLength={100} />
               </svg>
             );
           })()}
