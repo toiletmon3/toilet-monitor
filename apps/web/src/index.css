@@ -195,26 +195,27 @@
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  /* One short continuous segment (~16% of the loop) + gap → a gap-free snake. */
-  stroke-dasharray: 16 84;
+  /* One very short continuous segment (~8% of the loop) + gap. */
+  stroke-dasharray: 8 92;
   animation: kioskStripRun 20s linear infinite; /* slow */
 }
 
 /* Soft blurred halo of light around the strip (like the old dots' glow). */
 .kiosk-strip-halo {
-  stroke: rgba(124, 246, 232, 0.22);
-  stroke-width: 16;
-  filter: blur(6px);
+  stroke: rgba(124, 246, 232, 0.2);
+  stroke-width: 26;
+  filter: blur(11px);
 }
 
 .kiosk-strip-glow {
-  stroke: rgba(150, 248, 238, 0.22);
-  stroke-width: 6;
+  stroke: rgba(150, 248, 238, 0.13);
+  stroke-width: 8;
+  filter: blur(1px);
 }
 
 .kiosk-strip-core {
-  stroke: rgba(240, 255, 253, 0.7);
-  stroke-width: 2;
+  stroke: rgba(240, 255, 253, 0.5);
+  stroke-width: 1.8;
 }
 
 /* Respect users / kiosks that prefer no motion: keep a steady lit border,
