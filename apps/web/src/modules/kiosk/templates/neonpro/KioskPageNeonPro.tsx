@@ -398,16 +398,18 @@ export default function KioskPageNeonPro() {
             const d = buildSnakePath(gridSize.w, gridSize.h, Math.ceil(gridBtns.length / cols));
             return (
               <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}>
-                {Array.from({ length: 5 }).map((_, k) => (
+                {Array.from({ length: 16 }).map((_, k) => (
                   <span
                     key={k}
                     className="kiosk-beam"
                     style={{
                       offsetPath: `path('${d}')`,
+                      // Tightly-spaced dots overlap into one continuous glowing
+                      // strip; the small step keeps them connected.
                       animationDelay: `${-k * 0.05}s`,
-                      width: 40 - k * 6,
-                      height: 40 - k * 6,
-                      opacity: 1 - k * 0.16,
+                      width: 22 - k * 0.6,
+                      height: 22 - k * 0.6,
+                      opacity: 1 - k * 0.045,
                     }}
                   />
                 ))}
