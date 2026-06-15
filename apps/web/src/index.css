@@ -170,36 +170,48 @@
   animation: kioskLedSpin 16s linear infinite; /* slow, gentle colour flow */
 }
 
-/* Layer 2 — the "snake": one bright light that glides along a single
-   serpentine motion path through the channels between the cubes. CSS
-   offset-path moves it at a constant speed (no stretching / no jumping); a few
-   trailing dots (rendered with staggered delays) form the tail. */
-@keyframes kioskBeam {
-  to { offset-distance: 100%; }
+/* Layer 2 — the "snake": one continuous strip of light gliding along a single
+   serpentine SVG path through the channels between the cubes. A single dash
+   (no gaps within it) travels via stroke-dashoffset at a constant speed. Two
+   stacked strokes (wide translucent glow + thin bright core) create the neon
+   glow without a filter, so the motion stays smooth on low-power tablets. */
+@keyframes kioskStripRun {
+  to { stroke-dashoffset: -100; }
 }
 
-.kiosk-beam {
+.kiosk-strip {
   position: absolute;
-  top: 0;
-  left: 0;
-  border-radius: 50%;
-  /* Glow is baked into the gradient (no drop-shadow filter → no per-frame
-     repaint), so the motion stays smooth on low-power tablets. */
-  background: radial-gradient(circle,
-    #ffffff 0%,
-    rgba(190, 255, 248, 0.95) 26%,
-    rgba(124, 246, 232, 0.5) 50%,
-    rgba(124, 246, 232, 0) 72%);
-  offset-anchor: center;
-  offset-rotate: 0deg;
-  will-change: offset-distance;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
   pointer-events: none;
-  animation: kioskBeam 7s linear infinite;
+  z-index: 2;
+}
+
+.kiosk-strip-glow,
+.kiosk-strip-core {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* One continuous segment (~32% of the loop) + gap → a single gap-free snake. */
+  stroke-dasharray: 32 68;
+  animation: kioskStripRun 14s linear infinite;
+}
+
+.kiosk-strip-glow {
+  stroke: rgba(124, 246, 232, 0.35);
+  stroke-width: 9;
+}
+
+.kiosk-strip-core {
+  stroke: #eafffd;
+  stroke-width: 2.5;
 }
 
 /* Respect users / kiosks that prefer no motion: keep a steady lit border,
    drop the moving snake. */
 @media (prefers-reduced-motion: reduce) {
   .kiosk-led-color { animation: none; }
-  .kiosk-beam { display: none; }
+  .kiosk-strip { display: none; }
 }
