@@ -194,7 +194,7 @@
   offset-rotate: 0deg;
   will-change: offset-distance;
   pointer-events: none;
-  animation: kioskBeam 3.4s linear infinite;
+  animation: kioskBeam 7s linear infinite;
 }
 
 /* Respect users / kiosks that prefer no motion: keep a steady lit border,
