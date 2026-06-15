@@ -39,7 +39,7 @@ model KioskTemplate {
   theme     String  @default("default") // "default" | "neon"
   buttons   Json
   iconScale Float   @default(1.5) // kiosk icon/label size multiplier (1 = 100%)
-  ledSnake  Boolean @default(true) // animated LED "snake" light around the tiles
+  ledSnake  Boolean @default(false) // animated LED "snake" light around the tiles
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   buildings    Building[]

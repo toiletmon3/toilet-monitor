@@ -267,7 +267,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
       theme: template?.theme ?? 'default',
       buttons: template ? (template.buttons as any[]) : this.defaultButtons(),
       iconScale: template?.iconScale ?? 1,
-      ledSnake: template?.ledSnake ?? true,
+      ledSnake: template?.ledSnake ?? false,
       templateId: template?.id ?? null,
       templateName: template?.name ?? null,
     };
