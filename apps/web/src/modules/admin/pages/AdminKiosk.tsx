@@ -156,7 +156,7 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
   };
 
   // Live on/off toggle for the animated LED snake light.
-  const [ledSnake, setLedSnake] = useState<boolean>(template.ledSnake ?? true);
+  const [ledSnake, setLedSnake] = useState<boolean>(template.ledSnake ?? false);
   const ledMut = useMutation({
     mutationFn: (next: boolean) => api.patch(`/buildings/kiosk-templates/${template.id}`, { ledSnake: next }),
     onSuccess: () => onRefresh(),

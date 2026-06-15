@@ -88,7 +88,7 @@ export default function KioskPageNeonPro() {
   const [issueTypes, setIssueTypes] = useState<any[]>([]);
   const [kioskButtons, setKioskButtons] = useState<any[]>(DEFAULT_BUTTONS);
   const [iconScale, setIconScale] = useState(1);
-  const [ledSnake, setLedSnake] = useState(true);
+  const [ledSnake, setLedSnake] = useState(false);
   const [confirmed, setConfirmed] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('online');
