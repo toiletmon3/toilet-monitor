@@ -196,9 +196,9 @@
   stroke-linejoin: round;
   /* One very short continuous segment (~8% of the loop) + gap. */
   stroke-dasharray: 8 92;
-  stroke: rgba(150, 250, 240, 0.3);
-  stroke-width: 26;
-  filter: blur(12px);
+  stroke: rgba(150, 250, 240, 0.32);
+  stroke-width: 15;
+  filter: blur(8px);
   animation: kioskStripRun 20s linear infinite; /* slow */
 }
 

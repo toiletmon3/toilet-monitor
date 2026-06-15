@@ -88,6 +88,7 @@ export default function KioskPageNeonPro() {
   const [issueTypes, setIssueTypes] = useState<any[]>([]);
   const [kioskButtons, setKioskButtons] = useState<any[]>(DEFAULT_BUTTONS);
   const [iconScale, setIconScale] = useState(1);
+  const [ledSnake, setLedSnake] = useState(true);
   const [confirmed, setConfirmed] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('online');
@@ -149,6 +150,7 @@ export default function KioskPageNeonPro() {
         try {
           const { data: cfg } = await api.get(`/buildings/kiosk-config/${deviceCode}`);
           if (cfg?.iconScale) setIconScale(cfg.iconScale);
+          if (typeof cfg?.ledSnake === 'boolean') setLedSnake(cfg.ledSnake);
         } catch {}
         api.get('/auth/default-org').then(r => {
           if (r.data?.kioskLang) import('../../../../i18n').then(m => m.setLanguage(r.data.kioskLang));
@@ -396,7 +398,7 @@ export default function KioskPageNeonPro() {
               1:1, no stretching) = a smooth, gap-free line. Two stacked strokes
               (wide translucent glow + thin bright core) give the neon glow
               without a filter, so it stays smooth on the tablet. */}
-          {gridSize.w > 0 && (() => {
+          {ledSnake && gridSize.w > 0 && (() => {
             const d = buildSnakePath(gridSize.w, gridSize.h, Math.ceil(gridBtns.length / cols));
             return (
               <svg

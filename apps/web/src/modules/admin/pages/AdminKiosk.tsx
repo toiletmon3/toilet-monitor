@@ -155,6 +155,19 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
     scaleMut.mutate(next);
   };
 
+  // Live on/off toggle for the animated LED snake light.
+  const [ledSnake, setLedSnake] = useState<boolean>(template.ledSnake ?? true);
+  const ledMut = useMutation({
+    mutationFn: (next: boolean) => api.patch(`/buildings/kiosk-templates/${template.id}`, { ledSnake: next }),
+    onSuccess: () => onRefresh(),
+    onError: () => toast.error(t('common.error')),
+  });
+  const toggleLed = () => {
+    const next = !ledSnake;
+    setLedSnake(next);
+    ledMut.mutate(next);
+  };
+
   const deleteMut = useMutation({
     mutationFn: () => api.delete(`/buildings/kiosk-templates/${template.id}`),
     onSuccess: () => { setConfirmDelete(false); onRefresh(); toast.success(t('admin.kiosk.deleted')); },
@@ -306,6 +319,26 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
               <Plus size={14} />
             </button>
           </div>
+
+          <span className="text-xs mr-4" style={{ color: 'var(--color-text-secondary)' }}>אפקט תאורה</span>
+          <button
+            onClick={toggleLed}
+            disabled={ledMut.isPending}
+            className="relative rounded-full transition-all"
+            style={{
+              width: 40, height: 22, flexShrink: 0,
+              background: ledSnake ? 'var(--color-accent)' : 'rgba(255,255,255,0.15)',
+            }}
+            title={ledSnake ? 'כבה אפקט תאורה' : 'הפעל אפקט תאורה'}
+          >
+            <span
+              className="absolute rounded-full transition-all"
+              style={{
+                top: 2, width: 18, height: 18, background: '#fff',
+                left: ledSnake ? 20 : 2,
+              }}
+            />
+          </button>
         </div>
       )}
 
