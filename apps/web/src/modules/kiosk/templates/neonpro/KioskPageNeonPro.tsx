@@ -393,21 +393,29 @@ export default function KioskPageNeonPro() {
             minHeight: 0,
           }}
         >
-          {/* One continuous "snake" strip of light gliding through the channels
-              between the cubes. SVG stroke in real px (viewBox = grid size →
-              1:1, no stretching) = a smooth, gap-free line. Two stacked strokes
-              (wide translucent glow + thin bright core) give the neon glow
-              without a filter, so it stays smooth on the tablet. */}
+          {/* A soft halo of light that glides through the channels between the
+              cubes. GPU-composited (offset-path / transform) with the glow
+              baked into the gradient — no per-frame blur/repaint — so it stays
+              smooth even in a low-power kiosk WebView. A few overlapping soft
+              blobs (no bright core) merge into one continuous halo. */}
           {ledSnake && gridSize.w > 0 && (() => {
             const d = buildSnakePath(gridSize.w, gridSize.h, Math.ceil(gridBtns.length / cols));
             return (
-              <svg
-                className="kiosk-strip"
-                viewBox={`0 0 ${gridSize.w} ${gridSize.h}`}
-                aria-hidden
-              >
-                <path className="kiosk-strip-halo" d={d} pathLength={100} />
-              </svg>
+              <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}>
+                {Array.from({ length: 6 }).map((_, k) => (
+                  <span
+                    key={k}
+                    className="kiosk-beam"
+                    style={{
+                      offsetPath: `path('${d}')`,
+                      animationDelay: `${-k * 0.13}s`,
+                      width: 46 - k * 3,
+                      height: 46 - k * 3,
+                      opacity: 0.9 - k * 0.12,
+                    }}
+                  />
+                ))}
+              </div>
             );
           })()}
 
