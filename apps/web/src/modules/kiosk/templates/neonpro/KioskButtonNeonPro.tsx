@@ -67,14 +67,11 @@ export default function KioskButtonNeonPro({ IconCmp, label, onPress, fullWidth,
         padding: fullWidth ? '0 clamp(1rem, 2.6vh, 2rem)' : 'clamp(0.35rem, 1vh, 0.8rem)',
       }}
     >
-      {/* Gentle colour-changing neon border. The bright running "snake" is a
-          single grid-wide overlay (see KioskPageNeonPro), not per-tile. The
-          per-tile delay offsets the colour so it drifts across the grid. */}
-      <span
-        className="kiosk-led-color"
-        aria-hidden
-        style={{ animationDelay: `${-ledIndex * 0.9}s` }}
-      />
+      {/* Gentle colour-changing neon border (GPU-composited transform spin).
+          The per-tile delay offsets the colour so it drifts across the grid. */}
+      <span className="kiosk-led-ring" aria-hidden>
+        <span className="kiosk-led-spin" style={{ animationDelay: `${-ledIndex * 0.9}s` }} />
+      </span>
 
       <span
         style={{
