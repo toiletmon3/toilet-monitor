@@ -170,41 +170,34 @@
   animation: kioskLedSpin 16s linear infinite; /* slow, gentle colour flow */
 }
 
-/* Layer 2 — the "snake": one continuous strip of light gliding along a single
-   serpentine SVG path through the channels between the cubes. A single dash
-   (no gaps within it) travels via stroke-dashoffset at a constant speed. Two
-   stacked strokes (wide translucent glow + thin bright core) create the neon
-   glow without a filter, so the motion stays smooth on low-power tablets. */
-@keyframes kioskStripRun {
-  to { stroke-dashoffset: -100; }
+/* Layer 2 — the "snake": a soft halo of light that glides along a serpentine
+   motion path through the channels between the cubes. Uses CSS offset-path
+   (GPU-composited transform) with the glow baked into a radial-gradient — no
+   filter / no per-frame repaint — so it stays smooth even in a low-power kiosk
+   WebView. Several overlapping soft blobs (no bright core) merge into one
+   continuous halo. */
+@keyframes kioskBeam {
+  to { offset-distance: 100%; }
 }
 
-.kiosk-strip {
+.kiosk-beam {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(170, 252, 244, 0.3) 0%,
+    rgba(124, 246, 232, 0.16) 38%,
+    rgba(124, 246, 232, 0) 70%);
+  offset-anchor: center;
+  offset-rotate: 0deg;
+  will-change: offset-distance;
   pointer-events: none;
-  z-index: 2;
+  animation: kioskBeam 18s linear infinite; /* slow */
 }
 
-/* Only a soft blurred halo of light glides along the path — no visible line. */
-.kiosk-strip-halo {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  /* One very short continuous segment (~8% of the loop) + gap. */
-  stroke-dasharray: 8 92;
-  stroke: rgba(150, 250, 240, 0.32);
-  stroke-width: 15;
-  filter: blur(8px);
-  animation: kioskStripRun 20s linear infinite; /* slow */
-}
-
-/* Respect users / kiosks that prefer no motion: keep a steady lit border,
-   drop the moving snake. */
+/* Respect users / kiosks that prefer no motion: drop the moving halo. */
 @media (prefers-reduced-motion: reduce) {
   .kiosk-led-color { animation: none; }
-  .kiosk-strip { display: none; }
+  .kiosk-beam { display: none; }
 }
