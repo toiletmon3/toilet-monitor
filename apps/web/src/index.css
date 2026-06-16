@@ -135,39 +135,41 @@
   100% { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Kiosk Neon Pro: animated RGB "LED strip" tile border ──────────────────
-   A neon gradient (cyan → blue → purple → magenta → cyan) rotates around each
-   tile's border. Each tile gets a different animation-delay so the colour
-   appears to flow from one cube to the next, like an LED strip. */
-@property --kiosk-led-angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
+/* ── Kiosk Neon Pro: colour-changing tile border ──────────────────────────
+   Layer 1 — a neon conic gradient ROTATED WITH transform (GPU-composited, so
+   the gradient is rasterised once and just spun — no per-frame re-raster like
+   an animated @property conic would cost) behind a static border-ring mask.
+   The border colour gently flows while staying cheap on low-power WebViews. */
+@keyframes kioskSpin {
+  to { transform: rotate(360deg); }
 }
 
-@keyframes kioskLedSpin {
-  to { --kiosk-led-angle: 360deg; }
-}
-
-/* Layer 1 — the colour-changing border: a full neon rainbow, masked to the
-   tile border, that rotates slowly so the border is always lit and its colour
-   gently and continuously shifts (cyan → blue → purple → magenta → cyan). */
-.kiosk-led-color {
+.kiosk-led-ring {
   position: absolute;
   inset: 0;
   border-radius: inherit;
   padding: 2.5px;
-  background: conic-gradient(
-    from var(--kiosk-led-angle),
-    #00e5cc, #22d3ee, #3b82f6, #a855f7, #ec4899, #a855f7, #3b82f6, #22d3ee, #00e5cc
-  );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
           mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
-  filter: drop-shadow(0 0 5px rgba(124, 246, 232, 0.4));
+  overflow: hidden;
   pointer-events: none;
-  animation: kioskLedSpin 16s linear infinite; /* slow, gentle colour flow */
+}
+
+.kiosk-led-spin {
+  position: absolute;
+  /* a square-ish layer larger than the tile, centred, so the spinning gradient
+     always covers the whole border ring. */
+  width: 180%;
+  height: 180%;
+  left: -40%;
+  top: -40%;
+  background: conic-gradient(
+    #00e5cc, #22d3ee, #3b82f6, #a855f7, #ec4899, #a855f7, #3b82f6, #22d3ee, #00e5cc
+  );
+  will-change: transform;
+  animation: kioskSpin 16s linear infinite; /* slow, gentle colour flow */
 }
 
 /* Layer 2 — the "snake": a soft halo of light that glides along a serpentine

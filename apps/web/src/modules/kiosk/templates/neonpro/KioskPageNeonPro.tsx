@@ -402,16 +402,16 @@ export default function KioskPageNeonPro() {
             const d = buildSnakePath(gridSize.w, gridSize.h, Math.ceil(gridBtns.length / cols));
             return (
               <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}>
-                {Array.from({ length: 6 }).map((_, k) => (
+                {Array.from({ length: 4 }).map((_, k) => (
                   <span
                     key={k}
                     className="kiosk-beam"
                     style={{
                       offsetPath: `path('${d}')`,
-                      animationDelay: `${-k * 0.13}s`,
-                      width: 46 - k * 3,
-                      height: 46 - k * 3,
-                      opacity: 0.9 - k * 0.12,
+                      animationDelay: `${-k * 0.16}s`,
+                      width: 48 - k * 4,
+                      height: 48 - k * 4,
+                      opacity: 0.9 - k * 0.15,
                     }}
                   />
                 ))}
