@@ -24,8 +24,9 @@ mkdir -p /var/log/toilet
 # Configure nginx (HTTP-only for initial setup; deploy.sh adds SSL after certbot)
 cat > /etc/nginx/sites-available/toilet << 'EOF'
 server {
-    listen 80;
-    server_name toiletcleanpro.duckdns.org;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name toiletcleanpro.duckdns.org _;
 
     root /var/www/toilet;
     index index.html;
@@ -60,6 +61,9 @@ EOF
 
 ln -sf /etc/nginx/sites-available/toilet /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
+rm -f /etc/nginx/sites-available/default
+rm -f /etc/nginx/conf.d/default.conf
+rm -f /var/www/html/index.nginx-debian.html
 nginx -t && systemctl restart nginx
 systemctl enable nginx
 
