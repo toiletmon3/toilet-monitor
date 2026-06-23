@@ -15,6 +15,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Kiosk background artwork is large (multi-MB) and only used on
+        // always-online kiosk devices — keep it out of the PWA precache so it
+        // doesn't blow past Workbox's per-file size limit (and bloat installs).
+        globIgnores: ['**/kiosk-templates/**'],
       },
       manifest: {
         name: 'Toilet Monitor',
