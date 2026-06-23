@@ -16,6 +16,22 @@ Files:
 - `KioskPageNeon.tsx` — drop-in replacement for `KioskPage.tsx`
 - `KioskButtonNeon.tsx` — drop-in replacement for `../components/KioskButton.tsx`
 
+### `neon-image/`
+Uses the designer's exact PNG mockup as a full-screen background and overlays
+transparent, clickable hotspot buttons on top of each tile in the artwork.
+Unlike `neon` / `neon-pro` (which recreate the buttons in CSS/SVG), nothing is
+re-drawn — the image *is* the design, and only the tap targets are real DOM.
+
+- `KioskPageNeonImage.tsx` — image background + percentage-positioned hotspots
+  wired to the same `handleIssuePress(code)` logic as every other template.
+- Background file: `apps/web/public/kiosk-templates/neon-image-bg.png`
+  (1080×1920 PNG, 9:16). A missing file does not break the build.
+- Hotspot coordinates are defined in the `HOTSPOTS` array; open the kiosk with
+  `?hotspots=1` to outline and label every hotspot while tuning.
+
+Activated via the admin theme picker (theme id `neon-image`) — no App.tsx edit
+needed; `KioskDispatcher` renders it when the device's template theme matches.
+
 ## How to activate a template
 
 Edit **`apps/web/src/App.tsx`**:

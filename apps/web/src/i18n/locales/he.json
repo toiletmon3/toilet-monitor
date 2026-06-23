@@ -376,7 +376,9 @@
       "themeNeon": "ניאון",
       "themeNeonDesc": "רקע שחור עם מסגרות ציאן בוהקות",
       "themeNeonPro": "ניאון פרו",
-      "themeNeonProDesc": "אייקוני ניקיון מצוירים בסגנון ניאון"
+      "themeNeonProDesc": "אייקוני ניקיון מצוירים בסגנון ניאון",
+      "themeNeonImage": "תמונת רקע",
+      "themeNeonImageDesc": "עיצוב מבוסס תמונה עם כפתורים שקופים מעל"
     },
     "settings": {
       "myAccount": "החשבון שלי",
