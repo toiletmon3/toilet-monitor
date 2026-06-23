@@ -28,6 +28,12 @@ function useThemes() {
       desc: t('admin.kiosk.themeNeonProDesc'),
       preview: { bg: 'radial-gradient(ellipse at top, #0a1416 0%, #020608 100%)', border: '#7CF6E8', glow: 'rgba(124,246,232,0.5)' },
     },
+    {
+      id: 'neon-image',
+      title: t('admin.kiosk.themeNeonImage'),
+      desc: t('admin.kiosk.themeNeonImageDesc'),
+      preview: { bg: 'radial-gradient(ellipse at top, #0a1416 0%, #000 100%)', border: '#7CF6E8', glow: 'rgba(124,246,232,0.5)' },
+    },
   ];
 }
 

@@ -376,7 +376,9 @@
       "themeNeon": "Neon",
       "themeNeonDesc": "Black background with bright cyan borders",
       "themeNeonPro": "Neon Pro",
-      "themeNeonProDesc": "Hand-drawn cleaning icons in neon style"
+      "themeNeonProDesc": "Hand-drawn cleaning icons in neon style",
+      "themeNeonImage": "Image Background",
+      "themeNeonImageDesc": "Image-based design with transparent button hotspots"
     },
     "settings": {
       "myAccount": "My Account",
