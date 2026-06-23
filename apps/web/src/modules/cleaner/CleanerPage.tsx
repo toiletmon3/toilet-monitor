@@ -68,8 +68,8 @@ function timeAgo(date: string, lang: string) {
   const d = Math.floor(h / 24);
   const rh = h % 24;
   if (lang === 'he') {
-    const days = d === 1 ? 'יום' : `${d} ימים`;
-    return rh > 0 ? `לפני ${days} ו-${rh} שע'` : `לפני ${days}`;
+    const dayStr = d === 1 ? 'יום' : d === 2 ? 'יומיים' : `${d} ימים`;
+    return rh > 0 ? `לפני ${dayStr} ו-${rh} שע'` : `לפני ${dayStr}`;
   }
   return rh > 0 ? `${d}d ${rh}h ago` : `${d}d ago`;
 }
