@@ -32,9 +32,11 @@ import CleanerCheckIn from '../../components/CleanerCheckIn';
 /** Background artwork served from /public. Drop the PNG here to activate. */
 const BG_URL = '/kiosk-templates/neon-image-bg.png';
 
-/** The artwork's native aspect ratio (width / height). 1080×1920 = 9:16. */
-const IMG_W = 1080;
-const IMG_H = 1920;
+/** The artwork's native aspect ratio (width / height). Locking the wrapper to
+ *  the real pixel dimensions keeps the % hotspots glued to the artwork with no
+ *  letterbox drift. */
+const IMG_W = 1536;
+const IMG_H = 2752;
 
 type ConnectionStatus = 'online' | 'offline' | 'syncing';
 

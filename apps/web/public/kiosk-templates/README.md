@@ -13,9 +13,11 @@ apps/web/public/kiosk-templates/neon-image-bg.png
 
 Requirements:
 - **Format:** PNG
-- **Aspect ratio:** 9:16 (portrait)
-- **Resolution:** 1080×1920 (matches the hotspot coordinates in
-  `apps/web/src/modules/kiosk/templates/neon-image/KioskPageNeonImage.tsx`)
+- **Aspect ratio:** ~9:16 (portrait)
+- **Resolution:** the current artwork is 1536×2752; the wrapper's
+  `IMG_W`/`IMG_H` in
+  `apps/web/src/modules/kiosk/templates/neon-image/KioskPageNeonImage.tsx`
+  must match the file's real pixel dimensions so the hotspots stay aligned.
 
 The component overlays transparent, clickable hotspots on top of each button in
 the artwork. To fine-tune hotspot positions, open the kiosk with `?hotspots=1`
