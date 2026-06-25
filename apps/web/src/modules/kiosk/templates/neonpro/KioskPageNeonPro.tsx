@@ -10,6 +10,7 @@ import { setLanguage } from '../../../../i18n';
 import api from '../../../../lib/api';
 import { queueIncident, syncPending, getPendingCount } from '../../../../lib/offline';
 import { getSocket, joinRestroom, sendHeartbeat } from '../../../../lib/socket';
+import { formatDuration } from '../../../../lib/format-duration';
 import KioskButton from './KioskButtonNeonPro';
 import KioskConfirmation from '../../components/KioskConfirmation';
 import CleanerCheckIn from '../../components/CleanerCheckIn';
@@ -365,7 +366,7 @@ export default function KioskPageNeonPro() {
                 fontSize: 'clamp(1rem, 2.3vh, 1.6rem)',
               }}
             >
-              <span>{stats.avgResponseMinutes ?? '—'} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
+              <span>{stats.avgResponseMinutes != null ? formatDuration(stats.avgResponseMinutes, lang) : '—'} · {t('kiosk.avgResponse')}</span>
               <Timer className="w-4 h-4" strokeWidth={2} style={{ filter: `drop-shadow(0 0 4px ${NEON})` }} />
             </div>
           </div>

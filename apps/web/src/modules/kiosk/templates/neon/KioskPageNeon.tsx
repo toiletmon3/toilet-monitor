@@ -18,6 +18,7 @@ import { setLanguage } from '../../../../i18n';
 import api from '../../../../lib/api';
 import { queueIncident, syncPending, getPendingCount } from '../../../../lib/offline';
 import { getSocket, joinRestroom, sendHeartbeat } from '../../../../lib/socket';
+import { formatDuration } from '../../../../lib/format-duration';
 import KioskButton from './KioskButtonNeon';
 import KioskConfirmation from '../../components/KioskConfirmation';
 import CleanerCheckIn from '../../components/CleanerCheckIn';
@@ -259,7 +260,7 @@ export default function KioskPageNeon() {
             </div>
             <div className="flex items-center gap-3">
               <Timer className="w-6 h-6" strokeWidth={2.5} style={{ color: '#00E5FF', filter: 'drop-shadow(0 0 6px rgba(0,229,255,0.6))' }} />
-              <span className="text-white text-lg">{stats.avgResponseMinutes ?? '—'} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
+              <span className="text-white text-lg">{stats.avgResponseMinutes != null ? formatDuration(stats.avgResponseMinutes, lang) : '—'} · {t('kiosk.avgResponse')}</span>
             </div>
           </div>
         )}

@@ -5,6 +5,7 @@ import { setLanguage } from '../../i18n';
 import api from '../../lib/api';
 import { queueIncident, syncPending, getPendingCount } from '../../lib/offline';
 import { getSocket, joinRestroom, sendHeartbeat } from '../../lib/socket';
+import { formatDuration } from '../../lib/format-duration';
 import KioskButton from './components/KioskButton';
 import KioskConfirmation from './components/KioskConfirmation';
 import CleanerCheckIn from './components/CleanerCheckIn';
@@ -326,7 +327,7 @@ export default function KioskPage() {
             </div>
             <div className="flex items-center gap-1">
               <span style={{ color: 'rgba(0,229,204,0.6)' }}>◷</span>
-              <span>{stats.avgResponseMinutes ?? '—'} {t('kiosk.minutes')} · {t('kiosk.avgResponse')}</span>
+              <span>{stats.avgResponseMinutes != null ? formatDuration(stats.avgResponseMinutes, lang) : '—'} · {t('kiosk.avgResponse')}</span>
             </div>
           </div>
         )}

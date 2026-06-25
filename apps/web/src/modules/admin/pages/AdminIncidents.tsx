@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, UserCheck, CheckCircle, RefreshCw, Clock, Wr
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 import { translateLocationPath, translateFloorName, translateRestroomName } from '../../../lib/translate-name';
+import { formatDuration } from '../../../lib/format-duration';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   OPEN:        { bg: 'rgba(239,68,68,0.15)',  text: '#ef4444' },
@@ -267,7 +268,7 @@ export default function AdminIncidents() {
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
-                        ⏱ {inc.minutesOpen} {t('common.minutes')}
+                        ⏱ {formatDuration(inc.minutesOpen, lang)}
                       </span>
                       {inc.escalationRound > 0 && (
                         <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>

@@ -347,7 +347,7 @@
       "mismatchTitle": "Mismatch Alerts",
       "mismatchDesc": "Workers who checked in but haven't performed any cleaning actions",
       "mismatchEmpty": "No alerts right now — all workers are on track",
-      "checkedInAgo": "Checked in {{n}} min ago"
+      "checkedInAgo": "Checked in {{v}} ago"
     },
     "kiosk": {
       "title": "Kiosk Templates",

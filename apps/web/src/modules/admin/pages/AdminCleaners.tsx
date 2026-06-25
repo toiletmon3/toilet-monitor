@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { UserPlus, Trash2, Building2, Globe, Pencil, X, Check, KeyRound, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
+import { formatDuration } from '../../../lib/format-duration';
 
 interface EditState { id: string; name: string; idNumber: string; phone: string }
 
@@ -381,8 +382,7 @@ export default function AdminCleaners() {
 
   const shiftDuration = (arrivedAt: string) => {
     const mins = Math.floor((Date.now() - new Date(arrivedAt).getTime()) / 60000);
-    if (mins < 60) return `${mins} ${t('common.minutes')}`;
-    return `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')} ${t('common.hours')}`;
+    return formatDuration(mins, lang);
   };
 
   return (
@@ -517,12 +517,12 @@ export default function AdminCleaners() {
                   <div className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{m.user.name}</div>
                   <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                     {m.user.building?.name && <span>🏢 {m.user.building.name} · </span>}
-                    🕐 {t('admin.cleaners.checkedInAgo', { n: m.minutesSinceArrival })}
+                    🕐 {t('admin.cleaners.checkedInAgo', { v: formatDuration(m.minutesSinceArrival, lang) })}
                   </div>
                 </div>
                 <span className="text-xs px-2 py-1 rounded-full font-bold"
                   style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
-                  {m.minutesSinceArrival} {t('common.minutes')}
+                  {formatDuration(m.minutesSinceArrival, lang)}
                 </span>
               </div>
             ))}
