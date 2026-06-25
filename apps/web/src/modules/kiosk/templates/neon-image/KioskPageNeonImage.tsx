@@ -36,14 +36,24 @@ const BG_URL = '/kiosk-templates/neon-image-bg.png';
 const IMG_W = 937;
 const IMG_H = 1679;
 
-/** Where the two live numbers drop into the artwork's blank slots, as % of the
- *  stage. `right` = distance of the number's right edge from the physical right
- *  edge. Nudge to line the numbers up with the baked labels. The kiosk URL can
- *  override live for tuning: ?uTop=&uRight=&mTop=&mRight= */
+/** Default positions of the live overlay elements, as % of the stage. `right` =
+ *  distance of the element's right edge from the physical right edge. Open the
+ *  kiosk with ?edit=1 to nudge these on-screen and read off the final values. */
 const NUM_POS = {
-  users:   { top: 9.5, right: 16 },
-  minutes: { top: 13.0, right: 16 },
+  usersNum:   { top: 9.5,  right: 16 },
+  periodWord: { top: 9.5,  right: 58 },
+  minutesNum: { top: 13.0, right: 16 },
 };
+
+const NUM_STYLE = {
+  position: 'absolute', color: '#eafffb', fontWeight: 700, fontSize: 'clamp(0.95rem, 2.6vh, 1.6rem)',
+  textShadow: '0 0 12px rgba(124,246,232,0.55)', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 2,
+} as const;
+
+const EBTN = {
+  background: '#0b2b2b', color: '#7CF6E8', border: '1px solid #1a5', borderRadius: 4,
+  width: 24, height: 24, fontSize: 14, cursor: 'pointer', lineHeight: 1,
+} as const;
 
 type ConnectionStatus = 'online' | 'offline' | 'syncing';
 
@@ -76,15 +86,12 @@ export default function KioskPageNeonImage() {
   const [, setConnectionStatus] = useState<ConnectionStatus>('online');
   const [pendingCount, setPendingCount] = useState(0);
   const [stats, setStats] = useState<{ weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null } | null>(null);
+  const [statsView, setStatsView] = useState<'week' | 'today'>('week');
+  const [pos, setPos] = useState(NUM_POS);
   const lang = i18n.language as 'he' | 'en';
   const qp = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const showHotspots = qp.has('hotspots');
-  // Live-tunable number positions, override via ?uTop=&uRight=&mTop=&mRight=
-  const qn = (k: string, d: number) => { const v = qp.get(k); return v != null && v !== '' && !Number.isNaN(Number(v)) ? Number(v) : d; };
-  const numPos = {
-    users:   { top: qn('uTop', NUM_POS.users.top),   right: qn('uRight', NUM_POS.users.right) },
-    minutes: { top: qn('mTop', NUM_POS.minutes.top), right: qn('mRight', NUM_POS.minutes.right) },
-  };
+  const editing = qp.has('edit');
 
   useEffect(() => {
     async function init() {
@@ -145,6 +152,15 @@ export default function KioskPageNeonImage() {
     const timer = setTimeout(() => window.location.reload(), 6 * 60 * 60 * 1000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Alternate the top stat between "this week" and "today" every 10s.
+  useEffect(() => {
+    const id = setInterval(() => setStatsView(v => (v === 'week' ? 'today' : 'week')), 10_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const nudge = (k: keyof typeof NUM_POS, dTop: number, dRight: number) =>
+    setPos(p => ({ ...p, [k]: { top: +(p[k].top + dTop).toFixed(1), right: +(p[k].right + dRight).toFixed(1) } }));
 
   const handleIssuePress = useCallback(async (issueCode: string) => {
     if (!deviceInfo) return;
@@ -244,25 +260,43 @@ export default function KioskPageNeonImage() {
           </button>
         ))}
 
-        {/* Live numbers only — dropped into the artwork's blank slots. The labels
-            ("משתמשים השבוע" / "דקות …") are part of the image, so we add no words. */}
+        {/* Live values dropped into the artwork's blank slots. The fixed words
+            ("משתמשים" / "דקות …") are part of the image — we only add the number
+            and the alternating period word ("שבוע"/"יום"). */}
         {stats && (
           <>
-            <span style={{
-              position: 'absolute', top: `${numPos.users.top}%`, right: `${numPos.users.right}%`,
-              color: '#eafffb', fontWeight: 700, fontSize: 'clamp(0.95rem, 2.6vh, 1.6rem)',
-              textShadow: '0 0 12px rgba(124,246,232,0.55)', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 2,
-            }}>
-              {stats.weeklyReports}
+            <span style={{ ...NUM_STYLE, top: `${pos.usersNum.top}%`, right: `${pos.usersNum.right}%` }}>
+              {statsView === 'week' ? stats.weeklyReports : stats.dailyReports}
             </span>
-            <span style={{
-              position: 'absolute', top: `${numPos.minutes.top}%`, right: `${numPos.minutes.right}%`,
-              color: '#eafffb', fontWeight: 700, fontSize: 'clamp(0.95rem, 2.6vh, 1.6rem)',
-              textShadow: '0 0 12px rgba(124,246,232,0.55)', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 2,
-            }}>
+            <span style={{ ...NUM_STYLE, top: `${pos.periodWord.top}%`, right: `${pos.periodWord.right}%` }}>
+              {statsView === 'week' ? 'שבוע' : 'יום'}
+            </span>
+            <span style={{ ...NUM_STYLE, top: `${pos.minutesNum.top}%`, right: `${pos.minutesNum.right}%` }}>
               {stats.avgResponseMinutes ?? 0}
             </span>
           </>
+        )}
+
+        {/* On-screen position editor — open the kiosk with ?edit=1. Nudge each
+            element, then send me the printed top/right values. */}
+        {editing && (
+          <div style={{
+            position: 'fixed', bottom: 6, left: 6, zIndex: 9999, direction: 'ltr',
+            background: 'rgba(0,0,0,0.9)', color: '#7CF6E8', padding: '8px 10px', borderRadius: 8,
+            fontSize: 12, fontFamily: 'monospace', lineHeight: 1.7, pointerEvents: 'auto',
+          }}>
+            {(Object.keys(pos) as (keyof typeof NUM_POS)[]).map(k => (
+              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 90, display: 'inline-block' }}>{k}</span>
+                <button onClick={() => nudge(k, -0.5, 0)} style={EBTN}>↑</button>
+                <button onClick={() => nudge(k, 0.5, 0)} style={EBTN}>↓</button>
+                <button onClick={() => nudge(k, 0, 0.5)} style={EBTN}>←</button>
+                <button onClick={() => nudge(k, 0, -0.5)} style={EBTN}>→</button>
+                <span style={{ width: 150, display: 'inline-block', marginInlineStart: 6 }}>top:{pos[k].top} right:{pos[k].right}</span>
+              </div>
+            ))}
+            <div style={{ marginTop: 6, opacity: 0.75 }}>↑ send me these 3 lines</div>
+          </div>
         )}
 
         {pendingCount > 0 && (
