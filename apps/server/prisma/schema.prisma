@@ -40,6 +40,7 @@ model KioskTemplate {
   buttons   Json
   iconScale Float   @default(1.5) // kiosk icon/label size multiplier (1 = 100%)
   ledSnake  Boolean @default(false) // animated LED "snake" light around the tiles
+  statsLayout Json? // neon-image overlay positions: { usersNum:{top,right}, periodWord:{top,right}, minutesNum:{top,right} } in % of stage
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   buildings    Building[]

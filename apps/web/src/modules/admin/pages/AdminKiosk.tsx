@@ -124,6 +124,23 @@ function ButtonEditor({ btn, onChange }: { btn: any; onChange: (b: any) => void 
   );
 }
 
+function NudgeBtn({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} title={title}
+      className="w-7 h-7 flex items-center justify-center rounded-lg text-sm transition-all"
+      style={{ background: 'rgba(0,229,204,0.1)', border: '1px solid rgba(0,229,204,0.3)', color: 'var(--color-accent)' }}>
+      {children}
+    </button>
+  );
+}
+
+const DEFAULT_STATS_LAYOUT = {
+  usersNum:   { top: 9.5,  right: 16 },
+  periodWord: { top: 9.5,  right: 58 },
+  minutesNum: { top: 13.0, right: 16 },
+  fontScale: 1,
+};
+
 function TemplateCard({ template, buildings, devices, onRefresh }: { template: any; buildings: any[]; devices: any[]; onRefresh: () => void }) {
   const { t } = useTranslation();
   const themes = useThemes();
@@ -172,6 +189,29 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
     const next = !ledSnake;
     setLedSnake(next);
     ledMut.mutate(next);
+  };
+
+  // Live position control for the neon-image stats overlay — each nudge saves
+  // immediately and the kiosk reloads via the config-changed socket event.
+  const [layout, setLayout] = useState<any>(template.statsLayout ?? DEFAULT_STATS_LAYOUT);
+  const layoutMut = useMutation({
+    mutationFn: (next: any) => api.patch(`/buildings/kiosk-templates/${template.id}`, { statsLayout: next }),
+    onSuccess: () => onRefresh(),
+    onError: () => toast.error(t('common.error')),
+  });
+  const nudgePos = (key: string, dTop: number, dRight: number) => {
+    const cur = layout?.[key] ?? (DEFAULT_STATS_LAYOUT as any)[key];
+    const next = { ...layout, [key]: { top: +(cur.top + dTop).toFixed(1), right: +(cur.right + dRight).toFixed(1) } };
+    setLayout(next);
+    layoutMut.mutate(next);
+  };
+  const fontScale: number = layout?.fontScale ?? 1;
+  const nudgeFont = (delta: number) => {
+    const nextScale = Math.min(2.5, Math.max(0.5, +(fontScale + delta).toFixed(2)));
+    if (nextScale === fontScale) return;
+    const next = { ...layout, fontScale: nextScale };
+    setLayout(next);
+    layoutMut.mutate(next);
   };
 
   const deleteMut = useMutation({
@@ -345,6 +385,39 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
               }}
             />
           </button>
+        </div>
+      )}
+
+      {!editing && currentTheme === 'neon-image' && (
+        <div className="px-5 py-3 border-t flex flex-col gap-2" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+          <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>מיקום הנתונים על התבנית</span>
+          {([
+            { key: 'usersNum',   label: 'מספר משתמשים' },
+            { key: 'periodWord', label: 'שבוע / יום' },
+            { key: 'minutesNum', label: 'דקות תגובה' },
+          ] as const).map(row => {
+            const v = (layout?.[row.key] ?? (DEFAULT_STATS_LAYOUT as any)[row.key]) as { top: number; right: number };
+            return (
+              <div key={row.key} className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs" style={{ color: 'var(--color-text)', width: 92 }}>{row.label}</span>
+                <NudgeBtn onClick={() => nudgePos(row.key, -0.5, 0)} title="למעלה">↑</NudgeBtn>
+                <NudgeBtn onClick={() => nudgePos(row.key, 0.5, 0)} title="למטה">↓</NudgeBtn>
+                <NudgeBtn onClick={() => nudgePos(row.key, 0, -0.5)} title="ימינה">→</NudgeBtn>
+                <NudgeBtn onClick={() => nudgePos(row.key, 0, 0.5)} title="שמאלה">←</NudgeBtn>
+                <span className="text-[10px] tabular-nums" style={{ color: 'var(--color-text-secondary)', marginInlineStart: 6 }}>
+                  ↕{v.top} ↔{v.right}
+                </span>
+              </div>
+            );
+          })}
+          <div className="flex items-center gap-1.5 pt-1 mt-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+            <span className="text-xs" style={{ color: 'var(--color-text)', width: 92 }}>גודל גופן</span>
+            <NudgeBtn onClick={() => nudgeFont(-0.1)} title="הקטן">−</NudgeBtn>
+            <NudgeBtn onClick={() => nudgeFont(+0.1)} title="הגדל">+</NudgeBtn>
+            <span className="text-[11px] font-bold tabular-nums" style={{ color: 'var(--color-accent)', marginInlineStart: 6 }}>
+              {Math.round(fontScale * 100)}%
+            </span>
+          </div>
         </div>
       )}
 

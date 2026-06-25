@@ -156,7 +156,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  async updateTemplate(templateId: string, dto: { name?: string; buttons?: any[]; theme?: string; iconScale?: number; ledSnake?: boolean }) {
+  async updateTemplate(templateId: string, dto: { name?: string; buttons?: any[]; theme?: string; iconScale?: number; ledSnake?: boolean; statsLayout?: any }) {
     // Clamp the icon scale to a sane range so the kiosk can never be made unusable.
     const data: typeof dto = { ...dto };
     if (typeof data.iconScale === 'number') {
@@ -268,6 +268,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
       buttons: template ? (template.buttons as any[]) : this.defaultButtons(),
       iconScale: template?.iconScale ?? 1,
       ledSnake: template?.ledSnake ?? false,
+      statsLayout: (template as any)?.statsLayout ?? null,
       templateId: template?.id ?? null,
       templateName: template?.name ?? null,
     };

@@ -46,13 +46,8 @@ const NUM_POS = {
 };
 
 const NUM_STYLE = {
-  position: 'absolute', color: '#eafffb', fontWeight: 700, fontSize: 'clamp(0.95rem, 2.6vh, 1.6rem)',
+  position: 'absolute', color: '#eafffb', fontWeight: 700,
   textShadow: '0 0 12px rgba(124,246,232,0.55)', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 2,
-} as const;
-
-const EBTN = {
-  background: '#0b2b2b', color: '#7CF6E8', border: '1px solid #1a5', borderRadius: 4,
-  width: 24, height: 24, fontSize: 14, cursor: 'pointer', lineHeight: 1,
 } as const;
 
 type ConnectionStatus = 'online' | 'offline' | 'syncing';
@@ -87,11 +82,17 @@ export default function KioskPageNeonImage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [stats, setStats] = useState<{ weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null } | null>(null);
   const [statsView, setStatsView] = useState<'week' | 'today'>('week');
-  const [pos, setPos] = useState(NUM_POS);
+  const [layout, setLayout] = useState<any>(null);
   const lang = i18n.language as 'he' | 'en';
-  const qp = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
-  const showHotspots = qp.has('hotspots');
-  const editing = qp.has('edit');
+  const showHotspots = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('hotspots');
+
+  // Effective overlay positions + font scale, configured per template in the admin.
+  const L = { ...NUM_POS, ...(layout || {}) } as typeof NUM_POS;
+  const fontScale: number = layout?.fontScale ?? 1;
+  const numStyle = {
+    ...NUM_STYLE,
+    fontSize: `clamp(${(0.95 * fontScale).toFixed(2)}rem, ${(2.6 * fontScale).toFixed(2)}vh, ${(1.6 * fontScale).toFixed(2)}rem)`,
+  };
 
   useEffect(() => {
     async function init() {
@@ -103,6 +104,7 @@ export default function KioskPageNeonImage() {
         setIssueTypes(types);
         const buildingId = device.restroom.floor.building.id;
         api.get(`/analytics/kiosk-stats/building/${buildingId}`).then(r => setStats(r.data)).catch(() => {});
+        api.get(`/buildings/kiosk-config/${deviceCode}`).then(r => setLayout(r.data?.statsLayout ?? null)).catch(() => {});
         api.get('/auth/default-org').then(r => {
           if (r.data?.kioskLang) import('../../../../i18n').then(m => m.setLanguage(r.data.kioskLang));
         }).catch(() => {});
@@ -158,9 +160,6 @@ export default function KioskPageNeonImage() {
     const id = setInterval(() => setStatsView(v => (v === 'week' ? 'today' : 'week')), 10_000);
     return () => clearInterval(id);
   }, []);
-
-  const nudge = (k: keyof typeof NUM_POS, dTop: number, dRight: number) =>
-    setPos(p => ({ ...p, [k]: { top: +(p[k].top + dTop).toFixed(1), right: +(p[k].right + dRight).toFixed(1) } }));
 
   const handleIssuePress = useCallback(async (issueCode: string) => {
     if (!deviceInfo) return;
@@ -265,38 +264,16 @@ export default function KioskPageNeonImage() {
             and the alternating period word ("שבוע"/"יום"). */}
         {stats && (
           <>
-            <span style={{ ...NUM_STYLE, top: `${pos.usersNum.top}%`, right: `${pos.usersNum.right}%` }}>
+            <span style={{ ...numStyle, top: `${L.usersNum.top}%`, right: `${L.usersNum.right}%` }}>
               {statsView === 'week' ? stats.weeklyReports : stats.dailyReports}
             </span>
-            <span style={{ ...NUM_STYLE, top: `${pos.periodWord.top}%`, right: `${pos.periodWord.right}%` }}>
+            <span style={{ ...numStyle, top: `${L.periodWord.top}%`, right: `${L.periodWord.right}%` }}>
               {statsView === 'week' ? 'שבוע' : 'יום'}
             </span>
-            <span style={{ ...NUM_STYLE, top: `${pos.minutesNum.top}%`, right: `${pos.minutesNum.right}%` }}>
+            <span style={{ ...numStyle, top: `${L.minutesNum.top}%`, right: `${L.minutesNum.right}%` }}>
               {stats.avgResponseMinutes ?? 0}
             </span>
           </>
-        )}
-
-        {/* On-screen position editor — open the kiosk with ?edit=1. Nudge each
-            element, then send me the printed top/right values. */}
-        {editing && (
-          <div style={{
-            position: 'fixed', bottom: 6, left: 6, zIndex: 9999, direction: 'ltr',
-            background: 'rgba(0,0,0,0.9)', color: '#7CF6E8', padding: '8px 10px', borderRadius: 8,
-            fontSize: 12, fontFamily: 'monospace', lineHeight: 1.7, pointerEvents: 'auto',
-          }}>
-            {(Object.keys(pos) as (keyof typeof NUM_POS)[]).map(k => (
-              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 90, display: 'inline-block' }}>{k}</span>
-                <button onClick={() => nudge(k, -0.5, 0)} style={EBTN}>↑</button>
-                <button onClick={() => nudge(k, 0.5, 0)} style={EBTN}>↓</button>
-                <button onClick={() => nudge(k, 0, 0.5)} style={EBTN}>←</button>
-                <button onClick={() => nudge(k, 0, -0.5)} style={EBTN}>→</button>
-                <span style={{ width: 150, display: 'inline-block', marginInlineStart: 6 }}>top:{pos[k].top} right:{pos[k].right}</span>
-              </div>
-            ))}
-            <div style={{ marginTop: 6, opacity: 0.75 }}>↑ send me these 3 lines</div>
-          </div>
         )}
 
         {pendingCount > 0 && (
