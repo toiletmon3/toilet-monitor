@@ -33,8 +33,16 @@ const BG_URL = '/kiosk-templates/neon-image-bg.png';
 /** The artwork's native aspect ratio (width / height). Locking the wrapper to
  *  the real pixel dimensions keeps the % hotspots glued to the artwork with no
  *  letterbox drift. */
-const IMG_W = 1536;
-const IMG_H = 2752;
+const IMG_W = 937;
+const IMG_H = 1679;
+
+/** Where the two live numbers drop into the artwork's blank slots, as % of the
+ *  stage. `end` = distance from the right edge (RTL). Nudge these to line the
+ *  numbers up with the baked "משתמשים השבוע" / "דקות …" labels. */
+const NUM_POS = {
+  users:   { top: 8.4, end: 49 },
+  minutes: { top: 12.0, end: 51 },
+};
 
 type ConnectionStatus = 'online' | 'offline' | 'syncing';
 
@@ -66,6 +74,7 @@ export default function KioskPageNeonImage() {
   const [duplicate, setDuplicate] = useState(false);
   const [, setConnectionStatus] = useState<ConnectionStatus>('online');
   const [pendingCount, setPendingCount] = useState(0);
+  const [stats, setStats] = useState<{ weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null } | null>(null);
   const lang = i18n.language as 'he' | 'en';
   const showHotspots = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('hotspots');
 
@@ -77,6 +86,8 @@ export default function KioskPageNeonImage() {
         const orgId = device.restroom.floor.building.orgId;
         const { data: types } = await api.get(`/buildings/issue-types/${orgId}`);
         setIssueTypes(types);
+        const buildingId = device.restroom.floor.building.id;
+        api.get(`/analytics/kiosk-stats/building/${buildingId}`).then(r => setStats(r.data)).catch(() => {});
         api.get('/auth/default-org').then(r => {
           if (r.data?.kioskLang) import('../../../../i18n').then(m => m.setLanguage(r.data.kioskLang));
         }).catch(() => {});
@@ -157,6 +168,7 @@ export default function KioskPageNeonImage() {
       const count = await getPendingCount();
       setPendingCount(count);
     }
+    setStats(s => (s ? { ...s, weeklyReports: s.weeklyReports + 1, dailyReports: s.dailyReports + 1 } : s));
     setConfirmed(issueCode);
     setTimeout(() => setConfirmed(null), 5000);
   }, [deviceInfo, issueTypes]);
@@ -223,6 +235,27 @@ export default function KioskPageNeonImage() {
             )}
           </button>
         ))}
+
+        {/* Live numbers only — dropped into the artwork's blank slots. The labels
+            ("משתמשים השבוע" / "דקות …") are part of the image, so we add no words. */}
+        {stats && (
+          <>
+            <span style={{
+              position: 'absolute', top: `${NUM_POS.users.top}%`, insetInlineEnd: `${NUM_POS.users.end}%`,
+              color: '#eafffb', fontWeight: 700, fontSize: 'clamp(0.95rem, 2.6vh, 1.6rem)',
+              textShadow: '0 0 12px rgba(124,246,232,0.55)', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 2,
+            }}>
+              {stats.weeklyReports}
+            </span>
+            <span style={{
+              position: 'absolute', top: `${NUM_POS.minutes.top}%`, insetInlineEnd: `${NUM_POS.minutes.end}%`,
+              color: '#eafffb', fontWeight: 700, fontSize: 'clamp(0.95rem, 2.6vh, 1.6rem)',
+              textShadow: '0 0 12px rgba(124,246,232,0.55)', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 2,
+            }}>
+              {stats.avgResponseMinutes ?? 0}
+            </span>
+          </>
+        )}
 
         {pendingCount > 0 && (
           <div style={{ position: 'absolute', bottom: '1%', insetInlineStart: '2%', fontSize: 12, color: 'rgba(255,200,0,0.8)' }}>
