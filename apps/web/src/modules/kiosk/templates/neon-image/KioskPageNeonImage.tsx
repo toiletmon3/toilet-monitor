@@ -37,11 +37,12 @@ const IMG_W = 937;
 const IMG_H = 1679;
 
 /** Where the two live numbers drop into the artwork's blank slots, as % of the
- *  stage. `end` = distance from the right edge (RTL). Nudge these to line the
- *  numbers up with the baked "משתמשים השבוע" / "דקות …" labels. */
+ *  stage. `right` = distance of the number's right edge from the physical right
+ *  edge. Nudge to line the numbers up with the baked labels. The kiosk URL can
+ *  override live for tuning: ?uTop=&uRight=&mTop=&mRight= */
 const NUM_POS = {
-  users:   { top: 8.4, end: 49 },
-  minutes: { top: 12.0, end: 51 },
+  users:   { top: 9.5, right: 16 },
+  minutes: { top: 13.0, right: 16 },
 };
 
 type ConnectionStatus = 'online' | 'offline' | 'syncing';
@@ -76,7 +77,14 @@ export default function KioskPageNeonImage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [stats, setStats] = useState<{ weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null } | null>(null);
   const lang = i18n.language as 'he' | 'en';
-  const showHotspots = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('hotspots');
+  const qp = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const showHotspots = qp.has('hotspots');
+  // Live-tunable number positions, override via ?uTop=&uRight=&mTop=&mRight=
+  const qn = (k: string, d: number) => { const v = qp.get(k); return v != null && v !== '' && !Number.isNaN(Number(v)) ? Number(v) : d; };
+  const numPos = {
+    users:   { top: qn('uTop', NUM_POS.users.top),   right: qn('uRight', NUM_POS.users.right) },
+    minutes: { top: qn('mTop', NUM_POS.minutes.top), right: qn('mRight', NUM_POS.minutes.right) },
+  };
 
   useEffect(() => {
     async function init() {
@@ -241,14 +249,14 @@ export default function KioskPageNeonImage() {
         {stats && (
           <>
             <span style={{
-              position: 'absolute', top: `${NUM_POS.users.top}%`, insetInlineEnd: `${NUM_POS.users.end}%`,
+              position: 'absolute', top: `${numPos.users.top}%`, right: `${numPos.users.right}%`,
               color: '#eafffb', fontWeight: 700, fontSize: 'clamp(0.95rem, 2.6vh, 1.6rem)',
               textShadow: '0 0 12px rgba(124,246,232,0.55)', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 2,
             }}>
               {stats.weeklyReports}
             </span>
             <span style={{
-              position: 'absolute', top: `${NUM_POS.minutes.top}%`, insetInlineEnd: `${NUM_POS.minutes.end}%`,
+              position: 'absolute', top: `${numPos.minutes.top}%`, right: `${numPos.minutes.right}%`,
               color: '#eafffb', fontWeight: 700, fontSize: 'clamp(0.95rem, 2.6vh, 1.6rem)',
               textShadow: '0 0 12px rgba(124,246,232,0.55)', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 2,
             }}>
