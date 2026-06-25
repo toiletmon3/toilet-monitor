@@ -40,13 +40,17 @@ const IMG_H = 1679;
  *  distance of the element's right edge from the physical right edge. Open the
  *  kiosk with ?edit=1 to nudge these on-screen and read off the final values. */
 const NUM_POS = {
-  usersNum:   { top: 9.5,  right: 16 },
-  periodWord: { top: 9.5,  right: 58 },
-  minutesNum: { top: 13.0, right: 16 },
+  usersNum:   { top: 10,   right: 29.5 },
+  periodWord: { top: 10,   right: 64.5 },
+  minutesNum: { top: 14.5, right: 26.5 },
 };
 
+// Designer spec: Heebo regular, 44px on the 1679px-tall artwork → 44/1679 ≈ 2.62%
+// of the stage height. Expressed in cqh so it scales with the artwork on any screen.
+const FONT_CQH = 2.62;
+
 const NUM_STYLE = {
-  position: 'absolute', color: '#eafffb', fontWeight: 700,
+  position: 'absolute', color: '#eafffb', fontFamily: "'Heebo', sans-serif", fontWeight: 400,
   textShadow: '0 0 12px rgba(124,246,232,0.55)', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 2,
 } as const;
 
@@ -91,7 +95,7 @@ export default function KioskPageNeonImage() {
   const fontScale: number = layout?.fontScale ?? 1;
   const numStyle = {
     ...NUM_STYLE,
-    fontSize: `clamp(${(0.95 * fontScale).toFixed(2)}rem, ${(2.6 * fontScale).toFixed(2)}vh, ${(1.6 * fontScale).toFixed(2)}rem)`,
+    fontSize: `${(FONT_CQH * fontScale).toFixed(3)}cqh`,
   };
 
   useEffect(() => {
@@ -227,6 +231,7 @@ export default function KioskPageNeonImage() {
           aspectRatio: `${IMG_W} / ${IMG_H}`,
           height: '100%',
           maxWidth: '100%',
+          containerType: 'size', // lets the overlay font size (cqh) track the artwork
           backgroundImage: `url(${BG_URL})`,
           backgroundSize: 'contain',
           backgroundPosition: 'center',

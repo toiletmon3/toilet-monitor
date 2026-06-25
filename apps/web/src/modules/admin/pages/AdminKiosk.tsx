@@ -135,9 +135,9 @@ function NudgeBtn({ onClick, title, children }: { onClick: () => void; title: st
 }
 
 const DEFAULT_STATS_LAYOUT = {
-  usersNum:   { top: 9.5,  right: 16 },
-  periodWord: { top: 9.5,  right: 58 },
-  minutesNum: { top: 13.0, right: 16 },
+  usersNum:   { top: 10,   right: 29.5 },
+  periodWord: { top: 10,   right: 64.5 },
+  minutesNum: { top: 14.5, right: 26.5 },
   fontScale: 1,
 };
 
