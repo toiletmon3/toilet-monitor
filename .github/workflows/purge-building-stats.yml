@@ -59,8 +59,11 @@ jobs:
           cd /opt/toilet-monitor
           # Make sure the purge script is present (it ships with the repo).
           GIT_TERMINAL_PROMPT=0 timeout 60 git pull --no-edit || true
-          # Load DATABASE_URL (+ any other prod env) for Prisma and pg_dump.
-          set -a; source .env.production; set +a
+          # Pull ONLY DATABASE_URL out of .env.production. Sourcing the whole file
+          # can abort on a malformed line (unbalanced quote); eval the single line.
+          eval "\$(grep -E '^DATABASE_URL=' .env.production | head -1 || true)"
+          export DATABASE_URL
+          if [ -z "\$DATABASE_URL" ]; then echo "DATABASE_URL not found in .env.production"; exit 1; fi
           cd apps/server
           export PURGE_BEFORE="${PURGE_BEFORE}"
           export PURGE_BUILDING_ID="${PURGE_BUILDING_ID}"
