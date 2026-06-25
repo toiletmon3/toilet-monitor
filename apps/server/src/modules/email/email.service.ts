@@ -162,7 +162,13 @@ export class EmailService implements OnApplicationBootstrap {
 
     if (!res.ok) {
       const body = await res.text();
-      throw new Error(`OAuth2 token refresh failed (${res.status}): ${body}`);
+      // invalid_grant means the refresh token itself is dead — most often after a
+      // Google account password change (which revokes all OAuth tokens). Surface a
+      // clear, actionable hint instead of the raw Google error.
+      const hint = body.includes('invalid_grant')
+        ? ' — the Gmail refresh token has expired or been revoked (commonly after a Google password change). Generate a new GMAIL_REFRESH_TOKEN and redeploy.'
+        : '';
+      throw new Error(`OAuth2 token refresh failed (${res.status}): ${body}${hint}`);
     }
 
     const data = await res.json();
