@@ -27,8 +27,10 @@ import { queueIncident, syncPending, getPendingCount } from '../../../../lib/off
 import { joinRestroom, sendHeartbeat } from '../../../../lib/socket';
 import KioskConfirmation from '../../components/KioskConfirmation';
 
-/** Background artwork served from /public. Drop the PNG here to activate. */
-const BG_URL = '/kiosk-templates/neon-image-bg.png';
+/** Background artwork served from /public. The ?v= suffix is a cache-buster:
+ *  nginx serves PNGs as immutable for 1y, so bump this whenever the file
+ *  changes to force every kiosk to fetch the new artwork. */
+const BG_URL = '/kiosk-templates/neon-image-bg.png?v=2';
 
 /** The artwork's native aspect ratio (width / height). Locking the wrapper to
  *  the real pixel dimensions keeps the % hotspots glued to the artwork with no
