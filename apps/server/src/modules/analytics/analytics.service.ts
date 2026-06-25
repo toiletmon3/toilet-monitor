@@ -39,9 +39,23 @@ function classifyIssue(code: string | null | undefined): 'like' | 'maintenance' 
   return 'cleaning';
 }
 
+export type AnalyticsScope = { buildingId?: string; floorId?: string; restroomId?: string };
+
 @Injectable()
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * Build the `restroom` where-filter for a given location scope. Narrowest
+   * wins: restroom → floor → building → whole org. Mirrors the dashboard
+   * overview filter so the analytics page can scope the same way.
+   */
+  private restroomScope(orgId: string, scope?: AnalyticsScope) {
+    if (scope?.restroomId) return { id: scope.restroomId };
+    if (scope?.floorId) return { floorId: scope.floorId };
+    if (scope?.buildingId) return { floor: { buildingId: scope.buildingId } };
+    return { floor: { building: { orgId } } };
+  }
 
   async getSummary(orgId: string, buildingId?: string) {
     const buildingFilter = buildingId
@@ -150,10 +164,10 @@ export class AnalyticsService {
     };
   }
 
-  async getIssueFrequency(orgId: string, from: Date, to: Date = new Date()) {
+  async getIssueFrequency(orgId: string, from: Date, to: Date = new Date(), scope?: AnalyticsScope) {
     const incidents = await this.prisma.incident.findMany({
       where: {
-        restroom: { floor: { building: { orgId } } },
+        restroom: this.restroomScope(orgId, scope),
         reportedAt: { gte: from, lte: to },
       },
       select: { issueTypeId: true, issueType: true, reportedAt: true, resolvedAt: true },
@@ -181,10 +195,10 @@ export class AnalyticsService {
     })).sort((a, b) => b.count - a.count);
   }
 
-  async getHourlyStats(orgId: string, from: Date, to: Date = new Date()) {
+  async getHourlyStats(orgId: string, from: Date, to: Date = new Date(), scope?: AnalyticsScope) {
     const incidents = await this.prisma.incident.findMany({
       where: {
-        restroom: { floor: { building: { orgId } } },
+        restroom: this.restroomScope(orgId, scope),
         reportedAt: { gte: from, lte: to },
       },
       select: { reportedAt: true },
@@ -209,10 +223,10 @@ export class AnalyticsService {
     });
   }
 
-  async getSlaStats(orgId: string, from: Date, to: Date = new Date(), targetMinutes = 15) {
+  async getSlaStats(orgId: string, from: Date, to: Date = new Date(), targetMinutes = 15, scope?: AnalyticsScope) {
     const resolved = await this.prisma.incident.findMany({
       where: {
-        restroom: { floor: { building: { orgId } } },
+        restroom: this.restroomScope(orgId, scope),
         status: 'RESOLVED',
         resolvedAt: { not: null },
         reportedAt: { gte: from, lte: to },
@@ -242,9 +256,9 @@ export class AnalyticsService {
     };
   }
 
-  async getDayOfWeekStats(orgId: string, from: Date, to: Date = new Date()) {
+  async getDayOfWeekStats(orgId: string, from: Date, to: Date = new Date(), scope?: AnalyticsScope) {
     const incidents = await this.prisma.incident.findMany({
-      where: { restroom: { floor: { building: { orgId } } }, reportedAt: { gte: from, lte: to } },
+      where: { restroom: this.restroomScope(orgId, scope), reportedAt: { gte: from, lte: to } },
       select: { reportedAt: true },
     });
 
@@ -255,9 +269,9 @@ export class AnalyticsService {
     return counts;
   }
 
-  async getPatterns(orgId: string, from: Date, to: Date = new Date()) {
+  async getPatterns(orgId: string, from: Date, to: Date = new Date(), scope?: AnalyticsScope) {
     const incidents = await this.prisma.incident.findMany({
-      where: { restroom: { floor: { building: { orgId } } }, reportedAt: { gte: from, lte: to } },
+      where: { restroom: this.restroomScope(orgId, scope), reportedAt: { gte: from, lte: to } },
       select: {
         issueTypeId: true,
         issueType: { select: { nameI18n: true, icon: true } },
@@ -447,10 +461,10 @@ export class AnalyticsService {
     },
   } as const;
 
-  async getRestroomScores(orgId: string, from: Date, to: Date = new Date(), buildingId?: string) {
+  async getRestroomScores(orgId: string, from: Date, to: Date = new Date(), scope?: AnalyticsScope) {
     const complaints = (await this.prisma.incident.findMany({
       where: {
-        restroom: buildingId ? { floor: { buildingId } } : { floor: { building: { orgId } } },
+        restroom: this.restroomScope(orgId, scope),
         reportedAt: { gte: from, lte: to },
         issueType: { code: { not: 'positive_feedback' } },
       },
@@ -716,17 +730,18 @@ export class AnalyticsService {
     };
   }
 
-  async getCleanerPerformance(orgId: string, from: Date, to: Date = new Date()) {
+  async getCleanerPerformance(orgId: string, from: Date, to: Date = new Date(), scope?: AnalyticsScope) {
+    const restroom = this.restroomScope(orgId, scope);
     const cleaners = await this.prisma.user.findMany({
       where: { orgId, role: 'CLEANER', isActive: true },
       select: {
         id: true, name: true, idNumber: true,
         incidentActions: {
-          where: { actionType: 'RESOLVED', performedAt: { gte: from, lte: to } },
+          where: { actionType: 'RESOLVED', performedAt: { gte: from, lte: to }, incident: { restroom } },
           select: { performedAt: true },
         },
         assignedIncidents: {
-          where: { reportedAt: { gte: from, lte: to } },
+          where: { reportedAt: { gte: from, lte: to }, restroom },
           select: { reportedAt: true, resolvedAt: true, status: true },
         },
       },

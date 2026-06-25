@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   RadialBarChart, RadialBar, PolarAngleAxis,
 } from 'recharts';
-import { Calendar, Info, FileDown, FileSpreadsheet } from 'lucide-react';
+import { Calendar, Info, FileDown, FileSpreadsheet, Building2, Layers, DoorOpen } from 'lucide-react';
 import api from '../../../lib/api';
 import { exportToPdf, exportToExcel, type ExportSection } from '../../../lib/export';
 import { translateLocationPath } from '../../../lib/translate-name';
@@ -93,13 +93,34 @@ export default function AdminAnalytics() {
   const params = useMemo(() => rangeToParams(range), [range]);
   const rkey = useMemo(() => rangeKey(range), [range]);
 
-  const { data: frequency } = useQuery({ queryKey: ['freq', rkey], queryFn: async () => (await api.get(`/analytics/issue-frequency?${params}`)).data });
-  const { data: hourly }    = useQuery({ queryKey: ['hourly', rkey], queryFn: async () => (await api.get(`/analytics/hourly?${params}`)).data });
-  const { data: cleaners }  = useQuery({ queryKey: ['cleaners', rkey], queryFn: async () => (await api.get(`/analytics/cleaners?${params}`)).data });
-  const { data: sla }       = useQuery({ queryKey: ['sla', rkey, slaTarget], queryFn: async () => (await api.get(`/analytics/sla?${params}&targetMinutes=${slaTarget}`)).data });
-  const { data: dow }       = useQuery({ queryKey: ['dow', rkey], queryFn: async () => (await api.get(`/analytics/day-of-week?${params}`)).data });
-  const { data: patterns }  = useQuery({ queryKey: ['patterns', rkey], queryFn: async () => (await api.get(`/analytics/patterns?${params}`)).data });
-  const { data: scores }    = useQuery({ queryKey: ['scores', rkey], queryFn: async () => (await api.get(`/analytics/restroom-scores?${params}`)).data });
+  // ── Location filter — building › floor › restroom (cascading, mirrors the Overview screen) ──
+  const [buildingId, setBuildingId] = useState('');
+  const [floorId, setFloorId] = useState('');
+  const [restroomId, setRestroomId] = useState('');
+
+  const { data: buildings = [] } = useQuery({
+    queryKey: ['building-structure'],
+    queryFn: async () => (await api.get('/buildings/structure')).data,
+  });
+  const selectedBuilding = buildings.find((b: any) => b.id === buildingId);
+  const floors: any[] = selectedBuilding?.floors ?? [];
+  const selectedFloor = floors.find((f: any) => f.id === floorId);
+  const restrooms: any[] = selectedFloor?.restrooms ?? [];
+
+  // Reset the narrower selections whenever a broader one changes.
+  useEffect(() => { setFloorId(''); setRestroomId(''); }, [buildingId]);
+  useEffect(() => { setRestroomId(''); }, [floorId]);
+
+  const scopeParam = `${buildingId ? `&buildingId=${buildingId}` : ''}${floorId ? `&floorId=${floorId}` : ''}${restroomId ? `&restroomId=${restroomId}` : ''}`;
+  const scopeKey = `${buildingId}:${floorId}:${restroomId}`;
+
+  const { data: frequency } = useQuery({ queryKey: ['freq', rkey, scopeKey], queryFn: async () => (await api.get(`/analytics/issue-frequency?${params}${scopeParam}`)).data });
+  const { data: hourly }    = useQuery({ queryKey: ['hourly', rkey, scopeKey], queryFn: async () => (await api.get(`/analytics/hourly?${params}${scopeParam}`)).data });
+  const { data: cleaners }  = useQuery({ queryKey: ['cleaners', rkey, scopeKey], queryFn: async () => (await api.get(`/analytics/cleaners?${params}${scopeParam}`)).data });
+  const { data: sla }       = useQuery({ queryKey: ['sla', rkey, slaTarget, scopeKey], queryFn: async () => (await api.get(`/analytics/sla?${params}&targetMinutes=${slaTarget}${scopeParam}`)).data });
+  const { data: dow }       = useQuery({ queryKey: ['dow', rkey, scopeKey], queryFn: async () => (await api.get(`/analytics/day-of-week?${params}${scopeParam}`)).data });
+  const { data: patterns }  = useQuery({ queryKey: ['patterns', rkey, scopeKey], queryFn: async () => (await api.get(`/analytics/patterns?${params}${scopeParam}`)).data });
+  const { data: scores }    = useQuery({ queryKey: ['scores', rkey, scopeKey], queryFn: async () => (await api.get(`/analytics/restroom-scores?${params}${scopeParam}`)).data });
 
   const slaColor = !sla ? CYAN : sla.slaPercent >= 80 ? GREEN : sla.slaPercent >= 50 ? AMBER : RED;
 
@@ -239,6 +260,49 @@ export default function AdminAnalytics() {
               : t('admin.analytics.customRange')}
           </button>
         </div>
+      </div>
+
+      {/* Location filter — building › floor › restroom (cascading) */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}>
+          <Building2 size={15} style={{ color: CYAN }} />
+          <select value={buildingId} onChange={e => setBuildingId(e.target.value)}
+            className="bg-transparent text-sm outline-none" style={{ color: 'var(--color-text)', minWidth: 140 }}>
+            <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allBuildings')}</option>
+            {buildings.map((b: any) => (
+              <option key={b.id} value={b.id} style={{ background: '#0a0e1a' }}>{b.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2"
+          style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)', opacity: buildingId ? 1 : 0.45 }}>
+          <Layers size={15} style={{ color: CYAN }} />
+          <select value={floorId} onChange={e => setFloorId(e.target.value)} disabled={!buildingId}
+            title={!buildingId ? t('admin.dashboard.pickBuildingFirst') : undefined}
+            className="bg-transparent text-sm outline-none disabled:cursor-not-allowed" style={{ color: 'var(--color-text)', minWidth: 120 }}>
+            <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allFloors')}</option>
+            {floors.map((f: any) => (
+              <option key={f.id} value={f.id} style={{ background: '#0a0e1a' }}>{f.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2"
+          style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)', opacity: floorId ? 1 : 0.45 }}>
+          <DoorOpen size={15} style={{ color: CYAN }} />
+          <select value={restroomId} onChange={e => setRestroomId(e.target.value)} disabled={!floorId}
+            title={!floorId ? t('admin.dashboard.pickFloorFirst') : undefined}
+            className="bg-transparent text-sm outline-none disabled:cursor-not-allowed" style={{ color: 'var(--color-text)', minWidth: 120 }}>
+            <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allRestrooms')}</option>
+            {restrooms.map((r: any) => (
+              <option key={r.id} value={r.id} style={{ background: '#0a0e1a' }}>{r.name}</option>
+            ))}
+          </select>
+        </div>
+        {buildingId && (
+          <button onClick={() => setBuildingId('')} className="text-xs underline ms-1" style={{ color: CYAN }}>
+            {t('admin.dashboard.clearFilter')}
+          </button>
+        )}
       </div>
 
       {/* Custom range pickers (collapsible) */}
