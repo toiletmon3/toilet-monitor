@@ -135,10 +135,10 @@ function NudgeBtn({ onClick, title, children }: { onClick: () => void; title: st
 }
 
 const DEFAULT_STATS_LAYOUT = {
-  usersNum:   { top: 10,   right: 29.5 },
+  usersNum:   { top: 10,   right: 24.5 },
   periodWord: { top: 10,   right: 64.5 },
-  minutesNum: { top: 14.5, right: 26.5 },
-  fontScale: 1,
+  minutesNum: { top: 14.5, right: 24 },
+  fontScale: 1.3,
 };
 
 function TemplateCard({ template, buildings, devices, onRefresh }: { template: any; buildings: any[]; devices: any[]; onRefresh: () => void }) {

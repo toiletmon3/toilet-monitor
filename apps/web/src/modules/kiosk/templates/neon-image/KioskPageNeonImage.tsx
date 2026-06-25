@@ -42,10 +42,11 @@ const IMG_H = 1679;
  *  distance of the element's right edge from the physical right edge. Open the
  *  kiosk with ?edit=1 to nudge these on-screen and read off the final values. */
 const NUM_POS = {
-  usersNum:   { top: 10,   right: 29.5 },
+  usersNum:   { top: 10,   right: 24.5 },
   periodWord: { top: 10,   right: 64.5 },
-  minutesNum: { top: 14.5, right: 26.5 },
+  minutesNum: { top: 14.5, right: 24 },
 };
+const DEFAULT_FONT_SCALE = 1.3;
 
 // Designer spec: Heebo regular, 44px on the 1679px-tall artwork → 44/1679 ≈ 2.62%
 // of the stage height. Expressed in cqh so it scales with the artwork on any screen.
@@ -94,7 +95,7 @@ export default function KioskPageNeonImage() {
 
   // Effective overlay positions + font scale, configured per template in the admin.
   const L = { ...NUM_POS, ...(layout || {}) } as typeof NUM_POS;
-  const fontScale: number = layout?.fontScale ?? 1;
+  const fontScale: number = layout?.fontScale ?? DEFAULT_FONT_SCALE;
   const numStyle = {
     ...NUM_STYLE,
     fontSize: `${(FONT_CQH * fontScale).toFixed(3)}cqh`,
