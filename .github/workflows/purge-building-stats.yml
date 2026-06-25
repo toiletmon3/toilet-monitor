@@ -1,0 +1,72 @@
+name: Purge building stats (manual)
+
+# Manually-triggered, guarded data maintenance. SAFE BY DEFAULT: leave
+# `confirm` = false for a dry run that only COUNTS what would be deleted.
+# Set `confirm` = true for the real deletion (it takes a pg_dump backup first).
+on:
+  workflow_dispatch:
+    inputs:
+      before:
+        description: 'Delete data BEFORE this date (YYYY-MM-DD, midnight Israel time)'
+        required: true
+        default: '2026-06-22'
+      building_id:
+        description: 'Target building id (preferred). Leave empty to LIST all buildings.'
+        required: false
+        default: ''
+      building_name:
+        description: 'Or match by exact building name (used only if id is empty)'
+        required: false
+        default: ''
+      include_arrivals:
+        description: 'Also delete cleaner-arrival rows'
+        type: boolean
+        default: true
+      confirm:
+        description: 'CONFIRM real deletion (false = dry run / count only)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: purge-production
+  cancel-in-progress: false
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run purge script over SSH
+        env:
+          PURGE_BEFORE: ${{ inputs.before }}
+          PURGE_BUILDING_ID: ${{ inputs.building_id }}
+          PURGE_BUILDING_NAME: ${{ inputs.building_name }}
+          PURGE_INCLUDE_ARRIVALS: ${{ inputs.include_arrivals && '1' || '0' }}
+          PURGE_CONFIRM: ${{ inputs.confirm && '1' || '0' }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          HOST=$(printf '%s' "${{ secrets.SSH_HOST }}" | tr -d '\r\n' | xargs)
+          USER=$(printf '%s' "${{ secrets.SSH_USER }}" | tr -d '\r\n' | xargs)
+
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=30 \
+            -o ServerAliveInterval=20 \
+            "$USER@$HOST" /bin/bash << ENDSSH
+          set -e
+          cd /opt/toilet-monitor
+          # Make sure the purge script is present (it ships with the repo).
+          GIT_TERMINAL_PROMPT=0 timeout 60 git pull --no-edit || true
+          # Load DATABASE_URL (+ any other prod env) for Prisma and pg_dump.
+          set -a; source .env.production; set +a
+          cd apps/server
+          export PURGE_BEFORE="${PURGE_BEFORE}"
+          export PURGE_BUILDING_ID="${PURGE_BUILDING_ID}"
+          export PURGE_BUILDING_NAME="${PURGE_BUILDING_NAME}"
+          export PURGE_INCLUDE_ARRIVALS="${PURGE_INCLUDE_ARRIVALS}"
+          export PURGE_CONFIRM="${PURGE_CONFIRM}"
+          echo "Running purge (confirm=${PURGE_CONFIRM})..."
+          pnpm exec ts-node prisma/purge-building-stats.ts
+          ENDSSH
