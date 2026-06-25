@@ -22,8 +22,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Sparkles, Clock } from 'lucide-react';
 import { setLanguage } from '../../../../i18n';
 import api from '../../../../lib/api';
+import { formatDuration } from '../../../../lib/format-duration';
 import { queueIncident, syncPending, getPendingCount } from '../../../../lib/offline';
 import { joinRestroom, sendHeartbeat } from '../../../../lib/socket';
 import KioskConfirmation from '../../components/KioskConfirmation';
@@ -37,6 +39,12 @@ const BG_URL = '/kiosk-templates/neon-image-bg.png';
  *  letterbox drift. */
 const IMG_W = 1536;
 const IMG_H = 2752;
+
+/** Vertical band (in % of the artwork height) where the artwork's two example
+ *  stat lines ("287 משתמשים השבוע" / "13 דקות …") sit. The live overlay masks
+ *  this band and redraws the real values. Nudge these to align with your art. */
+const STATS_TOP = 8.0;
+const STATS_HEIGHT = 10.0;
 
 type ConnectionStatus = 'online' | 'offline' | 'syncing';
 
@@ -61,9 +69,11 @@ const HOTSPOTS: { code: string; left: number; top: number; width: number; height
 
 export default function KioskPageNeonImage() {
   const { deviceCode } = useParams<{ deviceCode: string }>();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
   const [issueTypes, setIssueTypes] = useState<any[]>([]);
+  const [stats, setStats] = useState<{ weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null } | null>(null);
+  const [statsView, setStatsView] = useState<'week' | 'today'>('week');
   const [confirmed, setConfirmed] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState(false);
   const [, setConnectionStatus] = useState<ConnectionStatus>('online');
@@ -80,6 +90,8 @@ export default function KioskPageNeonImage() {
         const orgId = device.restroom.floor.building.orgId;
         const { data: types } = await api.get(`/buildings/issue-types/${orgId}`);
         setIssueTypes(types);
+        const buildingId = device.restroom.floor.building.id;
+        api.get(`/analytics/kiosk-stats/building/${buildingId}`).then(r => setStats(r.data)).catch(() => {});
         api.get('/auth/default-org').then(r => {
           if (r.data?.kioskLang) import('../../../../i18n').then(m => m.setLanguage(r.data.kioskLang));
         }).catch(() => {});
@@ -130,6 +142,12 @@ export default function KioskPageNeonImage() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Alternate the top stat between "this week" and "today" every 10s.
+  useEffect(() => {
+    const id = setInterval(() => setStatsView(v => (v === 'week' ? 'today' : 'week')), 10_000);
+    return () => clearInterval(id);
+  }, []);
+
   const handleIssuePress = useCallback(async (issueCode: string) => {
     if (!deviceInfo) return;
     const issueType = issueTypes.find((it) => it.code === issueCode);
@@ -160,6 +178,8 @@ export default function KioskPageNeonImage() {
       const count = await getPendingCount();
       setPendingCount(count);
     }
+    // Optimistically bump the live counters so the kiosk reacts instantly.
+    setStats(s => (s ? { ...s, weeklyReports: s.weeklyReports + 1, dailyReports: s.dailyReports + 1 } : s));
     setConfirmed(issueCode);
     setTimeout(() => setConfirmed(null), 5000);
   }, [deviceInfo, issueTypes]);
@@ -272,6 +292,36 @@ export default function KioskPageNeonImage() {
             )}
           </button>
         ))}
+
+        {/* Live stats — masks the artwork's example numbers (287 / 13 דקות) with a
+            soft dark band and redraws the real values fetched from the server.
+            Position is tuned via STATS_TOP / STATS_HEIGHT above. */}
+        {stats && (
+          <div
+            style={{
+              position: 'absolute', insetInlineStart: 0, insetInlineEnd: 0,
+              top: `${STATS_TOP}%`, height: `${STATS_HEIGHT}%`,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: '0.45em', pointerEvents: 'none', zIndex: 2,
+              background: 'linear-gradient(to bottom, rgba(2,7,9,0) 0%, rgba(2,7,9,1) 24%, rgba(2,7,9,1) 76%, rgba(2,7,9,0) 100%)',
+            }}
+          >
+            <div key={statsView} className="flex items-center" style={{ gap: '0.4em', animation: 'kioskStatFade 0.5s ease' }}>
+              <Sparkles style={{ width: '1em', height: '1em', color: '#7CF6E8', filter: 'drop-shadow(0 0 6px rgba(124,246,232,0.6))' }} />
+              <span style={{ color: '#eafffb', fontSize: 'clamp(0.95rem, 2.4vh, 1.5rem)', fontWeight: 600, textShadow: '0 0 14px rgba(124,246,232,0.45)', whiteSpace: 'nowrap' }}>
+                {statsView === 'week'
+                  ? `${stats.weeklyReports} ${t('kiosk.weeklyUsers')}`
+                  : `${stats.dailyReports} ${t('kiosk.dailyUsers')}`}
+              </span>
+            </div>
+            <div className="flex items-center" style={{ gap: '0.4em' }}>
+              <Clock style={{ width: '1em', height: '1em', color: '#7CF6E8', filter: 'drop-shadow(0 0 6px rgba(124,246,232,0.6))' }} />
+              <span style={{ color: '#eafffb', fontSize: 'clamp(0.95rem, 2.4vh, 1.5rem)', fontWeight: 600, textShadow: '0 0 14px rgba(124,246,232,0.45)', whiteSpace: 'nowrap' }}>
+                {stats.avgResponseMinutes != null ? formatDuration(stats.avgResponseMinutes, lang) : '—'} · {t('kiosk.avgResponse')}
+              </span>
+            </div>
+          </div>
+        )}
 
         {pendingCount > 0 && (
           <div style={{ position: 'absolute', bottom: '1%', insetInlineStart: '2%', fontSize: 12, color: 'rgba(255,200,0,0.8)' }}>
