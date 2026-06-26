@@ -381,6 +381,10 @@
       "themeNeonImageDesc": "עיצוב מבוסס תמונה עם כפתורים שקופים מעל"
     },
     "settings": {
+      "orgName": "שם הארגון",
+      "orgNameDesc": "מופיע בכותרת ובנושא של המייל היומי",
+      "orgNamePlaceholder": "שם הארגון",
+      "save": "שמירה",
       "myAccount": "החשבון שלי",
       "changePassword": "שנה סיסמה",
       "newPassword": "סיסמה חדשה",

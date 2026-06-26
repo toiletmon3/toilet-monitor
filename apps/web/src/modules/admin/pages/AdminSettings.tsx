@@ -739,7 +739,7 @@ export default function AdminSettings() {
     toast.success(t('common.updated'));
   };
 
-  const updateOrgSettings = async (patch: { kioskLang?: string; cleanerLang?: string | null; timezone?: string; dailyReportHour?: number; dailyReportEnabled?: boolean }) => {
+  const updateOrgSettings = async (patch: { name?: string; kioskLang?: string; cleanerLang?: string | null; timezone?: string; dailyReportHour?: number; dailyReportEnabled?: boolean }) => {
     await api.patch('/users/org-settings', patch);
     queryClient.setQueryData(['org-settings'], (old: any) => ({ ...old, ...patch }));
     // Notify AdminLayout immediately via custom event so the sidebar clock updates at once
@@ -758,6 +758,17 @@ export default function AdminSettings() {
   const [pwShowNew, setPwShowNew] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
   const [emailLog, setEmailLog] = useState<{ ok: boolean; msg: string; time: string } | null>(null);
+
+  // Organization name — shown in the daily-report email subject/title.
+  const [orgName, setOrgName] = useState('');
+  const [orgNameSaving, setOrgNameSaving] = useState(false);
+  useEffect(() => { if (typeof orgSettings?.name === 'string') setOrgName(orgSettings.name); }, [orgSettings?.name]);
+  const saveOrgName = async () => {
+    const next = orgName.trim();
+    if (!next || next === orgSettings?.name) return;
+    setOrgNameSaving(true);
+    try { await updateOrgSettings({ name: next }); } finally { setOrgNameSaving(false); }
+  };
 
   useEffect(() => {
     api.get('/email/status', { timeout: 30000 }).then(({ data }) => {
@@ -854,6 +865,33 @@ export default function AdminSettings() {
             )}
           </form>
         )}
+      </div>
+
+      {/* ── Organization Name ── */}
+      <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+        <h2 className="font-semibold text-white flex items-center gap-2">
+          <Building2 size={16} style={{ color: 'var(--color-accent)' }} />
+          {t('admin.settings.orgName')}
+        </h2>
+        <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.orgNameDesc')}</div>
+        <div className="flex gap-2">
+          <input
+            value={orgName}
+            onChange={e => setOrgName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') saveOrgName(); }}
+            placeholder={t('admin.settings.orgNamePlaceholder')}
+            className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
+            style={{ background: 'var(--color-bg)', border: '1px solid rgba(0,229,204,0.3)', color: 'var(--color-text)' }}
+          />
+          <button
+            onClick={saveOrgName}
+            disabled={orgNameSaving || !orgName.trim() || orgName.trim() === orgSettings?.name}
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-40"
+            style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
+          >
+            {t('admin.settings.save')}
+          </button>
+        </div>
       </div>
 
       {/* ── Language Settings ── */}
