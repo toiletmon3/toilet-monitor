@@ -83,7 +83,7 @@
     "title": "לוח בקרה",
     "nav": {
       "dashboard": "סקירה כללית",
-      "devices": "טאבלטים לא מחוברים",
+      "devices": "סטטוס טאבלטים",
       "incidents": "בקשות",
       "analytics": "סטטיסטיקות",
       "cleaners": "עובדים",
@@ -213,13 +213,15 @@
     },
     "devices": {
       "title": "מכשירים",
+      "statusTitle": "סטטוס טאבלטים",
       "online": "מחובר",
       "offline": "מנותק",
       "lastSeen": "נראה לאחרונה",
       "never": "מעולם לא",
       "justNow": "הרגע",
       "ago": "לפני",
-      "allConnected": "כל הטאבלטים מחוברים"
+      "allConnected": "כל הטאבלטים מחוברים",
+      "noDevices": "אין טאבלטים רשומים"
     },
     "dashboard": {
       "allBuildings": "כל הבניינים",

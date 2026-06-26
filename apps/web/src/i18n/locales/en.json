@@ -83,7 +83,7 @@
     "title": "Dashboard",
     "nav": {
       "dashboard": "Overview",
-      "devices": "Offline Tablets",
+      "devices": "Tablet Status",
       "incidents": "Requests",
       "analytics": "Analytics",
       "cleaners": "Workers",
@@ -213,13 +213,15 @@
     },
     "devices": {
       "title": "Devices",
+      "statusTitle": "Tablet Status",
       "online": "Online",
       "offline": "Offline",
       "lastSeen": "Last Seen",
       "never": "Never",
       "justNow": "Just now",
       "ago": "ago",
-      "allConnected": "All tablets are connected"
+      "allConnected": "All tablets are connected",
+      "noDevices": "No registered tablets"
     },
     "dashboard": {
       "allBuildings": "All Buildings",
