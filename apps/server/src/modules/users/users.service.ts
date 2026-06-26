@@ -7,9 +7,10 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async getOrgSettings(orgId: string) {
-    const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
+    const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { name: true, settings: true } });
     const s = (org?.settings ?? {}) as any;
     return {
+      name: org?.name ?? '',
       kioskLang: s.kioskLang ?? s.defaultLanguage ?? 'he',
       cleanerLang: s.cleanerLang ?? null,
       kioskTheme: s.kioskTheme ?? 'default',
@@ -19,12 +20,17 @@ export class UsersService {
     };
   }
 
-  async updateOrgSettings(orgId: string, patch: { kioskLang?: string; cleanerLang?: string | null; kioskTheme?: string; timezone?: string; dailyReportHour?: number; dailyReportEnabled?: boolean }) {
+  async updateOrgSettings(orgId: string, patch: { name?: string; kioskLang?: string; cleanerLang?: string | null; kioskTheme?: string; timezone?: string; dailyReportHour?: number; dailyReportEnabled?: boolean }) {
     const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
     const current = (org?.settings ?? {}) as any;
-    const updated = { ...current, ...patch };
-    await this.prisma.organization.update({ where: { id: orgId }, data: { settings: updated } });
+    // `name` is a top-level column on Organization, not part of the settings JSON.
+    const { name, ...settingsPatch } = patch;
+    const updated = { ...current, ...settingsPatch };
+    const data: any = { settings: updated };
+    if (typeof name === 'string' && name.trim()) data.name = name.trim();
+    const saved = await this.prisma.organization.update({ where: { id: orgId }, data, select: { name: true } });
     return {
+      name: saved.name,
       kioskLang: updated.kioskLang ?? 'he',
       cleanerLang: updated.cleanerLang ?? null,
       kioskTheme: updated.kioskTheme ?? 'default',

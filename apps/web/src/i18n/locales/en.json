@@ -381,6 +381,10 @@
       "themeNeonImageDesc": "Image-based design with transparent button hotspots"
     },
     "settings": {
+      "orgName": "Organization Name",
+      "orgNameDesc": "Shown in the daily report email subject and title",
+      "orgNamePlaceholder": "Organization name",
+      "save": "Save",
       "myAccount": "My Account",
       "changePassword": "Change Password",
       "newPassword": "New password",
