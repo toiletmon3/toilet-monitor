@@ -5,6 +5,18 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { IncidentStatus } from '@prisma/client';
 
+/** Resolve a { from?, to? } window from the dashboard range params (days=N OR from+to). */
+function resolveUrgentRange(days?: string, from?: string, to?: string): { from?: Date; to?: Date } | null {
+  const parse = (s?: string) => { if (!s) return null; const d = new Date(s); return Number.isNaN(d.getTime()) ? null : d; };
+  const f = parse(from), t = parse(to);
+  if (f || t) {
+    const inclusiveTo = t && to && !to.includes('T') ? new Date(new Date(t).setHours(23, 59, 59, 999)) : (t ?? undefined);
+    return { from: f ?? undefined, to: inclusiveTo };
+  }
+  if (days) { const n = +days; if (Number.isFinite(n) && n > 0) return { from: new Date(Date.now() - n * 24 * 60 * 60 * 1000) }; }
+  return null;
+}
+
 @Controller('incidents')
 export class IncidentsController {
   constructor(private incidentsService: IncidentsService) {}
@@ -69,8 +81,24 @@ export class IncidentsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('urgent')
-  getUrgent(@CurrentUser() user: any) {
-    return this.incidentsService.getUrgent(user.orgId);
+  getUrgent(
+    @CurrentUser() user: any,
+    @Query('days') days?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('buildingId') buildingId?: string,
+    @Query('floorId') floorId?: string,
+    @Query('restroomId') restroomId?: string,
+  ) {
+    const range = resolveUrgentRange(days, from, to);
+    // Lock scoped roles to their own building, mirroring findAll.
+    const effectiveBuildingId = (user.role === 'CLEANER' || user.role === 'SHIFT_SUPERVISOR') && user.buildingId
+      ? user.buildingId
+      : buildingId;
+    return this.incidentsService.getUrgent(user.orgId, {
+      buildingId: effectiveBuildingId, floorId, restroomId,
+      from: range?.from, to: range?.to,
+    });
   }
 
   @Public()

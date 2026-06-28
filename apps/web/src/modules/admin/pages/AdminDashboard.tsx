@@ -479,8 +479,8 @@ export default function AdminDashboard() {
   });
 
   const { data: urgentData = [] } = useQuery({
-    queryKey: ['incidents', 'urgent'],
-    queryFn: async () => (await api.get('/incidents/urgent')).data,
+    queryKey: ['incidents', 'urgent', range, buildingId, floorId, restroomId],
+    queryFn: async () => (await api.get(`/incidents/urgent?${ovParams}`)).data,
     refetchInterval: 15_000,
   });
 
@@ -491,6 +491,7 @@ export default function AdminDashboard() {
     const socket = getSocket();
     const refresh = () => {
       queryClient.invalidateQueries({ queryKey: ['analytics-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['incidents', 'urgent'] });
     };
     socket.on('incident:created', refresh);
     socket.on('incident:resolved', refresh);
@@ -623,25 +624,6 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {/* Urgent alerts */}
-      {urgentData.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(239,68,68,0.3)' }}>
-          <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
-            <AlertCircle size={16} style={{ color: '#ef4444' }} />
-            <h2 className="font-semibold text-white">{t('admin.dashboard.urgentAlerts')}</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full font-bold animate-pulse"
-              style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444' }}>
-              {urgentData.length}
-            </span>
-          </div>
-          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-            {urgentData.map((inc: any) => (
-              <DashboardIncidentRow key={inc.id} inc={inc} />
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Donuts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Donut title={t('admin.dashboard.ovGeneral')} data={generalData} />
@@ -753,6 +735,25 @@ export default function AdminDashboard() {
 
       {/* Slide 8 — Deep Dive */}
       <DeepDiveTable rows={ov?.deepDive} lang={lang} t={t} minutesUnit={minutesUnit} />
+
+      {/* Urgent alerts — bottom of the page, filtered by the page's range + scope */}
+      {urgentData.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(239,68,68,0.3)' }}>
+          <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
+            <AlertCircle size={16} style={{ color: '#ef4444' }} />
+            <h2 className="font-semibold text-white">{t('admin.dashboard.urgentAlerts')}</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full font-bold animate-pulse"
+              style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444' }}>
+              {urgentData.length}
+            </span>
+          </div>
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+            {urgentData.map((inc: any) => (
+              <DashboardIncidentRow key={inc.id} inc={inc} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

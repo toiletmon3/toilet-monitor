@@ -361,17 +361,38 @@ export class IncidentsService {
     });
   }
 
-  async getUrgent(orgId: string) {
+  async getUrgent(
+    orgId: string,
+    filters: { buildingId?: string; floorId?: string; restroomId?: string; from?: Date; to?: Date } = {},
+  ) {
     const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
     const s = (org?.settings ?? {}) as any;
     const interval: number = s.cleanerReminderMinutes ?? 5;
 
+    // An incident is "urgent" once it has been open for at least `interval` min.
+    const urgencyCutoff = new Date(Date.now() - interval * 60 * 1000);
+
+    // Location scope — ALWAYS org-scoped, then narrowed (restroom → floor →
+    // building). The orgId constraint is never dropped, so a client cannot read
+    // another org's incidents by passing a foreign building/floor/restroom id.
+    const restroom: any = { floor: { building: { orgId } } };
+    const where: any = { restroom, status: { in: ['OPEN', 'IN_PROGRESS'] } };
+    if (filters.restroomId) {
+      where.restroomId = filters.restroomId;
+    } else if (filters.floorId) {
+      restroom.floorId = filters.floorId;
+    } else if (filters.buildingId) {
+      restroom.floor = { buildingId: filters.buildingId, building: { orgId } };
+    }
+
+    // reportedAt must be ≤ urgency cutoff, and within the selected [from, to] window.
+    const upper = filters.to && filters.to < urgencyCutoff ? filters.to : urgencyCutoff;
+    const reportedAt: { lte: Date; gte?: Date } = { lte: upper };
+    if (filters.from) reportedAt.gte = filters.from;
+    where.reportedAt = reportedAt;
+
     const incidents = await this.prisma.incident.findMany({
-      where: {
-        restroom: { floor: { building: { orgId } } },
-        status: { in: ['OPEN', 'IN_PROGRESS'] },
-        reportedAt: { lte: new Date(Date.now() - interval * 60 * 1000) },
-      },
+      where,
       include: INCIDENT_INCLUDE,
       orderBy: { reportedAt: 'asc' },
     });
