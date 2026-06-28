@@ -29,19 +29,20 @@ export default function AdminLayout() {
   const lang = i18n.language as 'he' | 'en';
   const now = useClock();
 
-  // Point the PWA manifest at the admin app while on admin pages, so "Add to
-  // Home Screen" from here installs the admin (start_url /admin) — not the
-  // default cleaner app. Restored on unmount.
+  // While on admin pages, point the PWA manifest AND the iOS home-screen icon at
+  // the admin app, so "Add to Home Screen" installs "ToiletMon Admin" (start_url
+  // /admin, gear+wrench icon) — not the default cleaner app. Restored on unmount.
   useEffect(() => {
-    let link = document.querySelector("link[rel='manifest']") as HTMLLinkElement | null;
-    const prev = link?.getAttribute('href') ?? null;
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'manifest';
-      document.head.appendChild(link);
-    }
-    link.setAttribute('href', '/manifest-admin.webmanifest');
-    return () => { if (link && prev) link.setAttribute('href', prev); };
+    const setLink = (rel: string, href: string) => {
+      let el = document.querySelector(`link[rel='${rel}']`) as HTMLLinkElement | null;
+      const prev = el?.getAttribute('href') ?? null;
+      if (!el) { el = document.createElement('link'); el.rel = rel; document.head.appendChild(el); }
+      el.setAttribute('href', href);
+      return () => { if (el && prev) el.setAttribute('href', prev); };
+    };
+    const restoreManifest = setLink('manifest', '/manifest-admin.webmanifest');
+    const restoreIcon = setLink('apple-touch-icon', '/admin-icon-192.png');
+    return () => { restoreManifest(); restoreIcon(); };
   }, []);
 
   const [theme, setTheme] = useState<'dark' | 'light'>(() =>
