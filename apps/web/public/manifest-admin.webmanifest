@@ -1,0 +1,16 @@
+{
+  "name": "ToiletMon Admin",
+  "short_name": "ToiletMon אדמין",
+  "description": "Smart restroom monitoring — admin",
+  "theme_color": "#00e5cc",
+  "background_color": "#0a0e1a",
+  "display": "standalone",
+  "orientation": "portrait",
+  "id": "/admin",
+  "start_url": "/admin",
+  "scope": "/",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

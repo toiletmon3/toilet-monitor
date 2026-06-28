@@ -29,6 +29,21 @@ export default function AdminLayout() {
   const lang = i18n.language as 'he' | 'en';
   const now = useClock();
 
+  // Point the PWA manifest at the admin app while on admin pages, so "Add to
+  // Home Screen" from here installs the admin (start_url /admin) — not the
+  // default cleaner app. Restored on unmount.
+  useEffect(() => {
+    let link = document.querySelector("link[rel='manifest']") as HTMLLinkElement | null;
+    const prev = link?.getAttribute('href') ?? null;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'manifest';
+      document.head.appendChild(link);
+    }
+    link.setAttribute('href', '/manifest-admin.webmanifest');
+    return () => { if (link && prev) link.setAttribute('href', prev); };
+  }, []);
+
   const [theme, setTheme] = useState<'dark' | 'light'>(() =>
     (localStorage.getItem('adminTheme') as 'dark' | 'light') ?? 'dark'
   );
