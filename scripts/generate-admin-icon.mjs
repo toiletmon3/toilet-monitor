@@ -132,14 +132,19 @@ function drawWrench(px, size, cx, cy, angle, len, width, jawR, c, hole) {
   }
 }
 
+function fillCircleColor(px, size, cx, cy, radius, c) {
+  for (let y = Math.floor(cy-radius); y <= Math.ceil(cy+radius); y++)
+    for (let x = Math.floor(cx-radius); x <= Math.ceil(cx+radius); x++)
+      if ((x-cx)**2 + (y-cy)**2 <= radius*radius) setPixel(px, size, x, y, ...c);
+}
+
 function draw(px, size) {
-  const s = size / 192;
-  const pad = Math.round(16 * s);
-  // card + cyan border
-  fillRoundRect(px, size, pad, pad, size - pad*2, size - pad*2, Math.round(28*s), CARD);
-  const bw = Math.max(3, Math.round(3*s));
+  const pad = Math.round(16 * size/192);
+  // card + cyan corner border
+  fillRoundRect(px, size, pad, pad, size - pad*2, size - pad*2, Math.round(28*size/192), CARD);
+  const bw = Math.max(3, Math.round(3*size/192));
   for (let i = 0; i < bw; i++) {
-    const rad = Math.round(28*s) - i, x0 = pad+i, y0 = pad+i, w = size-pad*2-i*2, h = size-pad*2-i*2;
+    const rad = Math.round(28*size/192) - i, x0 = pad+i, y0 = pad+i, w = size-pad*2-i*2, h = size-pad*2-i*2;
     for (let y = y0; y < y0+h; y++) for (let x = x0; x < x0+w; x++) {
       const inCorner = (
         (x < x0+rad && y < y0+rad && (x-(x0+rad))**2 + (y-(y0+rad))**2 > rad*rad) ||
@@ -151,17 +156,21 @@ function draw(px, size) {
     }
   }
 
+  // Everything centered → balanced. Wrench sits BEHIND a centred gear, separated
+  // by a clean gap ring so it never overlaps the gear.
   const cx = size/2, cy = size/2;
-  // Gear, nudged up-left
-  const gx = cx - size*0.06, gy = cy - size*0.06;
-  drawGear(px, size, gx, gy, size*0.20, size*0.055, size*0.085, 8, CY);
-  // carve a clean hole in the gear center (in case)
-  for (let y=Math.floor(gy-size*0.09); y<=Math.ceil(gy+size*0.09); y++)
-    for (let x=Math.floor(gx-size*0.09); x<=Math.ceil(gx+size*0.09); x++)
-      if ((x-gx)**2+(y-gy)**2 <= (size*0.085)**2) setPixel(px,size,x,y,...CARD);
+  const base = size*0.185, tooth = size*0.052, hole = size*0.072;
+  const gearOuter = base + tooth;
 
-  // Wrench across, nudged down-right, diagonal
-  drawWrench(px, size, cx + size*0.10, cy + size*0.10, -Math.PI/4, size*0.46, size*0.072, size*0.085, CY, CARD);
+  // 1) wrench behind, centred & point-symmetric (both jaws peek out equally)
+  drawWrench(px, size, cx, cy, -Math.PI/4, size*0.70, size*0.078, size*0.092, CY, CARD);
+  // 2) gap ring: clear a card-coloured disc around the gear so the wrench is
+  //    visibly separate (appears to pass behind the gear)
+  fillCircleColor(px, size, cx, cy, gearOuter + size*0.03, CARD);
+  // 3) gear on top, centred
+  drawGear(px, size, cx, cy, base, tooth, hole, 8, CY);
+  // 4) clean centre hole
+  fillCircleColor(px, size, cx, cy, hole, CARD);
 }
 
 for (const size of [192, 512]) {
