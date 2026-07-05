@@ -6,6 +6,7 @@ import KioskPage from './KioskPage';
 import KioskPageNeon from './templates/neon/KioskPageNeon';
 import KioskPageNeonPro from './templates/neonpro/KioskPageNeonPro';
 import KioskPageNeonImage from './templates/neon-image/KioskPageNeonImage';
+import KioskPageNeonVideo from './templates/neon-video/KioskPageNeonVideo';
 
 /**
  * Reads the kiosk template (theme + buttons) assigned to this device and renders
@@ -60,5 +61,6 @@ export default function KioskDispatcher() {
   if (theme === 'neon') return <KioskPageNeon />;
   if (theme === 'neon-pro') return <KioskPageNeonPro />;
   if (theme === 'neon-image') return <KioskPageNeonImage />;
+  if (theme === 'neon-video') return <KioskPageNeonVideo />;
   return <KioskPage />;
 }

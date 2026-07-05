@@ -34,6 +34,12 @@ function useThemes() {
       desc: t('admin.kiosk.themeNeonImageDesc'),
       preview: { bg: 'radial-gradient(ellipse at top, #0a1416 0%, #000 100%)', border: '#7CF6E8', glow: 'rgba(124,246,232,0.5)' },
     },
+    {
+      id: 'neon-video',
+      title: t('admin.kiosk.themeNeonVideo'),
+      desc: t('admin.kiosk.themeNeonVideoDesc'),
+      preview: { bg: 'radial-gradient(ellipse at top, #101c2e 0%, #000 100%)', border: '#4FD8FF', glow: 'rgba(79,216,255,0.5)' },
+    },
   ];
 }
 
@@ -388,7 +394,7 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
         </div>
       )}
 
-      {!editing && currentTheme === 'neon-image' && (
+      {!editing && (currentTheme === 'neon-image' || currentTheme === 'neon-video') && (
         <div className="px-5 py-3 border-t flex flex-col gap-2" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
           <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>מיקום הנתונים על התבנית</span>
           {([

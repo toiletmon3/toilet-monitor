@@ -36,7 +36,7 @@ model KioskTemplate {
   orgId     String
   name      String
   isDefault Boolean @default(false)
-  theme     String  @default("default") // "default" | "neon"
+  theme     String  @default("default") // "default" | "neon" | "neon-pro" | "neon-image" | "neon-video"
   buttons   Json
   iconScale Float   @default(1.5) // kiosk icon/label size multiplier (1 = 100%)
   ledSnake  Boolean @default(false) // animated LED "snake" light around the tiles
