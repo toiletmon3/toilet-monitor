@@ -134,6 +134,12 @@ export class BuildingsController {
   }
 
   @Public()
+  @Get('kiosk-diagnose')
+  kioskDiagnose() {
+    return this.buildingsService.kioskDiagnose();
+  }
+
+  @Public()
   @Get('public-structure/:orgId')
   getPublicStructure(@Param('orgId') orgId: string) {
     return this.buildingsService.getPublicStructure(orgId);

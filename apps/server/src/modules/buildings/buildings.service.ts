@@ -274,6 +274,51 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  /**
+   * Human-readable overview of which kiosk template each tablet resolves to,
+   * for quick copy-paste-a-link diagnosis (same spirit as /api/email/diagnose).
+   * Shows the full resolution chain: device → building → org default.
+   */
+  async kioskDiagnose() {
+    const devices = await this.prisma.device.findMany({
+      include: {
+        kioskTemplate: { select: { name: true, theme: true } },
+        restroom: {
+          include: {
+            floor: {
+              include: {
+                building: { include: { kioskTemplate: { select: { name: true, theme: true } } } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { deviceCode: 'asc' },
+    });
+    const orgDefaults = await this.prisma.kioskTemplate.findMany({
+      where: { isDefault: true },
+      select: { orgId: true, name: true, theme: true },
+    });
+    const fmt = (t: { name: string; theme: string } | null | undefined) =>
+      t ? `${t.name} (${t.theme})` : null;
+    return devices.map(d => {
+      const building = d.restroom.floor.building;
+      const orgDefault = orgDefaults.find(t => t.orgId === building.orgId) ?? null;
+      const effective = d.kioskTemplate ?? building.kioskTemplate ?? orgDefault;
+      return {
+        deviceCode: d.deviceCode,
+        building: building.name,
+        floor: d.restroom.floor.name,
+        restroom: d.restroom.name,
+        assignedToDevice: fmt(d.kioskTemplate),
+        assignedToBuilding: fmt(building.kioskTemplate),
+        orgDefault: fmt(orgDefault),
+        effectiveTemplate: fmt(effective) ?? 'default (default)',
+        effectiveTheme: effective?.theme ?? 'default',
+      };
+    });
+  }
+
   async getPublicStructure(orgId: string) {
     return this.prisma.building.findMany({
       where: { orgId },
