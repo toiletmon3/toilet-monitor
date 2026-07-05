@@ -299,6 +299,31 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
       where: { isDefault: true },
       select: { orgId: true, name: true, theme: true },
     });
+
+    // Same numbers the kiosk itself displays (see analytics getKioskStatsByBuilding):
+    // reports this week / today, and avg response time over resolved incidents (30d).
+    const buildingIds = [...new Set(devices.map(d => d.restroom.floor.building.id))];
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const statsByBuilding = new Map<string, { weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null }>();
+    for (const buildingId of buildingIds) {
+      const buildingFilter = { restroom: { floor: { buildingId } } };
+      const [weeklyReports, dailyReports, resolved] = await Promise.all([
+        this.prisma.incident.count({ where: { ...buildingFilter, reportedAt: { gte: weekAgo } } }),
+        this.prisma.incident.count({ where: { ...buildingFilter, reportedAt: { gte: todayStart } } }),
+        this.prisma.incident.findMany({
+          where: { ...buildingFilter, status: 'RESOLVED', resolvedAt: { not: null }, reportedAt: { gte: monthAgo } },
+          select: { reportedAt: true, resolvedAt: true },
+        }),
+      ]);
+      const avg = resolved.length > 0
+        ? Math.round(resolved.reduce((sum, i) => sum + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / resolved.length)
+        : null;
+      statsByBuilding.set(buildingId, { weeklyReports, dailyReports, avgResponseMinutes: avg });
+    }
+
     const fmt = (t: { name: string; theme: string } | null | undefined) =>
       t ? `${t.name} (${t.theme})` : null;
     return devices.map(d => {
@@ -315,6 +340,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
         orgDefault: fmt(orgDefault),
         effectiveTemplate: fmt(effective) ?? 'default (default)',
         effectiveTheme: effective?.theme ?? 'default',
+        stats: statsByBuilding.get(building.id) ?? null,
       };
     });
   }
