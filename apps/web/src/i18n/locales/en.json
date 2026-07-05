@@ -380,7 +380,9 @@
       "themeNeonPro": "Neon Pro",
       "themeNeonProDesc": "Hand-drawn cleaning icons in neon style",
       "themeNeonImage": "Image Background",
-      "themeNeonImageDesc": "Image-based design with transparent button hotspots"
+      "themeNeonImageDesc": "Image-based design with transparent button hotspots",
+      "themeNeonVideo": "Video Background",
+      "themeNeonVideoDesc": "Looping animated video with transparent button hotspots"
     },
     "settings": {
       "orgName": "Organization Name",

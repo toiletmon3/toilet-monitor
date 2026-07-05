@@ -25,3 +25,27 @@ appended to the URL — every hotspot is then outlined and labelled.
 
 If this file is missing the template still loads (no build break) — you just see
 a black background with invisible-but-working hotspots.
+
+## `neon-video-bg.mp4` — background for the "Video Background" (`neon-video`) kiosk template
+
+Drop the looping video here with **exactly** this filename:
+
+```
+apps/web/public/kiosk-templates/neon-video-bg.mp4
+```
+
+Requirements:
+- **Format:** MP4 (H.264) — plays on every Android/iOS kiosk browser
+- **Aspect ratio:** ~9:16 (portrait); short clip (a few seconds) that loops seamlessly
+- **Resolution:** the current video is 576×1024; the wrapper's
+  `VID_W`/`VID_H` in
+  `apps/web/src/modules/kiosk/templates/neon-video/KioskPageNeonVideo.tsx`
+  must match the file's real pixel dimensions so the hotspots stay aligned.
+- Keep it small (≲2 MB) — kiosks re-download it after every deploy cache-bust.
+
+The video plays muted in an infinite loop (`autoPlay muted loop playsInline`),
+with the same transparent hotspot overlay as `neon-image`. Fine-tune with
+`?hotspots=1`. Bump the `?v=` cache-buster in `VIDEO_URL` when replacing the file.
+
+If this file is missing the template still loads (no build break) — you just see
+a black background with invisible-but-working hotspots.

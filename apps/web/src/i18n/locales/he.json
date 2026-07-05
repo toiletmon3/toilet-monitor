@@ -380,7 +380,9 @@
       "themeNeonPro": "ניאון פרו",
       "themeNeonProDesc": "אייקוני ניקיון מצוירים בסגנון ניאון",
       "themeNeonImage": "תמונת רקע",
-      "themeNeonImageDesc": "עיצוב מבוסס תמונה עם כפתורים שקופים מעל"
+      "themeNeonImageDesc": "עיצוב מבוסס תמונה עם כפתורים שקופים מעל",
+      "themeNeonVideo": "וידאו רקע",
+      "themeNeonVideoDesc": "סרטון מונפש בלופ עם כפתורים שקופים מעל"
     },
     "settings": {
       "orgName": "שם הארגון",
