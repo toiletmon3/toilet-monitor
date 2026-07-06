@@ -134,8 +134,86 @@ export default function AdminAnalytics() {
   // ── Frequency chart: compute max for proportional bars
   const freqMax = Math.max(1, ...((frequency ?? []).map((f: any) => f.count)));
 
+  // Days covered by the current range (inclusive) — used for per-day averages.
+  const rangeDays = useMemo(() => {
+    if (range.kind === 'preset') return range.days;
+    const ms = new Date(range.to).getTime() - new Date(range.from).getTime();
+    return Math.max(1, Math.round(ms / 86_400_000) + 1);
+  }, [range]);
+
+  // Human-readable location path for the current scope (building › floor › restroom).
+  const scopeLabel = useMemo(() => {
+    const parts = [
+      selectedBuilding?.name,
+      selectedFloor?.name,
+      restrooms.find((r: any) => r.id === restroomId)?.name,
+    ].filter(Boolean);
+    return parts.length
+      ? translateLocationPath(parts.join(' › '), i18n.language)
+      : t('admin.analytics.allLocations');
+  }, [selectedBuilding, selectedFloor, restrooms, restroomId, i18n.language, t]);
+
+  // Leading "totals & averages" digest — a one-glance summary of every headline
+  // metric for the selected restroom/date-range, built from the already-fetched
+  // (and already scope-filtered) data. Rows are added only when data supports them.
+  const buildSummarySection = (): ExportSection | null => {
+    const A = (k: string) => t(`admin.analytics.${k}`);
+    const rows: (string | number)[][] = [];
+
+    rows.push([A('summaryLocation'), scopeLabel]);
+    rows.push([
+      A('summaryPeriod'),
+      range.kind === 'custom' ? `${range.from} — ${range.to}` : `${range.days} ${t('admin.analytics.days')}`,
+    ]);
+
+    const totalReports = (frequency ?? []).reduce((s: number, f: any) => s + (f.count ?? 0), 0);
+    if (frequency?.length) {
+      rows.push([A('summaryTotalReports'), totalReports]);
+      rows.push([A('summaryIssueTypes'), frequency.length]);
+      rows.push([A('summaryAvgPerDay'), (totalReports / rangeDays).toFixed(1)]);
+    }
+
+    if (sla && sla.totalResolved > 0) {
+      rows.push([A('summaryResolved'), sla.totalResolved]);
+      rows.push([A('summaryWithinSla'), `${sla.slaPercent}% (${sla.withinSla}/${sla.totalResolved})`]);
+      rows.push([A('summaryAvgResolution'), `${sla.avgMinutes} ${minutesUnit}`]);
+      rows.push([A('summaryMedian'), `${sla.p50} ${minutesUnit}`]);
+      rows.push([A('summaryP90'), `${sla.p90} ${minutesUnit}`]);
+    }
+
+    if (hourly?.length) {
+      const peak = hourly.reduce((a: any, b: any) => (b.count > a.count ? b : a), hourly[0]);
+      if (peak.count > 0) rows.push([A('summaryPeakHour'), `${peak.hour}:00 (${peak.count})`]);
+    }
+
+    if (dow?.length) {
+      const peak = dow.reduce((a: any, b: any) => (b.count > a.count ? b : a), dow[0]);
+      if (peak.count > 0) rows.push([A('summaryPeakDay'), `${lang === 'he' ? peak.dayHe : peak.dayEn} (${peak.count})`]);
+    }
+
+    if (frequency?.length) {
+      const top = frequency[0];
+      const name = top.nameI18n?.[lang] ?? top.nameI18n?.he ?? '—';
+      rows.push([A('summaryTopIssue'), `${name} (${top.count})`]);
+    }
+
+    if (scores?.length) {
+      const scoped = restroomId ? scores.find((s: any) => s.restroomId === restroomId) : null;
+      const avgScore = scoped
+        ? scoped.score
+        : Math.round(scores.reduce((s: number, x: any) => s + x.score, 0) / scores.length);
+      rows.push([A('summaryScore'), avgScore]);
+    }
+
+    if (rows.length === 0) return null;
+    return { title: A('summaryTitle'), headers: [A('summaryMetric'), A('summaryValue')], rows };
+  };
+
   const buildExportSections = (): ExportSection[] => {
     const sections: ExportSection[] = [];
+
+    const summary = buildSummarySection();
+    if (summary) sections.push(summary);
 
     if (sla && sla.totalResolved > 0) {
       sections.push({
