@@ -93,4 +93,91 @@ export class PushService implements OnModuleInit {
     const failed = results.filter((r) => r.status === 'rejected').length;
     if (failed > 0) this.logger.warn(`Push to building ${buildingId}: ${sent} sent, ${failed} failed`);
   }
+
+  /** Human-readable push provider from a subscription endpoint (endpoint itself is never exposed). */
+  private providerOf(endpoint: string): string {
+    try {
+      const host = new URL(endpoint).host;
+      if (host.includes('push.apple.com')) return 'apple (iPhone/iPad)';
+      if (host.includes('fcm.googleapis.com') || host.includes('android.googleapis.com')) return 'google (Android/Chrome)';
+      if (host.includes('mozilla.com')) return 'mozilla (Firefox)';
+      return host;
+    } catch {
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Copy-paste-a-link overview of push readiness: is VAPID configured, and which
+   * users have live subscriptions (and from which platform). A cleaner whose
+   * iPhone never completed the install-PWA + allow-notifications flow simply
+   * won't have an `apple` subscription here.
+   */
+  async diagnose() {
+    const users = await this.prisma.user.findMany({
+      where: { isActive: true },
+      select: {
+        name: true,
+        role: true,
+        building: { select: { name: true } },
+        pushSubscriptions: { select: { endpoint: true, createdAt: true } },
+      },
+      orderBy: [{ role: 'asc' }, { name: 'asc' }],
+    });
+    return {
+      vapidConfigured: !!process.env.VAPID_PUBLIC_KEY && !!process.env.VAPID_PRIVATE_KEY,
+      serverVapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? null,
+      users: users.map((u) => ({
+        name: u.name,
+        role: u.role,
+        building: u.building?.name ?? 'כל הבניינים',
+        subscriptions: u.pushSubscriptions.map((s) => ({
+          provider: this.providerOf(s.endpoint),
+          since: s.createdAt,
+        })),
+      })),
+    };
+  }
+
+  /**
+   * Fire a real test notification at every stored subscription and report the
+   * exact per-device outcome (including the push provider's error status), so
+   * "notifications don't arrive" can be split into client-side vs server-side.
+   */
+  async sendTestToAll() {
+    if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+      return { error: 'VAPID keys not configured on the server' };
+    }
+    const subs = await this.prisma.pushSubscription.findMany({
+      include: { user: { select: { name: true, role: true } } },
+    });
+    const payload = JSON.stringify({
+      title: '🔔 בדיקת התראות',
+      body: 'אם אתה רואה את זה — ההתראות עובדות!',
+      url: '/cleaner',
+      tag: 'push-test',
+    });
+    const results = await Promise.all(
+      subs.map(async (s) => {
+        const base = { user: s.user.name, role: s.user.role, provider: this.providerOf(s.endpoint) };
+        try {
+          await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);
+          return { ...base, sent: true };
+        } catch (err: any) {
+          return {
+            ...base,
+            sent: false,
+            statusCode: err?.statusCode ?? null,
+            error: typeof err?.body === 'string' ? err.body.slice(0, 200) : String(err?.message ?? err),
+          };
+        }
+      }),
+    );
+    return {
+      totalSubscriptions: subs.length,
+      sent: results.filter((r: any) => r.sent).length,
+      failed: results.filter((r: any) => !r.sent).length,
+      results,
+    };
+  }
 }

@@ -28,4 +28,18 @@ export class PushController {
   unsubscribe(@Body() body: { endpoint: string }) {
     return this.pushService.unsubscribe(body.endpoint);
   }
+
+  /** Push readiness overview — VAPID status + per-user subscriptions (redacted) */
+  @Public()
+  @Get('diagnose')
+  diagnose() {
+    return this.pushService.diagnose();
+  }
+
+  /** Send a real test notification to every subscribed device and report per-device results */
+  @Public()
+  @Get('test')
+  test() {
+    return this.pushService.sendTestToAll();
+  }
 }
