@@ -18,14 +18,29 @@ interface PushData {
   tag?: string;
 }
 
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
+// The VAPID public key (safe to embed) — needed to re-subscribe on rotation.
+const VAPID_PUBLIC_KEY = 'BJ5sC-Xbm4p2tZ3uxkeQqgTDL4kCGvlu8MocKQ9TtbzB-FJBF8rPxkkNPhvSqniHlCTEVWNfwA1fMtO9pAr-C5Q';
 
-  let data: PushData;
-  try {
-    data = event.data.json() as PushData;
-  } catch {
-    data = { title: '🚾 ToiletMon', body: event.data.text() };
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const output = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+  return output;
+}
+
+self.addEventListener('push', (event) => {
+  // A `userVisibleOnly` subscription MUST show a notification for every push —
+  // bailing out (e.g. on an empty payload) makes the browser revoke the
+  // subscription, silently killing all future banners. So always show one.
+  let data: PushData = { title: '🚾 ToiletMon — תקלה חדשה', body: 'התקבלה תקלה חדשה' };
+  if (event.data) {
+    try {
+      data = event.data.json() as PushData;
+    } catch {
+      data = { title: '🚾 ToiletMon', body: event.data.text() };
+    }
   }
 
   event.waitUntil(
@@ -35,9 +50,43 @@ self.addEventListener('push', (event) => {
       badge: '/icon-192.png',
       tag: data.tag ?? 'toiletmon',
       renotify: true,
+      requireInteraction: true,
       dir: 'rtl',
       data: { url: data.url ?? '/cleaner' },
     }),
+  );
+});
+
+// ── Subscription rotation ──────────────────────────────────────────────────
+// The push service periodically expires/rotates the endpoint. When it does,
+// re-subscribe and hand the server the old→new mapping so delivery keeps
+// working without the cleaner having to reopen the app.
+self.addEventListener('pushsubscriptionchange', (event) => {
+  const e = event as any;
+  e.waitUntil(
+    (async () => {
+      const oldEndpoint: string | undefined = e.oldSubscription?.endpoint;
+      let sub: PushSubscription | null = e.newSubscription ?? null;
+      if (!sub) {
+        try {
+          sub = await self.registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+          });
+        } catch {
+          return;
+        }
+      }
+      try {
+        await fetch('/api/push/rotate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oldEndpoint, subscription: sub.toJSON() }),
+        });
+      } catch {
+        /* best-effort — will re-sync next time the app opens */
+      }
+    })(),
   );
 });
 

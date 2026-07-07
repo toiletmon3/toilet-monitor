@@ -13,6 +13,11 @@ export interface PushPayload {
 export class PushService implements OnModuleInit {
   private readonly logger = new Logger(PushService.name);
 
+  // `urgency: 'high'` tells FCM/APNs to wake a dozing phone and deliver the
+  // banner immediately instead of batching it (batching delays or drops it).
+  // TTL keeps a briefly-offline phone eligible for delivery for 24h.
+  private readonly sendOptions: webpush.RequestOptions = { TTL: 24 * 60 * 60, urgency: 'high' };
+
   constructor(private prisma: PrismaService) {}
 
   onModuleInit() {
@@ -38,6 +43,33 @@ export class PushService implements OnModuleInit {
   /** Remove a push subscription */
   async unsubscribe(endpoint: string) {
     await this.prisma.pushSubscription.deleteMany({ where: { endpoint } });
+  }
+
+  /**
+   * Handle a browser-initiated subscription rotation (`pushsubscriptionchange`).
+   * Push services periodically expire/rotate endpoints; when that happens the
+   * service worker re-subscribes and calls this with the OLD endpoint so we can
+   * carry the user/org over to the NEW endpoint without a fresh login. Without
+   * it, a rotated subscription silently dies until the cleaner happens to reopen
+   * the app — a prime cause of "sometimes I get a banner, sometimes not".
+   */
+  async rotate(oldEndpoint: string | undefined, sub: { endpoint: string; keys: { p256dh: string; auth: string } }) {
+    const existing = oldEndpoint
+      ? await this.prisma.pushSubscription.findUnique({ where: { endpoint: oldEndpoint } })
+      : null;
+    // If we can't map the old endpoint back to a user, there's nothing to preserve.
+    if (!existing) return { ok: false };
+
+    await this.prisma.pushSubscription.upsert({
+      where: { endpoint: sub.endpoint },
+      update: { userId: existing.userId, orgId: existing.orgId, p256dh: sub.keys.p256dh, auth: sub.keys.auth },
+      create: { userId: existing.userId, orgId: existing.orgId, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth },
+    });
+    if (oldEndpoint && oldEndpoint !== sub.endpoint) {
+      await this.prisma.pushSubscription.deleteMany({ where: { endpoint: oldEndpoint } });
+    }
+    this.logger.log(`Rotated push subscription for user ${existing.userId}`);
+    return { ok: true };
   }
 
   /**
@@ -78,7 +110,7 @@ export class PushService implements OnModuleInit {
     const results = await Promise.allSettled(
       subs.map((s) =>
         webpush
-          .sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payloadStr)
+          .sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payloadStr, this.sendOptions)
           .catch(async (err: any) => {
             // Remove stale / expired subscriptions automatically
             if (err?.statusCode === 410 || err?.statusCode === 404) {
@@ -161,9 +193,13 @@ export class PushService implements OnModuleInit {
       subs.map(async (s) => {
         const base = { user: s.user.name, role: s.user.role, provider: this.providerOf(s.endpoint) };
         try {
-          await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);
+          await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, this.sendOptions);
           return { ...base, sent: true };
         } catch (err: any) {
+          // Self-heal: prune subscriptions the push service says are gone.
+          if (err?.statusCode === 410 || err?.statusCode === 404) {
+            await this.prisma.pushSubscription.deleteMany({ where: { endpoint: s.endpoint } });
+          }
           return {
             ...base,
             sent: false,
