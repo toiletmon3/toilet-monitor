@@ -15,6 +15,21 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   return output.buffer as ArrayBuffer;
 }
 
+/**
+ * True if `sub` was created against the same VAPID key we use now. A key
+ * mismatch (e.g. the server key was rotated) makes every send fail with 403 —
+ * so a stale-keyed subscription must be dropped and re-created.
+ */
+function subscriptionMatchesKey(sub: PushSubscription, key: ArrayBuffer): boolean {
+  const existing = sub.options?.applicationServerKey;
+  if (!existing) return true; // key unknown to the browser — don't churn needlessly
+  const a = new Uint8Array(existing);
+  const b = new Uint8Array(key);
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
 /** True if the user has approved push at least once on this device. */
 export function wasPushApproved(): boolean {
   return localStorage.getItem(PUSH_APPROVED_KEY) === '1';
@@ -34,12 +49,19 @@ export async function registerPush(userId: string, orgId: string): Promise<void>
     if (permission !== 'granted') return;
 
     const reg = await navigator.serviceWorker.ready;
+    const appServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
 
     let sub = await reg.pushManager.getSubscription();
+    // Drop a subscription that was minted against a different (rotated) key —
+    // otherwise sends keep 403-ing and no banner ever arrives.
+    if (sub && !subscriptionMatchesKey(sub, appServerKey)) {
+      try { await sub.unsubscribe(); } catch { /* ignore */ }
+      sub = null;
+    }
     if (!sub) {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        applicationServerKey: appServerKey,
       });
     }
 

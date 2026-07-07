@@ -42,4 +42,16 @@ export class PushController {
   test() {
     return this.pushService.sendTestToAll();
   }
+
+  /**
+   * Carry a subscription over to a new endpoint after the browser rotates it.
+   * Called by the service worker's `pushsubscriptionchange` handler.
+   */
+  @Public()
+  @Post('rotate')
+  rotate(
+    @Body() body: { oldEndpoint?: string; subscription: { endpoint: string; keys: { p256dh: string; auth: string } } },
+  ) {
+    return this.pushService.rotate(body.oldEndpoint, body.subscription);
+  }
 }
