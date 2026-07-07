@@ -282,12 +282,12 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
   async kioskDiagnose() {
     const devices = await this.prisma.device.findMany({
       include: {
-        kioskTemplate: { select: { name: true, theme: true } },
+        kioskTemplate: { select: { name: true, theme: true, buttons: true } },
         restroom: {
           include: {
             floor: {
               include: {
-                building: { include: { kioskTemplate: { select: { name: true, theme: true } } } },
+                building: { include: { kioskTemplate: { select: { name: true, theme: true, buttons: true } } } },
               },
             },
           },
@@ -297,8 +297,19 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     });
     const orgDefaults = await this.prisma.kioskTemplate.findMany({
       where: { isDefault: true },
-      select: { orgId: true, name: true, theme: true },
+      select: { orgId: true, name: true, theme: true, buttons: true },
     });
+
+    // Active issue-type codes per org. A kiosk button whose code has no active
+    // IssueType is a dead button: the tap is silently dropped client-side
+    // (handleIssuePress finds no issueType and returns without reporting).
+    const orgIds = [...new Set(devices.map(d => d.restroom.floor.building.orgId))];
+    const issueTypes = await this.prisma.issueType.findMany({
+      where: { OR: [{ orgId: { in: orgIds } }, { orgId: null }], isActive: true },
+      select: { code: true, orgId: true },
+    });
+    const activeCodesFor = (orgId: string) =>
+      new Set(issueTypes.filter(t => t.orgId === orgId || t.orgId === null).map(t => t.code));
 
     // Same numbers the kiosk itself displays (see analytics getKioskStatsByBuilding):
     // reports this week / today, and avg response time over resolved incidents (30d).
@@ -330,6 +341,11 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
       const building = d.restroom.floor.building;
       const orgDefault = orgDefaults.find(t => t.orgId === building.orgId) ?? null;
       const effective = d.kioskTemplate ?? building.kioskTemplate ?? orgDefault;
+      const activeCodes = activeCodesFor(building.orgId);
+      const buttons = ((effective as any)?.buttons as any[] | undefined) ?? this.defaultButtons();
+      const deadButtons = buttons
+        .filter(b => b?.enabled !== false && b?.code && !activeCodes.has(b.code))
+        .map(b => b.code);
       return {
         deviceCode: d.deviceCode,
         building: building.name,
@@ -341,6 +357,9 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
         effectiveTemplate: fmt(effective) ?? 'default (default)',
         effectiveTheme: effective?.theme ?? 'default',
         stats: statsByBuilding.get(building.id) ?? null,
+        activeIssueTypeCodes: [...activeCodes],
+        // Buttons on this kiosk whose taps are silently dropped (no active IssueType)
+        deadButtons,
       };
     });
   }
