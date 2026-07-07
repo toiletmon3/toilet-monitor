@@ -6,6 +6,7 @@ import { LogOut, RefreshCw, ChevronDown } from 'lucide-react';
 import api from '../../lib/api';
 import { getSocket, joinOrg } from '../../lib/socket';
 import { unregisterPush } from '../../lib/push';
+import { useCurrentUser } from '../../lib/useCurrentUser';
 import IOSInstallBanner from '../../components/IOSInstallBanner';
 import toast from 'react-hot-toast';
 
@@ -82,7 +83,7 @@ export default function CleanerPage() {
   const navigate = useNavigate();
   const now = useClock();
   const queryClient = useQueryClient();
-  const user = JSON.parse(localStorage.getItem('user') ?? '{}');
+  const user = useCurrentUser();
   const lang = i18n.language;
   const tz = localStorage.getItem('orgTimezone') ?? 'Asia/Jerusalem';
 
@@ -97,7 +98,7 @@ export default function CleanerPage() {
 
   // Fetch building structure for floor/restroom filter (only if cleaner has a building)
   const { data: structure } = useQuery({
-    queryKey: ['cleaner-structure'],
+    queryKey: ['cleaner-structure', user.buildingId],
     queryFn: async () => {
       const { data } = await api.get('/buildings/structure');
       const myBuilding = data.find((b: any) => b.id === user.buildingId);
@@ -126,7 +127,7 @@ export default function CleanerPage() {
   const completedToday = todayData ?? 0;
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['cleaner-incidents', filterFloorId, filterRestroomId],
+    queryKey: ['cleaner-incidents', filterFloorId, filterRestroomId, user.buildingId],
     queryFn: async () => {
       const params = {
         ...(filterFloorId && { floorId: filterFloorId }),

@@ -128,6 +128,26 @@ export class AuthService {
     return { ok: true, deviceCode, restroomId, restroomName: restroom.name };
   }
 
+  /** Fresh user profile from the DB — same shape as the login payload's `user`. */
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { building: true },
+    });
+    if (!user || !user.isActive) throw new UnauthorizedException();
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      idNumber: user.idNumber,
+      role: user.role,
+      preferredLang: user.preferredLang,
+      orgId: user.orgId,
+      buildingId: user.buildingId ?? null,
+      buildingName: user.building?.name ?? null,
+    };
+  }
+
   private generateTokens(user: any) {
     const payload = { sub: user.id, orgId: user.orgId, role: user.role, buildingId: user.buildingId ?? null };
     const accessToken = this.jwt.sign(payload);
