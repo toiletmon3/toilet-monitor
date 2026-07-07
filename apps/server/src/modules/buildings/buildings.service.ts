@@ -318,21 +318,43 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const statsByBuilding = new Map<string, { weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null }>();
+    const statsByBuilding = new Map<string, {
+      weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null;
+      weeklyByType: Record<string, number>; todayByType: Record<string, number>;
+    }>();
     for (const buildingId of buildingIds) {
       const buildingFilter = { restroom: { floor: { buildingId } } };
-      const [weeklyReports, dailyReports, resolved] = await Promise.all([
-        this.prisma.incident.count({ where: { ...buildingFilter, reportedAt: { gte: weekAgo } } }),
-        this.prisma.incident.count({ where: { ...buildingFilter, reportedAt: { gte: todayStart } } }),
+      const [weekIncidents, resolved] = await Promise.all([
+        this.prisma.incident.findMany({
+          where: { ...buildingFilter, reportedAt: { gte: weekAgo } },
+          select: { reportedAt: true, issueType: { select: { code: true } } },
+        }),
         this.prisma.incident.findMany({
           where: { ...buildingFilter, status: 'RESOLVED', resolvedAt: { not: null }, reportedAt: { gte: monthAgo } },
           select: { reportedAt: true, resolvedAt: true },
         }),
       ]);
+      const weeklyByType: Record<string, number> = {};
+      const todayByType: Record<string, number> = {};
+      let dailyReports = 0;
+      for (const inc of weekIncidents) {
+        const code = inc.issueType?.code ?? 'unknown';
+        weeklyByType[code] = (weeklyByType[code] ?? 0) + 1;
+        if (inc.reportedAt >= todayStart) {
+          todayByType[code] = (todayByType[code] ?? 0) + 1;
+          dailyReports++;
+        }
+      }
       const avg = resolved.length > 0
         ? Math.round(resolved.reduce((sum, i) => sum + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / resolved.length)
         : null;
-      statsByBuilding.set(buildingId, { weeklyReports, dailyReports, avgResponseMinutes: avg });
+      statsByBuilding.set(buildingId, {
+        weeklyReports: weekIncidents.length,
+        dailyReports,
+        avgResponseMinutes: avg,
+        weeklyByType,
+        todayByType,
+      });
     }
 
     const fmt = (t: { name: string; theme: string } | null | undefined) =>
