@@ -229,11 +229,9 @@ export default function SupervisorPage() {
             <span>·</span>
             <span>{user.name}</span>
             <span className="px-1.5 py-0.5 rounded text-xs" style={{ background: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>🛡️ {t('supervisor.badge')}</span>
-            {user.buildingName && (
-              <span className="px-1.5 py-0.5 rounded text-xs" style={{ background: 'rgba(0,229,204,0.12)', color: 'var(--color-accent)' }}>
-                🏢 {user.buildingName}
-              </span>
-            )}
+            <span className="px-1.5 py-0.5 rounded text-xs" style={{ background: 'rgba(0,229,204,0.12)', color: 'var(--color-accent)' }}>
+              🏢 {user.buildingName ?? t('cleaner.allBuildings')}
+            </span>
             <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
               style={{ background: completedToday > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.07)', color: completedToday > 0 ? '#22c55e' : 'var(--color-text-secondary)', border: `1px solid ${completedToday > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
               ✅ {completedToday} {t('cleaner.doneToday')}
