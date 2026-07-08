@@ -536,6 +536,111 @@ function BuildingCard({ building, onRefresh }: { building: any; onRefresh: () =>
 
 // ─── devices panel — removed, merged into UrlGuide ────────────────────────────
 
+// ─── Properties (נכסים) — grouping layer above buildings ──────────────────────
+function PropertiesPanel({ structure, onRefresh }: { structure: any[]; onRefresh: () => void }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const [newName, setNewName] = useState('');
+
+  const { data: properties = [], refetch } = useQuery({
+    queryKey: ['properties'],
+    queryFn: async () => (await api.get('/buildings/properties')).data,
+  });
+
+  const refreshAll = () => { refetch(); onRefresh(); qc.invalidateQueries({ queryKey: ['properties'] }); };
+
+  const createProperty = async () => {
+    if (!newName.trim()) return;
+    try {
+      await api.post('/buildings/properties', { name: newName.trim() });
+      setNewName('');
+      refreshAll();
+      toast.success(t('common.updated'));
+    } catch { toast.error(t('common.error')); }
+  };
+
+  const deleteProperty = async (id: string, name: string) => {
+    if (!window.confirm(`${t('admin.settings.deleteProperty')} "${name}"?`)) return;
+    try { await api.delete(`/buildings/properties/${id}`); refreshAll(); toast.success(t('common.updated')); }
+    catch { toast.error(t('common.error')); }
+  };
+
+  const assignBuilding = async (buildingId: string, propertyId: string) => {
+    try {
+      await api.patch(`/buildings/${buildingId}/property`, { propertyId: propertyId || null });
+      refreshAll();
+      toast.success(t('common.updated'));
+    } catch { toast.error(t('common.error')); }
+  };
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+      <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
+        <Building2 size={15} style={{ color: 'var(--color-accent)' }} />
+        <h2 className="font-semibold text-white">{t('admin.settings.properties')}</h2>
+        <span className="text-[11px] ms-auto" style={{ color: 'var(--color-text-secondary)' }}>
+          {t('admin.settings.propertiesHint')}
+        </span>
+      </div>
+
+      <div className="p-4 flex flex-col gap-4">
+        {/* Create */}
+        <div className="flex gap-2">
+          <input value={newName} onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') createProperty(); }}
+            placeholder={t('admin.settings.propertyNamePlaceholder')}
+            className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: 'var(--color-bg)', border: '1px solid rgba(0,229,204,0.3)', color: 'var(--color-text)' }} />
+          <button onClick={createProperty} disabled={!newName.trim()}
+            className="px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-40"
+            style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}>
+            <Plus size={14} className="inline me-1" />{t('admin.settings.newProperty')}
+          </button>
+        </div>
+
+        {/* Property cards */}
+        {properties.map((p: any) => (
+          <div key={p.id} className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+            style={{ background: '#0a0e1a', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-semibold text-white">🏘️ {p.name}</span>
+              <span className="text-[11px] truncate" style={{ color: 'var(--color-text-secondary)' }}>
+                {p.buildings.length > 0
+                  ? p.buildings.map((b: any) => b.name).join(' · ')
+                  : t('admin.settings.propertyNoBuildings')}
+              </span>
+            </div>
+            <button onClick={() => deleteProperty(p.id, p.name)} title={t('admin.settings.deleteProperty')}
+              className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all flex-shrink-0" style={{ color: 'rgba(239,68,68,0.5)' }}>
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+
+        {/* Assign each building to a property */}
+        {properties.length > 0 && (
+          <div className="flex flex-col gap-2 pt-2 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+              {t('admin.settings.assignBuildingProperty')}
+            </span>
+            {structure.map((b: any) => (
+              <div key={b.id} className="flex items-center justify-between gap-3">
+                <span className="text-sm" style={{ color: 'var(--color-text)' }}>🏢 {b.name}</span>
+                <select value={b.propertyId ?? ''} onChange={e => assignBuilding(b.id, e.target.value)}
+                  className="px-3 py-1.5 rounded-xl text-sm outline-none"
+                  style={{ background: 'var(--color-bg)', border: '1px solid rgba(0,229,204,0.3)', color: 'var(--color-text)', minWidth: 170 }}>
+                  <option value="">{t('admin.settings.noProperty')}</option>
+                  {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── URL guide ─────────────────────────────────────────────────────────────────
 function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url: string; accent?: string }) {
   const { t } = useTranslation();
@@ -583,7 +688,7 @@ function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url
   );
 }
 
-function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () => void }) {
+function UrlGuide({ structure, onRefresh, propertyManagerMode = false }: { structure: any[]; onRefresh: () => void; propertyManagerMode?: boolean }) {
   const { t } = useTranslation();
   // Both domains serve the same system; the new primary always leads and the
   // legacy address is always offered too, regardless of which one the admin
@@ -656,7 +761,10 @@ function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () =>
         </div>
         <div className="flex flex-col gap-2 p-4">
           {[
-            { label: t('admin.settings.adminInterface'), sub: t('admin.settings.adminInterfaceSub'), path: '/admin', accent: '#00e5cc' },
+            // A property manager sees a link to their own interface, not the org admin's
+            propertyManagerMode
+              ? { label: t('admin.settings.propertyInterface'), sub: t('admin.settings.propertyInterfaceSub'), path: '/admin', accent: '#00e5cc' }
+              : { label: t('admin.settings.adminInterface'), sub: t('admin.settings.adminInterfaceSub'), path: '/admin', accent: '#00e5cc' },
             { label: t('admin.settings.workerInterface'), sub: t('admin.settings.workerInterfaceSub'), path: '/cleaner', accent: '#8b5cf6' },
             { label: t('admin.settings.supervisorInterface'), sub: t('admin.settings.supervisorInterfaceSub'), path: '/supervisor', accent: '#f59e0b' },
           ].map(iface => (
@@ -787,7 +895,8 @@ export default function AdminSettings() {
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['building-structure'] });
 
-  const currentUser: { id?: string; name?: string } = JSON.parse(localStorage.getItem('user') ?? '{}');
+  const currentUser: { id?: string; name?: string; role?: string; propertyId?: string } = JSON.parse(localStorage.getItem('user') ?? '{}');
+  const isPropertyManager = currentUser.role === 'PROPERTY_MANAGER';
   const [pwOpen, setPwOpen] = useState(false);
   const [pwNew, setPwNew] = useState('');
   const [pwConfirm, setPwConfirm] = useState('');
@@ -903,7 +1012,8 @@ export default function AdminSettings() {
         )}
       </div>
 
-      {/* ── Organization Name ── */}
+      {/* ── Organization Name (org admins only — hidden from property managers) ── */}
+      {!isPropertyManager && (
       <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <h2 className="font-semibold text-white flex items-center gap-2">
           <Building2 size={16} style={{ color: 'var(--color-accent)' }} />
@@ -929,6 +1039,10 @@ export default function AdminSettings() {
           </button>
         </div>
       </div>
+      )}
+
+      {/* ── Properties (נכסים) — org admins only ── */}
+      {!isPropertyManager && <PropertiesPanel structure={structure} onRefresh={refresh} />}
 
       {/* ── Language Settings ── */}
       <div className="rounded-2xl p-5 flex flex-col gap-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
@@ -1186,7 +1300,7 @@ export default function AdminSettings() {
       )}
 
       {/* ── Kiosk URLs + device status (merged) ── */}
-      <UrlGuide structure={structure} onRefresh={refresh} />
+      <UrlGuide structure={structure} onRefresh={refresh} propertyManagerMode={isPropertyManager} />
 
       {showBuildingModal && (
         <AddBuildingModal

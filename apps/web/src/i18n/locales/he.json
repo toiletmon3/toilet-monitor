@@ -300,7 +300,8 @@
       "ddSupervisors": "אחראי משמרת",
       "ddAvgResponse": "זמן תגובה ממוצע",
       "ddSatisfaction": "שביעות רצון",
-      "ddScore": "ציון"
+      "ddScore": "ציון",
+      "allProperties": "כל הנכסים"
     },
     "cleaners": {
       "onShift": "כרגע בעבודה",
@@ -369,7 +370,9 @@
       "mismatchTitle": "התראת אי-התאמה",
       "mismatchDesc": "עובדים שדיווחו כניסה אך לא ביצעו פעולות ניקוי",
       "mismatchEmpty": "אין התראות כרגע — כל העובדים תקינים",
-      "checkedInAgo": "דיווח כניסה לפני {{v}}"
+      "checkedInAgo": "דיווח כניסה לפני {{v}}",
+      "propertyManager": "מנהל נכס",
+      "pickProperty": "בחר נכס..."
     },
     "kiosk": {
       "title": "טמפלטים לקיוסק",
@@ -470,13 +473,12 @@
       "sendTestEmail": "📤 שלח דוח עכשיו",
       "dailyReportSent": "הדוח נשלח ל-{{count}} נמענים",
       "dailyReportFailed": "שליחת הדוח נכשלה — בדוק הגדרות SMTP",
-      "escalationTitle": "⚡ אסקלציה והתראות",
+      "escalationTitle": "📢 התראות ואסקלציה",
       "mismatchTitle": "⏱ סף אי-התאמה (דקות)",
       "mismatchDesc": "אחרי כמה דקות מכניסה ללא פעולה — תוצג התראה",
       "mismatchExplain1": "כשעובד מדווח על כניסה מהקיוסק (צ'ק-אין), מתחיל טיימר.",
       "mismatchExplain2": "אם בתוך X הדקות שנבחרו הוא לא טיפל באף תקלה — שמו מופיע בטבלת התראות האי-התאמה בדף העובדים.",
       "mismatchExplain3": "ברגע שהוא מטפל בתקלה כלשהי — ההתראה נעלמת אוטומטית.",
-      "escalationTitle": "📢 התראות ואסקלציה",
       "escalationExplain1": "כשנפתח דיווח חדש — רק העובד (מנקה) מקבל התראה ראשונית.",
       "escalationExplain2": "אם התקלה לא טופלה — העובד ממשיך לקבל תזכורות כל X דקות (ניתן להגדרה).",
       "escalationExplain3": "במקביל, מרגע פתיחת התקלה, אחראי המשמרת מקבל התראות כל Y דקות (ניתן להגדרה בנפרד).",
@@ -487,7 +489,17 @@
       "supervisorEscalationDesc": "כל כמה דקות אחראי המשמרת מקבל התראה (נמדד מרגע פתיחת התקלה)",
       "escalationOn": "אסקלציה פעילה",
       "escalationOff": "אסקלציה כבויה",
-      "escalationToggleHint": "הפעל/כבה את מנגנון האסקלציה האוטומטי"
+      "escalationToggleHint": "הפעל/כבה את מנגנון האסקלציה האוטומטי",
+      "properties": "נכסים",
+      "propertiesHint": "נכס = קבוצת בניינים; מנהל נכס רואה רק את הנכס שלו",
+      "newProperty": "נכס חדש",
+      "propertyNamePlaceholder": "שם הנכס (למשל: קאנטרי רעננה)",
+      "deleteProperty": "מחק נכס",
+      "propertyNoBuildings": "אין בניינים משויכים עדיין",
+      "assignBuildingProperty": "שיוך בניינים לנכסים",
+      "noProperty": "— ללא נכס —",
+      "propertyInterface": "ממשק מנהל נכס",
+      "propertyInterfaceSub": "כניסה עם אימייל וסיסמה — רואה רק את הנכס שלו"
     }
   },
   "common": {

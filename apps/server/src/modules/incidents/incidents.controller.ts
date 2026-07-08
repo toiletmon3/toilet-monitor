@@ -47,6 +47,7 @@ export class IncidentsController {
   findAll(
     @CurrentUser() user: any,
     @Query('status') status?: IncidentStatus,
+    @Query('propertyId') propertyId?: string,
     @Query('buildingId') buildingId?: string,
     @Query('floorId') floorId?: string,
     @Query('restroomId') restroomId?: string,
@@ -59,9 +60,12 @@ export class IncidentsController {
     const effectiveBuildingId = (user.role === 'CLEANER' || user.role === 'SHIFT_SUPERVISOR') && user.buildingId
       ? user.buildingId
       : buildingId;
+    // Property managers are always confined to their own property's incidents
+    const effectivePropertyId = user.role === 'PROPERTY_MANAGER' && user.propertyId ? user.propertyId : propertyId;
 
     return this.incidentsService.findAll(user.orgId, {
       status,
+      propertyId: effectivePropertyId,
       buildingId: effectiveBuildingId,
       floorId,
       restroomId,
@@ -86,17 +90,19 @@ export class IncidentsController {
     @Query('days') days?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('propertyId') propertyId?: string,
     @Query('buildingId') buildingId?: string,
     @Query('floorId') floorId?: string,
     @Query('restroomId') restroomId?: string,
   ) {
     const range = resolveUrgentRange(days, from, to);
-    // Lock scoped roles to their own building, mirroring findAll.
+    // Lock scoped roles to their own building/property, mirroring findAll.
     const effectiveBuildingId = (user.role === 'CLEANER' || user.role === 'SHIFT_SUPERVISOR') && user.buildingId
       ? user.buildingId
       : buildingId;
+    const effectivePropertyId = user.role === 'PROPERTY_MANAGER' && user.propertyId ? user.propertyId : propertyId;
     return this.incidentsService.getUrgent(user.orgId, {
-      buildingId: effectiveBuildingId, floorId, restroomId,
+      propertyId: effectivePropertyId, buildingId: effectiveBuildingId, floorId, restroomId,
       from: range?.from, to: range?.to,
     });
   }

@@ -12,7 +12,43 @@ export class BuildingsController {
   @UseGuards(JwtAuthGuard)
   @Get('structure')
   getStructure(@CurrentUser() user: any) {
-    return this.buildingsService.getStructure(user.orgId);
+    // A property manager only ever sees the buildings of their own property
+    const scope = user.role === 'PROPERTY_MANAGER' && user.propertyId ? user.propertyId : undefined;
+    return this.buildingsService.getStructure(user.orgId, scope);
+  }
+
+  // ── Properties (נכסים) ───────────────────────────────────────────────────────
+
+  @UseGuards(JwtAuthGuard)
+  @Get('properties')
+  getProperties(@CurrentUser() user: any) {
+    // A property manager only sees their own property
+    const scope = user.role === 'PROPERTY_MANAGER' && user.propertyId ? user.propertyId : undefined;
+    return this.buildingsService.getProperties(user.orgId, scope);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('properties')
+  createProperty(@CurrentUser() user: any, @Body() dto: { name: string }) {
+    return this.buildingsService.createProperty(user.orgId, dto.name);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('properties/:id')
+  updateProperty(@Param('id') id: string, @Body() dto: { name: string }) {
+    return this.buildingsService.updateProperty(id, dto.name);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('properties/:id')
+  deleteProperty(@Param('id') id: string) {
+    return this.buildingsService.deleteProperty(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':buildingId/property')
+  assignBuildingToProperty(@Param('buildingId') buildingId: string, @Body() dto: { propertyId: string | null }) {
+    return this.buildingsService.assignBuildingToProperty(buildingId, dto.propertyId ?? null);
   }
 
   @UseGuards(JwtAuthGuard)

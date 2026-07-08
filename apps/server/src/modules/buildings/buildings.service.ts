@@ -32,9 +32,47 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  async getStructure(orgId: string) {
+  // ── Properties (נכסים) — a grouping layer above buildings ──────────────────
+
+  async getProperties(orgId: string, propertyId?: string) {
+    return this.prisma.property.findMany({
+      where: { orgId, ...(propertyId ? { id: propertyId } : {}) },
+      include: {
+        buildings: { select: { id: true, name: true } },
+        users: { where: { isActive: true }, select: { id: true, name: true, role: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async createProperty(orgId: string, name: string) {
+    return this.prisma.property.create({ data: { orgId, name } });
+  }
+
+  async updateProperty(propertyId: string, name: string) {
+    return this.prisma.property.update({ where: { id: propertyId }, data: { name } });
+  }
+
+  async deleteProperty(propertyId: string) {
+    // Unlink (never delete) the buildings and users that referenced it
+    await this.prisma.building.updateMany({ where: { propertyId }, data: { propertyId: null } });
+    await this.prisma.user.updateMany({ where: { propertyId }, data: { propertyId: null } });
+    return this.prisma.property.delete({ where: { id: propertyId } });
+  }
+
+  async assignBuildingToProperty(buildingId: string, propertyId: string | null) {
+    return this.prisma.building.update({ where: { id: buildingId }, data: { propertyId } });
+  }
+
+  /** Building ids belonging to a property — used to scope PROPERTY_MANAGER queries. */
+  async propertyBuildingIds(propertyId: string): Promise<string[]> {
+    const buildings = await this.prisma.building.findMany({ where: { propertyId }, select: { id: true } });
+    return buildings.map(b => b.id);
+  }
+
+  async getStructure(orgId: string, propertyId?: string) {
     return this.prisma.building.findMany({
-      where: { orgId },
+      where: { orgId, ...(propertyId ? { propertyId } : {}) },
       include: {
         floors: {
           orderBy: { floorNumber: 'asc' },

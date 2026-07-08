@@ -219,7 +219,7 @@ export default function AdminCleaners() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', idNumber: '', phone: '', preferredLang: 'he' });
   const [showAdminForm, setShowAdminForm] = useState(false);
-  const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '', idNumber: '', role: 'MANAGER' });
+  const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '', idNumber: '', role: 'MANAGER', propertyId: '' });
   const [adminFormShow, setAdminFormShow] = useState(false);
   const [supForm, setSupForm] = useState({ name: '', email: '', password: '', idNumber: '' });
   const [supFormShow, setSupFormShow] = useState(false);
@@ -231,6 +231,9 @@ export default function AdminCleaners() {
   const [filterBuildingWorkers, setFilterBuildingWorkers] = useState('');
   const [filterBuildingSupervisors, setFilterBuildingSupervisors] = useState('');
   const [filterBuildingAdmins, setFilterBuildingAdmins] = useState('');
+  const [filterPropWorkers, setFilterPropWorkers] = useState('');
+  const [filterPropSupervisors, setFilterPropSupervisors] = useState('');
+  const [filterPropAdmins, setFilterPropAdmins] = useState('');
 
   const { data: users } = useQuery({
     queryKey: ['users'],
@@ -242,20 +245,40 @@ export default function AdminCleaners() {
     queryFn: async () => (await api.get('/buildings/structure')).data,
   });
 
+  const { data: properties = [] } = useQuery({
+    queryKey: ['properties'],
+    queryFn: async () => (await api.get('/buildings/properties')).data,
+  });
+  // A user belongs to a property either directly or via their building
+  const propertyNameOf = (u: any): string | null => {
+    if (u.property?.name) return u.property.name;
+    const viaBuilding = properties.find((p: any) => p.id === u.building?.propertyId);
+    return viaBuilding?.name ?? null;
+  };
+
+  // Property filter: matches users assigned to the property directly, or via their building
+  const byProperty = (list: any[], pid: string) =>
+    pid ? list.filter((u: any) => u.propertyId === pid || u.building?.propertyId === pid) : list;
+
   const allWorkers = (users ?? []).filter((u: any) => u.role === 'CLEANER');
-  const cleaners = filterBuildingWorkers
-    ? allWorkers.filter((u: any) => u.buildingId === filterBuildingWorkers)
-    : allWorkers;
+  const cleaners = byProperty(
+    filterBuildingWorkers ? allWorkers.filter((u: any) => u.buildingId === filterBuildingWorkers) : allWorkers,
+    filterPropWorkers,
+  );
 
   const allSupervisors = (users ?? []).filter((u: any) => u.role === 'SHIFT_SUPERVISOR');
-  const supervisors = filterBuildingSupervisors
-    ? allSupervisors.filter((u: any) => u.buildingId === filterBuildingSupervisors)
-    : allSupervisors;
+  const supervisors = byProperty(
+    filterBuildingSupervisors ? allSupervisors.filter((u: any) => u.buildingId === filterBuildingSupervisors) : allSupervisors,
+    filterPropSupervisors,
+  );
 
-  const allAdmins = (users ?? []).filter((u: any) => u.role === 'ORG_ADMIN' || u.role === 'MANAGER');
-  const admins = filterBuildingAdmins
-    ? allAdmins.filter((u: any) => u.buildingId === filterBuildingAdmins || u.role === 'ORG_ADMIN')
-    : allAdmins;
+  const allAdmins = (users ?? []).filter((u: any) => u.role === 'ORG_ADMIN' || u.role === 'MANAGER' || u.role === 'PROPERTY_MANAGER');
+  const admins = byProperty(
+    filterBuildingAdmins
+      ? allAdmins.filter((u: any) => u.buildingId === filterBuildingAdmins || u.role === 'ORG_ADMIN')
+      : allAdmins,
+    filterPropAdmins,
+  );
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,6 +298,7 @@ export default function AdminCleaners() {
     if (!adminForm.name.trim() || !adminForm.email.trim() || adminForm.password.length < 6) return;
     try {
       const payload: any = { name: adminForm.name.trim(), email: adminForm.email.trim(), password: adminForm.password, role: adminForm.role };
+      if (adminForm.role === 'PROPERTY_MANAGER' && adminForm.propertyId) payload.propertyId = adminForm.propertyId;
       await api.post('/users/admins', payload);
       // If ID number supplied, update it immediately
       if (adminForm.idNumber.trim()) {
@@ -285,7 +309,7 @@ export default function AdminCleaners() {
       toast.success(t('admin.cleaners.adminAdded'));
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowAdminForm(false);
-      setAdminForm({ name: '', email: '', password: '', idNumber: '', role: 'MANAGER' });
+      setAdminForm({ name: '', email: '', password: '', idNumber: '', role: 'MANAGER', propertyId: '' });
     } catch (err: any) {
       toast.error(err.response?.data?.message ?? t('common.error'));
     }
@@ -537,6 +561,19 @@ export default function AdminCleaners() {
           <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.cleaners.activeDesc')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {properties.length > 0 && (
+            <select
+              value={filterPropWorkers}
+              onChange={e => setFilterPropWorkers(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-xs outline-none"
+              style={{ background: 'rgba(0,229,204,0.08)', border: '1px solid rgba(0,229,204,0.3)', color: filterPropWorkers ? '#fff' : 'rgba(255,255,255,0.45)' }}
+            >
+              <option value="">{t('admin.dashboard.allProperties')}</option>
+              {properties.map((p: any) => (
+                <option key={p.id} value={p.id}>🏘️ {p.name}</option>
+              ))}
+            </select>
+          )}
           <select
             value={filterBuildingWorkers}
             onChange={e => setFilterBuildingWorkers(e.target.value)}
@@ -708,7 +745,20 @@ export default function AdminCleaners() {
             {allSupervisors.length}
           </span>
           <div className="ms-auto flex items-center gap-2">
+            {properties.length > 0 && (
             <select
+              value={filterPropSupervisors}
+              onChange={e => setFilterPropSupervisors(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-xs outline-none"
+              style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.3)', color: filterPropSupervisors ? '#fff' : 'rgba(255,255,255,0.45)' }}
+            >
+              <option value="">{t('admin.dashboard.allProperties')}</option>
+              {properties.map((p: any) => (
+                <option key={p.id} value={p.id}>🏘️ {p.name}</option>
+              ))}
+            </select>
+          )}
+          <select
               value={filterBuildingSupervisors}
               onChange={e => setFilterBuildingSupervisors(e.target.value)}
               className="px-3 py-1.5 rounded-lg text-xs outline-none"
@@ -855,7 +905,20 @@ export default function AdminCleaners() {
             {allAdmins.length}
           </span>
           <div className="ms-auto flex items-center gap-2">
+            {properties.length > 0 && (
             <select
+              value={filterPropAdmins}
+              onChange={e => setFilterPropAdmins(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-xs outline-none"
+              style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.3)', color: filterPropAdmins ? '#fff' : 'rgba(255,255,255,0.45)' }}
+            >
+              <option value="">{t('admin.dashboard.allProperties')}</option>
+              {properties.map((p: any) => (
+                <option key={p.id} value={p.id}>🏘️ {p.name}</option>
+              ))}
+            </select>
+          )}
+          <select
               value={filterBuildingAdmins}
               onChange={e => setFilterBuildingAdmins(e.target.value)}
               className="px-3 py-1.5 rounded-lg text-xs outline-none"
@@ -924,6 +987,32 @@ export default function AdminCleaners() {
                 </button>
               </div>
             </div>
+            {/* Role: org manager or property manager (scoped to one property) */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={adminForm.role}
+                onChange={e => setAdminForm(f => ({ ...f, role: e.target.value }))}
+                className="px-3 py-2 rounded-xl text-sm outline-none"
+                style={{ background: '#0a0e1a', border: '1px solid rgba(139,92,246,0.3)', color: 'white', minWidth: 150 }}
+              >
+                <option value="MANAGER">{t('admin.cleaners.manager')}</option>
+                <option value="PROPERTY_MANAGER">{t('admin.cleaners.propertyManager')}</option>
+              </select>
+              {adminForm.role === 'PROPERTY_MANAGER' && (
+                <select
+                  value={adminForm.propertyId}
+                  onChange={e => setAdminForm(f => ({ ...f, propertyId: e.target.value }))}
+                  required
+                  className="px-3 py-2 rounded-xl text-sm outline-none"
+                  style={{ background: '#0a0e1a', border: '1px solid rgba(0,229,204,0.35)', color: 'white', minWidth: 170 }}
+                >
+                  <option value="">{t('admin.cleaners.pickProperty')}</option>
+                  {properties.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <input
                 value={adminForm.idNumber}
@@ -941,7 +1030,7 @@ export default function AdminCleaners() {
                 style={{ background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.5)', color: '#a78bfa' }}>
                 {t('common.save')}
               </button>
-              <button type="button" onClick={() => { setShowAdminForm(false); setAdminForm({ name: '', email: '', password: '', idNumber: '', role: 'MANAGER' }); }}
+              <button type="button" onClick={() => { setShowAdminForm(false); setAdminForm({ name: '', email: '', password: '', idNumber: '', role: 'MANAGER', propertyId: '' }); }}
                 className="px-5 py-2 rounded-xl text-sm"
                 style={{ color: 'var(--color-text-secondary)' }}>
                 {t('common.cancel')}
@@ -967,9 +1056,10 @@ export default function AdminCleaners() {
                   <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
                     {a.email}
                     {' · '}
-                    <span style={{ color: a.role === 'ORG_ADMIN' ? '#8b5cf6' : '#a78bfa' }}>
-                      {a.role === 'ORG_ADMIN' ? t('admin.cleaners.orgAdmin') : t('admin.cleaners.manager')}
+                    <span style={{ color: a.role === 'ORG_ADMIN' ? '#8b5cf6' : a.role === 'PROPERTY_MANAGER' ? '#00e5cc' : '#a78bfa' }}>
+                      {a.role === 'ORG_ADMIN' ? t('admin.cleaners.orgAdmin') : a.role === 'PROPERTY_MANAGER' ? t('admin.cleaners.propertyManager') : t('admin.cleaners.manager')}
                     </span>
+                    {propertyNameOf(a) && <span> · 🏘️ {propertyNameOf(a)}</span>}
                   </div>
                   {/* Show ID number if set (not equal to email = legacy default) */}
                   {a.idNumber && a.idNumber !== a.email && (

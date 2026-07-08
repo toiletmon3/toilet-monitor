@@ -20,6 +20,7 @@ model Organization {
   updatedAt DateTime @updatedAt
 
   buildings       Building[]
+  properties      Property[]
   users           User[]
   issueTypes      IssueType[]
   kioskTemplates  KioskTemplate[]
@@ -49,9 +50,25 @@ model KioskTemplate {
   @@map("kiosk_templates")
 }
 
+// A property (נכס) groups buildings — e.g. a country club with several
+// buildings. Sits between the organization and its buildings, and is the
+// scope a PROPERTY_MANAGER is confined to.
+model Property {
+  id    String @id @default(uuid())
+  orgId String
+  name  String
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  buildings    Building[]
+  users        User[]
+
+  @@map("properties")
+}
+
 model Building {
   id               String  @id @default(uuid())
   orgId            String
+  propertyId       String?
   name             String
   address          String  @default("")
   latitude         Float?
@@ -59,6 +76,7 @@ model Building {
   kioskTemplateId  String?
 
   organization  Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  property      Property?      @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   kioskTemplate KioskTemplate? @relation(fields: [kioskTemplateId], references: [id])
   floors        Floor[]
   cleaners      User[]
@@ -138,6 +156,7 @@ model User {
   id            String   @id @default(uuid())
   orgId         String
   buildingId    String?
+  propertyId    String? // PROPERTY_MANAGER scope; also set on users a property manager creates
   idNumber      String
   name          String
   email         String?
@@ -151,6 +170,7 @@ model User {
 
   organization      Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   building          Building?        @relation(fields: [buildingId], references: [id])
+  property          Property?        @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   incidentActions   IncidentAction[]
   assignedIncidents Incident[]       @relation("AssignedCleaner")
   arrivals          CleanerArrival[]
@@ -263,6 +283,7 @@ enum UserRole {
   SUPER_ADMIN
   ORG_ADMIN
   MANAGER
+  PROPERTY_MANAGER
   SHIFT_SUPERVISOR
   CLEANER
 }

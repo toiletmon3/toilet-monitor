@@ -435,6 +435,7 @@ export default function AdminDashboard() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const queryClient = useQueryClient();
+  const [propertyId, setPropertyId] = useState<string>(''); // '' = all properties
   const [buildingId, setBuildingId] = useState<string>(''); // '' = all
   const [floorId, setFloorId] = useState<string>('');
   const [restroomId, setRestroomId] = useState<string>('');
@@ -451,10 +452,16 @@ export default function AdminDashboard() {
   const [customFrom, setCustomFrom] = useState(todayIso(-7));
   const [customTo, setCustomTo] = useState(todayIso(0));
 
-  const { data: buildings = [] } = useQuery({
+  const { data: allBuildings = [] } = useQuery({
     queryKey: ['building-structure'],
     queryFn: async () => (await api.get('/buildings/structure')).data,
   });
+  const { data: properties = [] } = useQuery({
+    queryKey: ['properties'],
+    queryFn: async () => (await api.get('/buildings/properties')).data,
+  });
+  // The property filter sits above the buildings filter and narrows it.
+  const buildings = propertyId ? allBuildings.filter((b: any) => b.propertyId === propertyId) : allBuildings;
 
   // Floors/restrooms cascade from the building filter.
   const selectedBuilding = buildings.find((b: any) => b.id === buildingId);
@@ -464,6 +471,7 @@ export default function AdminDashboard() {
   const selectedRestroom = restrooms.find((r: any) => r.id === restroomId);
 
   // Reset child filters when parent changes.
+  useEffect(() => { setBuildingId(''); setFloorId(''); setRestroomId(''); }, [propertyId]);
   useEffect(() => { setFloorId(''); setRestroomId(''); }, [buildingId]);
   useEffect(() => { setRestroomId(''); }, [floorId]);
 
@@ -488,16 +496,16 @@ export default function AdminDashboard() {
     }
     return `days=${range}`;
   })();
-  const scopeParam = `${buildingId ? `&buildingId=${buildingId}` : ''}${floorId ? `&floorId=${floorId}` : ''}${restroomId ? `&restroomId=${restroomId}` : ''}`;
+  const scopeParam = `${propertyId ? `&propertyId=${propertyId}` : ''}${buildingId ? `&buildingId=${buildingId}` : ''}${floorId ? `&floorId=${floorId}` : ''}${restroomId ? `&restroomId=${restroomId}` : ''}`;
   const ovParams = `${rangeParam}${scopeParam}`;
   const { data: ov } = useQuery({
-    queryKey: ['analytics-overview', range, range === 'custom' ? `${customFrom}:${customTo}` : '', buildingId, floorId, restroomId],
+    queryKey: ['analytics-overview', range, range === 'custom' ? `${customFrom}:${customTo}` : '', propertyId, buildingId, floorId, restroomId],
     queryFn: async () => (await api.get(`/analytics/overview?${ovParams}`)).data,
     refetchInterval: 30_000,
   });
 
   const { data: urgentData = [] } = useQuery({
-    queryKey: ['incidents', 'urgent', range, range === 'custom' ? `${customFrom}:${customTo}` : '', buildingId, floorId, restroomId],
+    queryKey: ['incidents', 'urgent', range, range === 'custom' ? `${customFrom}:${customTo}` : '', propertyId, buildingId, floorId, restroomId],
     queryFn: async () => (await api.get(`/incidents/urgent?${ovParams}`)).data,
     refetchInterval: 15_000,
   });
@@ -569,6 +577,18 @@ export default function AdminDashboard() {
               {range === 'custom' ? `${customFrom} ↔ ${customTo}` : t('admin.analytics.customRange')}
             </button>
           </div>
+          {properties.length > 0 && (
+            <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}>
+              <span style={{ fontSize: 14 }}>🏘️</span>
+              <select value={propertyId} onChange={e => setPropertyId(e.target.value)}
+                className="bg-transparent text-sm outline-none" style={{ color: 'var(--color-text)', minWidth: 130 }}>
+                <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allProperties')}</option>
+                {properties.map((p: any) => (
+                  <option key={p.id} value={p.id} style={{ background: '#0a0e1a' }}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}>
             <Building2 size={15} style={{ color: 'var(--color-accent)' }} />
             <select value={buildingId} onChange={e => setBuildingId(e.target.value)}

@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
-import { AnalyticsService } from './analytics.service';
+import { AnalyticsService, AnalyticsScope } from './analytics.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -33,21 +33,27 @@ function resolveRange(days: string | undefined, from: string | undefined, to: st
 export class AnalyticsController {
   constructor(private analyticsService: AnalyticsService) {}
 
+  /** Property managers are always confined to their own property's data. */
+  private scoped(user: any, scope: AnalyticsScope): AnalyticsScope {
+    if (user.role === 'PROPERTY_MANAGER') return { ...scope, propertyId: user.propertyId ?? scope.propertyId };
+    return scope;
+  }
+
   @Get('summary')
   getSummary(@CurrentUser() user: any, @Query('buildingId') buildingId?: string) {
     return this.analyticsService.getSummary(user.orgId, buildingId);
   }
 
   @Get('issue-frequency')
-  getIssueFrequency(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('buildingId') buildingId?: string, @Query('floorId') floorId?: string, @Query('restroomId') restroomId?: string) {
+  getIssueFrequency(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('propertyId') propertyId?: string, @Query('buildingId') buildingId?: string, @Query('floorId') floorId?: string, @Query('restroomId') restroomId?: string) {
     const r = resolveRange(days, from, to, 30);
-    return this.analyticsService.getIssueFrequency(user.orgId, r.from, r.to, { buildingId, floorId, restroomId });
+    return this.analyticsService.getIssueFrequency(user.orgId, r.from, r.to, this.scoped(user, { propertyId, buildingId, floorId, restroomId }));
   }
 
   @Get('hourly')
-  getHourlyStats(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('buildingId') buildingId?: string, @Query('floorId') floorId?: string, @Query('restroomId') restroomId?: string) {
+  getHourlyStats(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('propertyId') propertyId?: string, @Query('buildingId') buildingId?: string, @Query('floorId') floorId?: string, @Query('restroomId') restroomId?: string) {
     const r = resolveRange(days, from, to, 7);
-    return this.analyticsService.getHourlyStats(user.orgId, r.from, r.to, { buildingId, floorId, restroomId });
+    return this.analyticsService.getHourlyStats(user.orgId, r.from, r.to, this.scoped(user, { propertyId, buildingId, floorId, restroomId }));
   }
 
   @Get('heatmap')
@@ -57,9 +63,9 @@ export class AnalyticsController {
   }
 
   @Get('cleaners')
-  getCleanerPerformance(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('buildingId') buildingId?: string, @Query('floorId') floorId?: string, @Query('restroomId') restroomId?: string) {
+  getCleanerPerformance(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('propertyId') propertyId?: string, @Query('buildingId') buildingId?: string, @Query('floorId') floorId?: string, @Query('restroomId') restroomId?: string) {
     const r = resolveRange(days, from, to, 30);
-    return this.analyticsService.getCleanerPerformance(user.orgId, r.from, r.to, { buildingId, floorId, restroomId });
+    return this.analyticsService.getCleanerPerformance(user.orgId, r.from, r.to, this.scoped(user, { propertyId, buildingId, floorId, restroomId }));
   }
 
   @Get('sla')
@@ -69,30 +75,31 @@ export class AnalyticsController {
     @Query('targetMinutes') targetMinutes?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('propertyId') propertyId?: string,
     @Query('buildingId') buildingId?: string,
     @Query('floorId') floorId?: string,
     @Query('restroomId') restroomId?: string,
   ) {
     const r = resolveRange(days, from, to, 30);
-    return this.analyticsService.getSlaStats(user.orgId, r.from, r.to, targetMinutes ? +targetMinutes : 15, { buildingId, floorId, restroomId });
+    return this.analyticsService.getSlaStats(user.orgId, r.from, r.to, targetMinutes ? +targetMinutes : 15, this.scoped(user, { propertyId, buildingId, floorId, restroomId }));
   }
 
   @Get('day-of-week')
-  getDayOfWeek(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('buildingId') buildingId?: string, @Query('floorId') floorId?: string, @Query('restroomId') restroomId?: string) {
+  getDayOfWeek(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('propertyId') propertyId?: string, @Query('buildingId') buildingId?: string, @Query('floorId') floorId?: string, @Query('restroomId') restroomId?: string) {
     const r = resolveRange(days, from, to, 30);
-    return this.analyticsService.getDayOfWeekStats(user.orgId, r.from, r.to, { buildingId, floorId, restroomId });
+    return this.analyticsService.getDayOfWeekStats(user.orgId, r.from, r.to, this.scoped(user, { propertyId, buildingId, floorId, restroomId }));
   }
 
   @Get('patterns')
-  getPatterns(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('buildingId') buildingId?: string, @Query('floorId') floorId?: string, @Query('restroomId') restroomId?: string) {
+  getPatterns(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('propertyId') propertyId?: string, @Query('buildingId') buildingId?: string, @Query('floorId') floorId?: string, @Query('restroomId') restroomId?: string) {
     const r = resolveRange(days, from, to, 30);
-    return this.analyticsService.getPatterns(user.orgId, r.from, r.to, { buildingId, floorId, restroomId });
+    return this.analyticsService.getPatterns(user.orgId, r.from, r.to, this.scoped(user, { propertyId, buildingId, floorId, restroomId }));
   }
 
   @Get('restroom-scores')
-  getRestroomScores(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('buildingId') buildingId?: string, @Query('floorId') floorId?: string, @Query('restroomId') restroomId?: string) {
+  getRestroomScores(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('propertyId') propertyId?: string, @Query('buildingId') buildingId?: string, @Query('floorId') floorId?: string, @Query('restroomId') restroomId?: string) {
     const r = resolveRange(days, from, to, 30);
-    return this.analyticsService.getRestroomScores(user.orgId, r.from, r.to, { buildingId, floorId, restroomId });
+    return this.analyticsService.getRestroomScores(user.orgId, r.from, r.to, this.scoped(user, { propertyId, buildingId, floorId, restroomId }));
   }
 
   @Get('overview')
@@ -101,12 +108,14 @@ export class AnalyticsController {
     @Query('days') days?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('propertyId') propertyId?: string,
     @Query('buildingId') buildingId?: string,
     @Query('floorId') floorId?: string,
     @Query('restroomId') restroomId?: string,
   ) {
     const r = resolveRange(days, from, to, 30);
-    return this.analyticsService.getOverview(user.orgId, r.from, r.to, buildingId, floorId, restroomId);
+    const scope = this.scoped(user, { propertyId, buildingId, floorId, restroomId });
+    return this.analyticsService.getOverview(user.orgId, r.from, r.to, scope.buildingId, scope.floorId, scope.restroomId, scope.propertyId);
   }
 
   @Public()

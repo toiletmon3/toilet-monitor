@@ -44,20 +44,27 @@ export class UsersService {
     return this.prisma.user.update({ where: { id: userId }, data: { preferredLang }, select: { id: true, preferredLang: true } });
   }
 
-  async findAll(orgId: string) {
+  async findAll(orgId: string, propertyId?: string) {
+    // Property scope: users assigned to the property directly, or via a
+    // building that belongs to it.
+    const propertyFilter = propertyId
+      ? { OR: [{ propertyId }, { building: { propertyId } }] }
+      : {};
     return this.prisma.user.findMany({
-      where: { orgId },
+      where: { orgId, ...propertyFilter },
       select: {
         id: true, name: true, email: true, idNumber: true,
         role: true, phone: true, preferredLang: true, isActive: true, createdAt: true,
         buildingId: true,
-        building: { select: { id: true, name: true } },
+        building: { select: { id: true, name: true, propertyId: true } },
+        propertyId: true,
+        property: { select: { id: true, name: true } },
       },
       orderBy: { name: 'asc' },
     });
   }
 
-  async createCleaner(orgId: string, dto: { name: string; idNumber: string; phone?: string; preferredLang?: string }) {
+  async createCleaner(orgId: string, dto: { name: string; idNumber: string; phone?: string; preferredLang?: string; propertyId?: string }) {
     const exists = await this.prisma.user.findUnique({ where: { orgId_idNumber: { orgId, idNumber: dto.idNumber } } });
     if (exists) throw new ConflictException('ID number already registered');
 
@@ -69,12 +76,13 @@ export class UsersService {
         phone: dto.phone,
         preferredLang: dto.preferredLang ?? 'he',
         role: 'CLEANER',
+        propertyId: dto.propertyId ?? null,
       },
       select: { id: true, name: true, idNumber: true, role: true, isActive: true },
     });
   }
 
-  async createAdmin(orgId: string, dto: { name: string; email: string; password: string; role?: string }) {
+  async createAdmin(orgId: string, dto: { name: string; email: string; password: string; role?: string; propertyId?: string }) {
     const passwordHash = await bcrypt.hash(dto.password, 12);
     return this.prisma.user.create({
       data: {
@@ -84,8 +92,17 @@ export class UsersService {
         idNumber: dto.email,
         passwordHash,
         role: (dto.role as any) ?? 'MANAGER',
+        propertyId: dto.propertyId ?? null,
       },
-      select: { id: true, name: true, email: true, role: true },
+      select: { id: true, name: true, email: true, role: true, propertyId: true },
+    });
+  }
+
+  async assignProperty(userId: string, propertyId: string | null) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { propertyId },
+      select: { id: true, propertyId: true },
     });
   }
 

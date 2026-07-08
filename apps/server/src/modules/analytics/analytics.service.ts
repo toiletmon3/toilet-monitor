@@ -39,7 +39,7 @@ function classifyIssue(code: string | null | undefined): 'like' | 'maintenance' 
   return 'cleaning';
 }
 
-export type AnalyticsScope = { buildingId?: string; floorId?: string; restroomId?: string };
+export type AnalyticsScope = { propertyId?: string; buildingId?: string; floorId?: string; restroomId?: string };
 
 @Injectable()
 export class AnalyticsService {
@@ -54,6 +54,7 @@ export class AnalyticsService {
     if (scope?.restroomId) return { id: scope.restroomId };
     if (scope?.floorId) return { floorId: scope.floorId };
     if (scope?.buildingId) return { floor: { buildingId: scope.buildingId } };
+    if (scope?.propertyId) return { floor: { building: { orgId, propertyId: scope.propertyId } } };
     return { floor: { building: { orgId } } };
   }
 
@@ -495,16 +496,10 @@ export class AnalyticsService {
    * three donut breakdowns, and a per-restroom table with score + arrival + status.
    * `floorId` / `restroomId` further narrow the scope below the building.
    */
-  async getOverview(orgId: string, from: Date, to: Date = new Date(), buildingId?: string, floorId?: string, restroomId?: string) {
+  async getOverview(orgId: string, from: Date, to: Date = new Date(), buildingId?: string, floorId?: string, restroomId?: string, propertyId?: string) {
     const periodMs = Math.max(1, to.getTime() - from.getTime());
     const prevFrom = new Date(from.getTime() - periodMs);
-    const restroomFilter = restroomId
-      ? { id: restroomId }
-      : floorId
-        ? { floorId }
-        : buildingId
-          ? { floor: { buildingId } }
-          : { floor: { building: { orgId } } };
+    const restroomFilter = this.restroomScope(orgId, { propertyId, buildingId, floorId, restroomId });
 
     // Fetch everything reported since the previous window opened (covers both periods).
     const all = (await this.prisma.incident.findMany({

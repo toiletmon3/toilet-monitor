@@ -14,7 +14,7 @@ export class AuthService {
 
   async loginAdmin(email: string, password: string) {
     const user = await this.prisma.user.findFirst({
-      where: { email, isActive: true, role: { in: ['ORG_ADMIN', 'MANAGER', 'SUPER_ADMIN'] } },
+      where: { email, isActive: true, role: { in: ['ORG_ADMIN', 'MANAGER', 'SUPER_ADMIN', 'PROPERTY_MANAGER'] } },
       include: { organization: true },
     });
     if (!user || !user.passwordHash) throw new UnauthorizedException('Invalid credentials');
@@ -132,7 +132,7 @@ export class AuthService {
   async getMe(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { building: true },
+      include: { building: true, property: true },
     });
     if (!user || !user.isActive) throw new UnauthorizedException();
     return {
@@ -145,6 +145,8 @@ export class AuthService {
       orgId: user.orgId,
       buildingId: user.buildingId ?? null,
       buildingName: user.building?.name ?? null,
+      propertyId: user.propertyId ?? null,
+      propertyName: user.property?.name ?? null,
     };
   }
 
@@ -168,6 +170,7 @@ export class AuthService {
         orgId: user.orgId,
         buildingId: user.buildingId ?? null,
         buildingName: user.building?.name ?? null,
+        propertyId: user.propertyId ?? null,
       },
     };
   }
