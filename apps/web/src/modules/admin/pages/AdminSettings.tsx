@@ -559,6 +559,13 @@ function PropertiesPanel({ structure, onRefresh }: { structure: any[]; onRefresh
     } catch { toast.error(t('common.error')); }
   };
 
+  const renameProperty = async (id: string, current: string) => {
+    const name = window.prompt(t('admin.settings.propertyNamePlaceholder'), current)?.trim();
+    if (!name || name === current) return;
+    try { await api.patch(`/buildings/properties/${id}`, { name }); refreshAll(); toast.success(t('common.updated')); }
+    catch { toast.error(t('common.error')); }
+  };
+
   const deleteProperty = async (id: string, name: string) => {
     if (!window.confirm(`${t('admin.settings.deleteProperty')} "${name}"?`)) return;
     try { await api.delete(`/buildings/properties/${id}`); refreshAll(); toast.success(t('common.updated')); }
@@ -610,10 +617,16 @@ function PropertiesPanel({ structure, onRefresh }: { structure: any[]; onRefresh
                   : t('admin.settings.propertyNoBuildings')}
               </span>
             </div>
-            <button onClick={() => deleteProperty(p.id, p.name)} title={t('admin.settings.deleteProperty')}
-              className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all flex-shrink-0" style={{ color: 'rgba(239,68,68,0.5)' }}>
-              <Trash2 size={14} />
-            </button>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button onClick={() => renameProperty(p.id, p.name)} title={t('common.edit')}
+                className="p-1.5 rounded-lg hover:bg-white/10 transition-all" style={{ color: 'var(--color-text-secondary)' }}>
+                <Pencil size={14} />
+              </button>
+              <button onClick={() => deleteProperty(p.id, p.name)} title={t('admin.settings.deleteProperty')}
+                className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all" style={{ color: 'rgba(239,68,68,0.5)' }}>
+                <Trash2 size={14} />
+              </button>
+            </div>
           </div>
         ))}
 
@@ -904,17 +917,6 @@ export default function AdminSettings() {
   const [pwSaving, setPwSaving] = useState(false);
   const [emailLog, setEmailLog] = useState<{ ok: boolean; msg: string; time: string } | null>(null);
 
-  // Organization name — shown in the daily-report email subject/title.
-  const [orgName, setOrgName] = useState('');
-  const [orgNameSaving, setOrgNameSaving] = useState(false);
-  useEffect(() => { if (typeof orgSettings?.name === 'string') setOrgName(orgSettings.name); }, [orgSettings?.name]);
-  const saveOrgName = async () => {
-    const next = orgName.trim();
-    if (!next || next === orgSettings?.name) return;
-    setOrgNameSaving(true);
-    try { await updateOrgSettings({ name: next }); } finally { setOrgNameSaving(false); }
-  };
-
   useEffect(() => {
     api.get('/email/status', { timeout: 30000 }).then(({ data }) => {
       if (!data.configured) {
@@ -1011,35 +1013,6 @@ export default function AdminSettings() {
           </form>
         )}
       </div>
-
-      {/* ── Organization Name (org admins only — hidden from property managers) ── */}
-      {!isPropertyManager && (
-      <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-        <h2 className="font-semibold text-white flex items-center gap-2">
-          <Building2 size={16} style={{ color: 'var(--color-accent)' }} />
-          {t('admin.settings.orgName')}
-        </h2>
-        <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.orgNameDesc')}</div>
-        <div className="flex gap-2">
-          <input
-            value={orgName}
-            onChange={e => setOrgName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') saveOrgName(); }}
-            placeholder={t('admin.settings.orgNamePlaceholder')}
-            className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
-            style={{ background: 'var(--color-bg)', border: '1px solid rgba(0,229,204,0.3)', color: 'var(--color-text)' }}
-          />
-          <button
-            onClick={saveOrgName}
-            disabled={orgNameSaving || !orgName.trim() || orgName.trim() === orgSettings?.name}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-40"
-            style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
-          >
-            {t('admin.settings.save')}
-          </button>
-        </div>
-      </div>
-      )}
 
       {/* ── Properties (נכסים) — org admins only ── */}
       {!isPropertyManager && <PropertiesPanel structure={structure} onRefresh={refresh} />}
