@@ -55,12 +55,13 @@ export class DailyReportService {
     const recipients = admins.filter(a => a.email);
     if (recipients.length === 0) return { sent: false, recipients: [] };
 
-    const data = await this.gatherYesterdayData(org.id, org.name);
+    const displayName = await this.orgDisplayName(org.id, org.name);
+    const data = await this.gatherYesterdayData(org.id, displayName);
     const sentTo: string[] = [];
     for (const r of recipients) {
       const html = buildDailyReportHtml(this.localizeData(data, r.preferredLang), r.preferredLang);
       const s = getReportStrings(r.preferredLang);
-      const subject = `${s.subjectPrefix} — ${org.name} — ${this.formatDate(data._yesterdayStart, s.dateLocale)}`;
+      const subject = `${s.subjectPrefix} — ${displayName} — ${this.formatDate(data._yesterdayStart, s.dateLocale)}`;
       const ok = await this.email.send([r.email!], subject, html);
       if (ok) sentTo.push(r.email!);
     }
@@ -90,10 +91,11 @@ export class DailyReportService {
     const emails = admins.map(a => a.email!).filter(Boolean);
     if (emails.length === 0) return null;
 
-    const data = await this.gatherYesterdayData(org.id, org.name);
+    const displayName = await this.orgDisplayName(org.id, org.name);
+    const data = await this.gatherYesterdayData(org.id, displayName);
     const html = buildDailyReportHtml(this.localizeData(data, 'he'), 'he');
     const s = getReportStrings('he');
-    const subject = `${s.subjectPrefix} — ${org.name} — ${this.formatDate(data._yesterdayStart, s.dateLocale)}`;
+    const subject = `${s.subjectPrefix} — ${displayName} — ${this.formatDate(data._yesterdayStart, s.dateLocale)}`;
 
     return { html, subject, recipients: emails };
   }
@@ -130,13 +132,14 @@ export class DailyReportService {
       return;
     }
 
-    const data = await this.gatherYesterdayData(org.id, org.name);
+    const displayName = await this.orgDisplayName(org.id, org.name);
+    const data = await this.gatherYesterdayData(org.id, displayName);
 
     let sentCount = 0;
     for (const r of recipients) {
       const html = buildDailyReportHtml(this.localizeData(data, r.preferredLang), r.preferredLang);
       const s = getReportStrings(r.preferredLang);
-      const subject = `${s.subjectPrefix} — ${org.name} — ${this.formatDate(data._yesterdayStart, s.dateLocale)}`;
+      const subject = `${s.subjectPrefix} — ${displayName} — ${this.formatDate(data._yesterdayStart, s.dateLocale)}`;
       const ok = await this.email.send([r.email!], subject, html);
       if (ok) sentCount++;
     }
@@ -184,6 +187,19 @@ export class DailyReportService {
 
   private formatDate(d: Date, locale: string): string {
     return d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  /**
+   * Display name for reports: the property name(s) — that's the brand the
+   * user knows. Falls back to the organization name when no properties exist.
+   */
+  private async orgDisplayName(orgId: string, fallback: string): Promise<string> {
+    const properties = await this.prisma.property.findMany({
+      where: { orgId },
+      select: { name: true },
+      orderBy: { name: 'asc' },
+    });
+    return properties.length > 0 ? properties.map(p => p.name).join(' · ') : fallback;
   }
 
   private async gatherYesterdayData(orgId: string, orgName: string): Promise<DailyReportData & { _yesterdayStart: Date }> {
