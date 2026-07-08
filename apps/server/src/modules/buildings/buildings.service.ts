@@ -318,6 +318,12 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    // Keep in sync with AnalyticsService.KIOSK_AVG_RESET_AT / KIOSK_AVG_BASELINE_MINUTES —
+    // the kiosk avg-response stat was reset on this date (old always-open incidents
+    // dragged the average to thousands of minutes).
+    const avgResetAt = new Date('2026-07-08T00:00:00Z');
+    const avgBaselineMinutes = 2;
+    const avgSince = monthAgo > avgResetAt ? monthAgo : avgResetAt;
     const statsByBuilding = new Map<string, {
       weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null;
       weeklyByType: Record<string, number>; todayByType: Record<string, number>;
@@ -330,7 +336,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
           select: { reportedAt: true, issueType: { select: { code: true } } },
         }),
         this.prisma.incident.findMany({
-          where: { ...buildingFilter, status: 'RESOLVED', resolvedAt: { not: null }, reportedAt: { gte: monthAgo } },
+          where: { ...buildingFilter, status: 'RESOLVED', resolvedAt: { not: null }, reportedAt: { gte: avgSince } },
           select: { reportedAt: true, resolvedAt: true },
         }),
       ]);
@@ -347,7 +353,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
       }
       const avg = resolved.length > 0
         ? Math.round(resolved.reduce((sum, i) => sum + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / resolved.length)
-        : null;
+        : avgBaselineMinutes;
       statsByBuilding.set(buildingId, {
         weeklyReports: weekIncidents.length,
         dailyReports,

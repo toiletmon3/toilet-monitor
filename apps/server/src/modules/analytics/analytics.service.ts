@@ -324,12 +324,25 @@ export class AnalyticsService {
     return this.getKioskStatsByBuilding(restroomId);
   }
 
+  /**
+   * The kiosk-facing avg-response stat was reset on this date: incidents
+   * resolved before it (some sat open for days and dragged the 30-day average
+   * to thousands of minutes) are excluded from the kiosk display. Until enough
+   * post-reset data accumulates, the kiosk shows KIOSK_AVG_BASELINE_MINUTES.
+   * Internal analytics (SLA dashboard etc.) are NOT affected by this reset.
+   */
+  private static readonly KIOSK_AVG_RESET_AT = new Date('2026-07-08T00:00:00Z');
+  private static readonly KIOSK_AVG_BASELINE_MINUTES = 2;
+
   async getKioskStatsByBuilding(buildingId: string) {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
     const buildingFilter = { restroom: { floor: { buildingId } } };
+
+    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const avgSince = monthAgo > AnalyticsService.KIOSK_AVG_RESET_AT ? monthAgo : AnalyticsService.KIOSK_AVG_RESET_AT;
 
     const [weeklyCount, dailyCount, resolvedWithTimes] = await Promise.all([
       this.prisma.incident.count({
@@ -343,22 +356,22 @@ export class AnalyticsService {
           ...buildingFilter,
           status: 'RESOLVED',
           resolvedAt: { not: null },
-          reportedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          reportedAt: { gte: avgSince },
         },
         select: { reportedAt: true, resolvedAt: true },
       }),
     ]);
 
     const avgResponseMinutes = resolvedWithTimes.length > 0
-      ? resolvedWithTimes.reduce((sum, i) => {
+      ? Math.round(resolvedWithTimes.reduce((sum, i) => {
           return sum + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000;
-        }, 0) / resolvedWithTimes.length
+        }, 0) / resolvedWithTimes.length)
       : null;
 
     return {
       weeklyReports: weeklyCount,
       dailyReports: dailyCount,
-      avgResponseMinutes: avgResponseMinutes !== null ? Math.round(avgResponseMinutes) : null,
+      avgResponseMinutes: avgResponseMinutes ?? AnalyticsService.KIOSK_AVG_BASELINE_MINUTES,
     };
   }
 
