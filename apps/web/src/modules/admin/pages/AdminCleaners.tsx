@@ -260,6 +260,11 @@ export default function AdminCleaners() {
   const [filterPropSupervisors, setFilterPropSupervisors] = useState('');
   const [filterPropAdmins, setFilterPropAdmins] = useState('');
 
+  const currentUserInfo: { id?: string; role?: string } = JSON.parse(localStorage.getItem('user') ?? '{}');
+  // Property managers manage only workers + shift supervisors — the managers
+  // section (and property-manager creation) is a general-manager tool.
+  const isPropertyManager = currentUserInfo.role === 'PROPERTY_MANAGER';
+
   const { data: users } = useQuery({
     queryKey: ['users'],
     queryFn: async () => (await api.get('/users')).data,
@@ -920,7 +925,8 @@ export default function AdminCleaners() {
         </div>
       </div>
 
-      {/* ── Admins & Managers ── */}
+      {/* ── Admins & Managers — general managers only ── */}
+      {!isPropertyManager && (
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(139,92,246,0.2)' }}>
         {/* Title row */}
         <div className="px-5 py-3 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(139,92,246,0.15)' }}>
@@ -1166,6 +1172,7 @@ export default function AdminCleaners() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
