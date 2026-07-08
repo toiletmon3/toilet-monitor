@@ -438,8 +438,18 @@ export default function AdminDashboard() {
   const [buildingId, setBuildingId] = useState<string>(''); // '' = all
   const [floorId, setFloorId] = useState<string>('');
   const [restroomId, setRestroomId] = useState<string>('');
-  const [range, setRange] = useState<string>('30'); // 'today' | 'yesterday' | '7' | '30' | '90'
+  const [range, setRange] = useState<string>('30'); // 'today' | 'yesterday' | '7' | '30' | '90' | 'custom'
   const [view, setView] = useState<'table' | 'cards'>('table');
+
+  // Custom date range (calendar dates, local time)
+  const todayIso = (offset = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customFrom, setCustomFrom] = useState(todayIso(-7));
+  const [customTo, setCustomTo] = useState(todayIso(0));
 
   const { data: buildings = [] } = useQuery({
     queryKey: ['building-structure'],
@@ -457,7 +467,8 @@ export default function AdminDashboard() {
   useEffect(() => { setFloorId(''); setRestroomId(''); }, [buildingId]);
   useEffect(() => { setRestroomId(''); }, [floorId]);
 
-  // 'today'/'yesterday' resolve to explicit from/to; numeric presets use days=N.
+  // 'today'/'yesterday'/'custom' resolve to explicit from/to (calendar days in
+  // LOCAL time, from midnight); numeric presets use days=N.
   const rangeParam = (() => {
     if (range === 'today' || range === 'yesterday') {
       const start = new Date(); start.setHours(0, 0, 0, 0);
@@ -468,18 +479,25 @@ export default function AdminDashboard() {
       const yEnd = new Date(start.getTime() - 1);
       return `from=${encodeURIComponent(yStart.toISOString())}&to=${encodeURIComponent(yEnd.toISOString())}`;
     }
+    if (range === 'custom') {
+      // Expand the date-only strings in LOCAL time (parsing 'YYYY-MM-DD' directly
+      // would treat it as UTC midnight and shift the day by 3h in Israel).
+      const from = new Date(`${customFrom}T00:00:00`).toISOString();
+      const to = new Date(`${customTo}T23:59:59.999`).toISOString();
+      return `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    }
     return `days=${range}`;
   })();
   const scopeParam = `${buildingId ? `&buildingId=${buildingId}` : ''}${floorId ? `&floorId=${floorId}` : ''}${restroomId ? `&restroomId=${restroomId}` : ''}`;
   const ovParams = `${rangeParam}${scopeParam}`;
   const { data: ov } = useQuery({
-    queryKey: ['analytics-overview', range, buildingId, floorId, restroomId],
+    queryKey: ['analytics-overview', range, range === 'custom' ? `${customFrom}:${customTo}` : '', buildingId, floorId, restroomId],
     queryFn: async () => (await api.get(`/analytics/overview?${ovParams}`)).data,
     refetchInterval: 30_000,
   });
 
   const { data: urgentData = [] } = useQuery({
-    queryKey: ['incidents', 'urgent', range, buildingId, floorId, restroomId],
+    queryKey: ['incidents', 'urgent', range, range === 'custom' ? `${customFrom}:${customTo}` : '', buildingId, floorId, restroomId],
     queryFn: async () => (await api.get(`/incidents/urgent?${ovParams}`)).data,
     refetchInterval: 15_000,
   });
@@ -533,7 +551,7 @@ export default function AdminDashboard() {
           <div className="flex gap-1 rounded-xl p-1" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.2)' }}>
             <Calendar size={14} style={{ color: 'var(--color-accent)' }} className="self-center ms-1" />
             {RANGES.map(r => (
-              <button key={r.v} onClick={() => setRange(r.v)}
+              <button key={r.v} onClick={() => { setRange(r.v); setCustomOpen(false); }}
                 className="text-xs px-2.5 py-1 rounded-lg transition-colors"
                 style={{
                   background: range === r.v ? 'rgba(0,229,204,0.15)' : 'transparent',
@@ -542,6 +560,14 @@ export default function AdminDashboard() {
                 {t(`admin.dashboard.${r.key}`)}
               </button>
             ))}
+            <button onClick={() => setCustomOpen(o => !o)}
+              className="text-xs px-2.5 py-1 rounded-lg transition-colors"
+              style={{
+                background: range === 'custom' ? 'rgba(0,229,204,0.15)' : 'transparent',
+                color: range === 'custom' || customOpen ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              }}>
+              {range === 'custom' ? `${customFrom} ↔ ${customTo}` : t('admin.analytics.customRange')}
+            </button>
           </div>
           <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}>
             <Building2 size={15} style={{ color: 'var(--color-accent)' }} />
@@ -579,6 +605,28 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {customOpen && (
+        <div className="rounded-2xl p-4 flex flex-wrap items-end gap-3" style={{ background: 'var(--color-card)', border: '1px dashed rgba(0,229,204,0.3)' }}>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.analytics.from')}</label>
+            <input type="date" value={customFrom} max={customTo} onChange={e => setCustomFrom(e.target.value)}
+              className="px-3 py-2 rounded-xl text-sm text-white outline-none"
+              style={{ background: '#0a0e1a', border: '1px solid rgba(0,229,204,0.25)', colorScheme: 'dark' }} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.analytics.to')}</label>
+            <input type="date" value={customTo} min={customFrom} max={todayIso(0)} onChange={e => setCustomTo(e.target.value)}
+              className="px-3 py-2 rounded-xl text-sm text-white outline-none"
+              style={{ background: '#0a0e1a', border: '1px solid rgba(0,229,204,0.25)', colorScheme: 'dark' }} />
+          </div>
+          <button onClick={() => { if (customFrom && customTo) setRange('custom'); }}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+            style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}>
+            {t('admin.analytics.apply')}
+          </button>
+        </div>
+      )}
 
       {buildingId && (
         <div className="text-xs flex items-center gap-2 px-3 py-2 rounded-xl"
