@@ -82,7 +82,25 @@ export class UsersService {
     });
   }
 
+  /** Friendly 409 instead of a raw DB unique-constraint 500 when an ID number is taken. */
+  private async assertIdNumberFree(userId: string, idNumber?: string) {
+    if (!idNumber) return;
+    const me = await this.prisma.user.findUnique({ where: { id: userId }, select: { orgId: true } });
+    if (!me) return;
+    const taken = await this.prisma.user.findFirst({
+      where: { orgId: me.orgId, idNumber, id: { not: userId } },
+      select: { name: true },
+    });
+    if (taken) throw new ConflictException(`תעודת זהות זו כבר בשימוש אצל ${taken.name}`);
+  }
+
   async createAdmin(orgId: string, dto: { name: string; email: string; password: string; role?: string; propertyId?: string }) {
+    // idNumber defaults to the email, so a duplicate email hits the same unique index
+    const emailTaken = await this.prisma.user.findFirst({
+      where: { orgId, OR: [{ email: dto.email }, { idNumber: dto.email }] },
+      select: { name: true },
+    });
+    if (emailTaken) throw new ConflictException(`האימייל כבר בשימוש אצל ${emailTaken.name}`);
     const passwordHash = await bcrypt.hash(dto.password, 12);
     return this.prisma.user.create({
       data: {
@@ -232,6 +250,7 @@ export class UsersService {
   }
 
   async updateAdmin(userId: string, patch: { name?: string; email?: string; idNumber?: string; preferredLang?: string }) {
+    await this.assertIdNumberFree(userId, patch.idNumber);
     return this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -245,6 +264,7 @@ export class UsersService {
   }
 
   async updateWorker(userId: string, patch: { name?: string; idNumber?: string; phone?: string }) {
+    await this.assertIdNumberFree(userId, patch.idNumber);
     return this.prisma.user.update({
       where: { id: userId },
       data: {
