@@ -18,7 +18,7 @@
  * Tip: append `?hotspots=1` to the kiosk URL to draw outlines over every
  * hotspot, which makes fine-tuning the coordinates below trivial.
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../../../lib/api';
 import { queueIncident, syncPending, getPendingCount } from '../../../../lib/offline';
@@ -30,6 +30,11 @@ import CleanerCheckIn from '../../components/CleanerCheckIn';
  *  nginx serves static assets as immutable for 1y, so bump this whenever the
  *  file changes to force every kiosk to fetch the new video. */
 const VIDEO_URL = '/kiosk-templates/neon-video-bg.mp4?v=1';
+
+/** Tap sound played on every report press. Preloaded and decoded into a Web
+ *  Audio buffer on mount so playback is instant inside the tap gesture (no
+ *  network / decode latency and no autoplay-policy issues). */
+const TAP_SOUND_URL = '/kiosk-templates/tap-sound.mp3?v=1';
 
 /** The video's native aspect ratio (width / height). Locking the wrapper to
  *  the real pixel dimensions keeps the % hotspots glued to the artwork with no
@@ -88,6 +93,7 @@ export default function KioskPageNeonVideo() {
   const [statsView, setStatsView] = useState<'week' | 'today'>('week');
   const [layout, setLayout] = useState<any>(null);
   const [showCleanerMode, setShowCleanerMode] = useState(false);
+  const audioRef = useRef<{ ctx: AudioContext; buffer: AudioBuffer | null } | null>(null);
   const showHotspots = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('hotspots');
 
   // Effective overlay positions + font scale, configured per template in the admin.
@@ -163,6 +169,29 @@ export default function KioskPageNeonVideo() {
   useEffect(() => {
     const id = setInterval(() => setStatsView(v => (v === 'week' ? 'today' : 'week')), 10_000);
     return () => clearInterval(id);
+  }, []);
+
+  // Preload + decode the tap sound once; play instances from the buffer.
+  useEffect(() => {
+    const ctx = new AudioContext();
+    audioRef.current = { ctx, buffer: null };
+    fetch(TAP_SOUND_URL)
+      .then(r => r.arrayBuffer())
+      .then(ab => ctx.decodeAudioData(ab))
+      .then(buffer => { if (audioRef.current) audioRef.current.buffer = buffer; })
+      .catch(() => {}); // missing/blocked sound must never break the kiosk
+    return () => { ctx.close().catch(() => {}); audioRef.current = null; };
+  }, []);
+
+  const playTapSound = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio?.buffer) return;
+    // The context starts suspended until a user gesture — we're inside one.
+    if (audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {});
+    const source = audio.ctx.createBufferSource();
+    source.buffer = audio.buffer;
+    source.connect(audio.ctx.destination);
+    source.start();
   }, []);
 
   const handleIssuePress = useCallback(async (issueCode: string) => {
@@ -262,7 +291,7 @@ export default function KioskPageNeonVideo() {
             key={h.code}
             type="button"
             aria-label={h.code}
-            onPointerDown={() => handleIssuePress(h.code)}
+            onPointerDown={() => { playTapSound(); handleIssuePress(h.code); }}
             style={{
               position: 'absolute',
               left: `${h.left}%`,
