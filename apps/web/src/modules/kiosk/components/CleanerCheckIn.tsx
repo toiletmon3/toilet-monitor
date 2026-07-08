@@ -28,6 +28,7 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
   const [idNumber, setIdNumber] = useState('');
   const [step, setStep] = useState<Step>('login');
   const [cleaner, setCleaner] = useState<any>(null);
+  const [checkedIn, setCheckedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -66,6 +67,7 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
         const { data: incs } = await api.get(`/incidents/restroom/${restroomId}`);
         setIncidents(incs);
         setCleaner({ idNumber, name: cv.name });
+        setCheckedIn(!!cv.checkedIn);
         setIsAdmin(false);
         setStep('action');
         return;
@@ -96,6 +98,7 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
     try {
       const { data } = await api.post('/users/checkin', { cleanerIdNumber: idNumber, restroomId });
       setCleaner(data.cleaner);
+      setCheckedIn(true);
       setStep('arrived');
     } catch {
       setError('שגיאה בדיווח הגעה');
@@ -109,6 +112,7 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
     try {
       const { data } = await api.post('/users/checkout', { cleanerIdNumber: idNumber });
       setCleaner(data.cleaner);
+      setCheckedIn(false);
       setStep('checkout_done' as Step);
     } catch {
       setError('שגיאה בדיווח יציאה');
@@ -246,13 +250,18 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
             <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>בחר פעולה</p>
           </div>
 
-          <button onClick={handleArrived} disabled={loading}
-            className="w-full max-w-sm py-6 rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-95"
-            style={{ background: 'rgba(0,229,204,0.1)', border: '1.5px solid rgba(0,229,204,0.5)', boxShadow: '0 0 20px rgba(0,229,204,0.15)' }}>
-            <span className="text-4xl">📍</span>
-            <span className="text-lg font-bold" style={{ color: '#00e5cc' }}>הגעתי לעבודה</span>
-            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>דיווח כניסה למשמרת</span>
-          </button>
+          {/* Check-in / check-out are mutually exclusive: a worker who hasn't
+              checked in today sees only "הגעתי לעבודה"; once on shift, only
+              "סיום משמרת" (server reports the state via verify-cleaner). */}
+          {!checkedIn && (
+            <button onClick={handleArrived} disabled={loading}
+              className="w-full max-w-sm py-6 rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-95"
+              style={{ background: 'rgba(0,229,204,0.1)', border: '1.5px solid rgba(0,229,204,0.5)', boxShadow: '0 0 20px rgba(0,229,204,0.15)' }}>
+              <span className="text-4xl">📍</span>
+              <span className="text-lg font-bold" style={{ color: '#00e5cc' }}>הגעתי לעבודה</span>
+              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>דיווח כניסה למשמרת</span>
+            </button>
+          )}
 
           <button onClick={() => setStep('tasks')} disabled={loading}
             className="w-full max-w-sm py-6 rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-95"
@@ -264,13 +273,15 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
             </span>
           </button>
 
-          <button onClick={handleCheckout} disabled={loading}
-            className="w-full max-w-sm py-6 rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-95"
-            style={{ background: 'rgba(239,68,68,0.08)', border: '1.5px solid rgba(239,68,68,0.35)', boxShadow: '0 0 20px rgba(239,68,68,0.08)' }}>
-            <span className="text-4xl">🏁</span>
-            <span className="text-lg font-bold" style={{ color: '#ef4444' }}>סיום משמרת</span>
-            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>דיווח יציאה מעבודה</span>
-          </button>
+          {checkedIn && (
+            <button onClick={handleCheckout} disabled={loading}
+              className="w-full max-w-sm py-6 rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-95"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1.5px solid rgba(239,68,68,0.35)', boxShadow: '0 0 20px rgba(239,68,68,0.08)' }}>
+              <span className="text-4xl">🏁</span>
+              <span className="text-lg font-bold" style={{ color: '#ef4444' }}>סיום משמרת</span>
+              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>דיווח יציאה מעבודה</span>
+            </button>
+          )}
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
         </div>

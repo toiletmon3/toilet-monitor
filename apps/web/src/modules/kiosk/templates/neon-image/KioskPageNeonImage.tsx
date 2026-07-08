@@ -21,7 +21,6 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import api from '../../../../lib/api';
 import { queueIncident, syncPending, getPendingCount } from '../../../../lib/offline';
 import { joinRestroom, sendHeartbeat } from '../../../../lib/socket';
@@ -80,17 +79,14 @@ const HOTSPOTS: { code: string; left: number; top: number; width: number; height
 
 export default function KioskPageNeonImage() {
   const { deviceCode } = useParams<{ deviceCode: string }>();
-  const { i18n } = useTranslation();
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
   const [issueTypes, setIssueTypes] = useState<any[]>([]);
   const [confirmed, setConfirmed] = useState<string | null>(null);
-  const [duplicate, setDuplicate] = useState(false);
   const [, setConnectionStatus] = useState<ConnectionStatus>('online');
   const [pendingCount, setPendingCount] = useState(0);
   const [stats, setStats] = useState<{ weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null } | null>(null);
   const [statsView, setStatsView] = useState<'week' | 'today'>('week');
   const [layout, setLayout] = useState<any>(null);
-  const lang = i18n.language as 'he' | 'en';
   const showHotspots = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('hotspots');
 
   // Effective overlay positions + font scale, configured per template in the admin.
@@ -185,8 +181,10 @@ export default function KioskPageNeonImage() {
         });
       } catch (err: any) {
         if (err.response?.status === 409) {
-          setDuplicate(true);
-          setTimeout(() => setDuplicate(false), 5000);
+          // Already reported recently — the server keeps a single incident,
+          // but the reporter still gets the normal confirmation screen.
+          setConfirmed(issueCode);
+          setTimeout(() => setConfirmed(null), 5000);
           return;
         }
         await queueIncident({ restroomId: deviceInfo.restroom.id, issueTypeId: issueType.id, deviceId: deviceInfo.id, reportedAt });
@@ -203,21 +201,7 @@ export default function KioskPageNeonImage() {
     setTimeout(() => setConfirmed(null), 5000);
   }, [deviceInfo, issueTypes]);
 
-  if (duplicate) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center gap-6 text-center px-8" style={{ background: '#040b0e' }}>
-        <div className="text-7xl">⏳</div>
-        <div>
-          <div className="text-2xl font-bold text-white mb-2">{lang === 'he' ? 'כבר בטיפול' : 'Already Reported'}</div>
-          <div className="text-base" style={{ color: 'rgba(255,255,255,0.5)' }}>
-            {lang === 'he' ? 'הדיווח הזה נשלח לאחרונה — צוות הניקוי כבר בדרך' : 'This was recently reported — our team is on the way'}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (confirmed) return <KioskConfirmation issueCode={confirmed} onReturn={() => setConfirmed(null)} />;
+  if (confirmed) return <KioskConfirmation issueCode={confirmed} onReturn={() => setConfirmed(null)} scale={layout?.confirmScale ?? 1} />;
 
   return (
     <div

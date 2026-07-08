@@ -89,9 +89,9 @@ export default function KioskPageNeonPro() {
   const [issueTypes, setIssueTypes] = useState<any[]>([]);
   const [kioskButtons, setKioskButtons] = useState<any[]>(DEFAULT_BUTTONS);
   const [iconScale, setIconScale] = useState(1);
+  const [confirmScale, setConfirmScale] = useState<number>(1);
   const [ledSnake, setLedSnake] = useState(false);
   const [confirmed, setConfirmed] = useState<string | null>(null);
-  const [duplicate, setDuplicate] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('online');
   const [pendingCount, setPendingCount] = useState(0);
   const [showCleanerMode, setShowCleanerMode] = useState(false);
@@ -152,6 +152,7 @@ export default function KioskPageNeonPro() {
           const { data: cfg } = await api.get(`/buildings/kiosk-config/${deviceCode}`);
           if (cfg?.iconScale) setIconScale(cfg.iconScale);
           if (typeof cfg?.ledSnake === 'boolean') setLedSnake(cfg.ledSnake);
+          if (cfg?.statsLayout?.confirmScale) setConfirmScale(cfg.statsLayout.confirmScale);
         } catch {}
         api.get('/auth/default-org').then(r => {
           if (r.data?.kioskLang) import('../../../../i18n').then(m => m.setLanguage(r.data.kioskLang));
@@ -223,8 +224,10 @@ export default function KioskPageNeonPro() {
         });
       } catch (err: any) {
         if (err.response?.status === 409) {
-          setDuplicate(true);
-          setTimeout(() => setDuplicate(false), 5000);
+          // Already reported recently — the server keeps a single incident,
+          // but the reporter still gets the normal confirmation screen.
+          setConfirmed(issueCode);
+          setTimeout(() => setConfirmed(null), 5000);
           return;
         }
         await queueIncident({ restroomId: deviceInfo.restroom.id, issueTypeId: issueType.id, deviceId: deviceInfo.id, reportedAt });
@@ -243,21 +246,7 @@ export default function KioskPageNeonPro() {
 
   const handleCornerTap = useCallback(() => setShowCleanerMode(true), []);
 
-  if (duplicate) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center gap-6 text-center px-8" style={{ background: '#040b0e' }}>
-        <div className="text-7xl">⏳</div>
-        <div>
-          <div className="text-2xl font-bold text-white mb-2">{lang === 'he' ? 'כבר בטיפול' : 'Already Reported'}</div>
-          <div className="text-base" style={{ color: 'rgba(255,255,255,0.5)' }}>
-            {lang === 'he' ? 'הדיווח הזה נשלח לאחרונה — צוות הניקוי כבר בדרך' : 'This was recently reported — our team is on the way'}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (confirmed) return <KioskConfirmation issueCode={confirmed} onReturn={() => setConfirmed(null)} />;
+  if (confirmed) return <KioskConfirmation issueCode={confirmed} onReturn={() => setConfirmed(null)} scale={confirmScale} />;
 
   if (showCleanerMode && deviceInfo) {
     return (

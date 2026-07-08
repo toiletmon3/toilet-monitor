@@ -58,7 +58,7 @@ export default function KioskPage() {
   const [issueTypes, setIssueTypes] = useState<any[]>([]);
   const [kioskButtons, setKioskButtons] = useState<any[]>(DEFAULT_BUTTONS);
   const [confirmed, setConfirmed] = useState<string | null>(null);
-  const [duplicate, setDuplicate] = useState(false);
+  const [confirmScale, setConfirmScale] = useState<number>(1);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('online');
   const [pendingCount, setPendingCount] = useState(0);
   const [showCleanerMode, setShowCleanerMode] = useState(false);
@@ -86,6 +86,9 @@ export default function KioskPage() {
           const { data: btns } = await api.get(`/buildings/kiosk-buttons/${deviceCode}`);
           if (btns?.length) setKioskButtons(btns);
         } catch { /* use defaults */ }
+        api.get(`/buildings/kiosk-config/${deviceCode}`).then(r => {
+          if (r.data?.statsLayout?.confirmScale) setConfirmScale(r.data.statsLayout.confirmScale);
+        }).catch(() => {});
 
         // Apply kiosk language and timezone from org settings
         const applyOrgSettings = () => api.get('/auth/default-org').then(r => {
@@ -189,9 +192,10 @@ export default function KioskPage() {
         });
       } catch (err: any) {
         if (err.response?.status === 409) {
-          // Already reported recently — show duplicate screen
-          setDuplicate(true);
-          setTimeout(() => setDuplicate(false), 5000);
+          // Already reported recently — the server keeps a single incident,
+          // but the reporter still gets the normal confirmation screen.
+          setConfirmed(issueCode);
+          setTimeout(() => setConfirmed(null), 5000);
           return;
         }
         // Network error — fallback to offline queue
@@ -224,27 +228,10 @@ export default function KioskPage() {
     setShowCleanerMode(true);
   }, []);
 
-  if (duplicate) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center gap-6 text-center px-8"
-        style={{ background: 'radial-gradient(ellipse 120% 60% at 50% 0%, #0a1628 0%, #060a12 60%, #02050d 100%)' }}>
-        <div className="text-7xl">⏳</div>
-        <div>
-          <div className="text-2xl font-bold text-white mb-2">
-            {lang === 'he' ? 'כבר בטיפול' : 'Already Reported'}
-          </div>
-          <div className="text-base" style={{ color: 'rgba(255,255,255,0.5)' }}>
-            {lang === 'he' ? 'הדיווח הזה נשלח לאחרונה — צוות הניקוי כבר בדרך' : 'This was recently reported — our team is on the way'}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const handleConfirmationReturn = useCallback(() => setConfirmed(null), []);
 
   if (confirmed) {
-    return <KioskConfirmation issueCode={confirmed} onReturn={handleConfirmationReturn} />;
+    return <KioskConfirmation issueCode={confirmed} onReturn={handleConfirmationReturn} scale={confirmScale} />;
   }
 
   if (showCleanerMode && deviceInfo) {

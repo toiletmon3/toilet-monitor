@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next';
 interface Props {
   issueCode: string;
   onReturn: () => void;
+  /** Uniform size multiplier for the whole screen, configured per template in the admin (statsLayout.confirmScale). */
+  scale?: number;
 }
 
-export default function KioskConfirmation({ onReturn }: Props) {
+export default function KioskConfirmation({ onReturn, scale = 1 }: Props) {
   const { t } = useTranslation();
   const [countdown, setCountdown] = useState(5);
 
@@ -22,8 +24,12 @@ export default function KioskConfirmation({ onReturn }: Props) {
 
   return (
     <div
-      className="kiosk-root h-screen flex flex-col items-center justify-center gap-8 px-8"
+      className="kiosk-root h-screen flex flex-col items-center justify-center px-8"
       style={{ background: 'var(--color-bg)' }}
+    >
+    <div
+      className="flex flex-col items-center gap-8"
+      style={scale !== 1 ? { transform: `scale(${scale})`, transformOrigin: 'center' } : undefined}
     >
       {/* Checkmark */}
       <div
@@ -63,6 +69,7 @@ export default function KioskConfirmation({ onReturn }: Props) {
           {countdown}
         </div>
       </div>
+    </div>
     </div>
   );
 }
