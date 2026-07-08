@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import api from '../../../lib/api';
 import { ArrowRight, Settings } from 'lucide-react';
 
-const AUTO_CLOSE_SEC = 20;
+const AUTO_CLOSE_SEC = 10;
 
 interface Props {
   restroomId: string;
