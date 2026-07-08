@@ -41,7 +41,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
           include: {
             restrooms: {
               include: {
-                devices: { select: { id: true, deviceCode: true, isOnline: true, lastHeartbeat: true, kioskTemplateId: true } },
+                devices: { select: { id: true, deviceCode: true, isOnline: true, lastHeartbeat: true, lastHost: true, kioskTemplateId: true } },
                 incidents: {
                   where: { status: { in: ['OPEN', 'IN_PROGRESS'] } },
                   select: { id: true, status: true, issueTypeId: true, reportedAt: true },
@@ -76,10 +76,15 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  async heartbeat(deviceCode: string) {
+  async heartbeat(deviceCode: string, host?: string) {
     return this.prisma.device.update({
       where: { deviceCode },
-      data: { lastHeartbeat: new Date(), isOnline: true },
+      data: {
+        lastHeartbeat: new Date(),
+        isOnline: true,
+        // Which domain the tablet reached us through (nginx passes Host as-is)
+        ...(host ? { lastHost: host.replace(/^www\./, '') } : {}),
+      },
     });
   }
 

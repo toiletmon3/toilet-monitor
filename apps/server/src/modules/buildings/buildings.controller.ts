@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Delete, Body, Param, UseGuards, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards, Patch, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { BuildingsService } from './buildings.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -147,8 +148,9 @@ export class BuildingsController {
 
   @Public()
   @Patch('devices/:deviceCode/heartbeat')
-  heartbeat(@Param('deviceCode') deviceCode: string) {
-    return this.buildingsService.heartbeat(deviceCode);
+  heartbeat(@Param('deviceCode') deviceCode: string, @Req() req: Request) {
+    const host = (req.headers['x-forwarded-host'] as string) ?? req.headers.host;
+    return this.buildingsService.heartbeat(deviceCode, host);
   }
 
   @Public()

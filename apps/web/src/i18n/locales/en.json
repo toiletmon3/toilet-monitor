@@ -233,6 +233,7 @@
     "devices": {
       "title": "Devices",
       "statusTitle": "Tablet Status",
+      "connectedVia": "Connected via",
       "online": "Online",
       "offline": "Offline",
       "lastSeen": "Last Seen",
