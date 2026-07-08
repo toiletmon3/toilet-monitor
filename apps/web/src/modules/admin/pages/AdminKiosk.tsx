@@ -220,6 +220,17 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
     layoutMut.mutate(next);
   };
 
+  // Size multiplier for the post-report confirmation screen ("הבקשה שלך התקבלה") —
+  // applies to every theme, stored alongside the overlay layout in statsLayout.
+  const confirmScale: number = layout?.confirmScale ?? 1;
+  const nudgeConfirmScale = (delta: number) => {
+    const next = Math.min(2, Math.max(0.7, +(confirmScale + delta).toFixed(2)));
+    if (next === confirmScale) return;
+    const nextLayout = { ...layout, confirmScale: next };
+    setLayout(nextLayout);
+    layoutMut.mutate(nextLayout);
+  };
+
   const deleteMut = useMutation({
     mutationFn: () => api.delete(`/buildings/kiosk-templates/${template.id}`),
     onSuccess: () => { setConfirmDelete(false); onRefresh(); toast.success(t('admin.kiosk.deleted')); },
@@ -422,6 +433,20 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
             <NudgeBtn onClick={() => nudgeFont(+0.1)} title="הגדל">+</NudgeBtn>
             <span className="text-[11px] font-bold tabular-nums" style={{ color: 'var(--color-accent)', marginInlineStart: 6 }}>
               {Math.round(fontScale * 100)}%
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation-screen size — applies to every theme */}
+      {!editing && (
+        <div className="px-5 py-3 flex items-center gap-1.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+          <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>גודל מסך האישור (״הבקשה התקבלה״)</span>
+          <div className="flex items-center gap-1.5 ms-auto">
+            <NudgeBtn onClick={() => nudgeConfirmScale(-0.1)} title="הקטן">−</NudgeBtn>
+            <NudgeBtn onClick={() => nudgeConfirmScale(+0.1)} title="הגדל">+</NudgeBtn>
+            <span className="text-[11px] font-bold tabular-nums" style={{ color: 'var(--color-accent)', marginInlineStart: 6 }}>
+              {Math.round(confirmScale * 100)}%
             </span>
           </div>
         </div>
