@@ -374,7 +374,8 @@
       "propertyManager": "Property Manager",
       "pickProperty": "Pick a property...",
       "supervisorRole": "Shift Supervisor",
-      "resetPassword": "Reset password"
+      "resetPassword": "Reset password",
+      "assignedProperties": "Assigned properties"
     },
     "kiosk": {
       "title": "Kiosk Templates",

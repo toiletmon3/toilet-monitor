@@ -374,7 +374,8 @@
       "propertyManager": "מנהל נכס",
       "pickProperty": "בחר נכס...",
       "supervisorRole": "אחראי משמרת",
-      "resetPassword": "איפוס סיסמה"
+      "resetPassword": "איפוס סיסמה",
+      "assignedProperties": "נכסים משויכים"
     },
     "kiosk": {
       "title": "טמפלטים לקיוסק",

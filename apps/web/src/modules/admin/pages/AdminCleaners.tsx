@@ -109,6 +109,16 @@ function PasswordModal({ userId, userName, onClose }: { userId: string; userName
 // ── Admin user edit modal ───────────────────────────────────────────────────────
 function AdminEditModal({ user, onClose, onSaved }: { user: any; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation();
+  const isPM = user.role === 'PROPERTY_MANAGER';
+  // Which properties this property manager owns — edited right here in the modal
+  const { data: modalProperties = [] } = useQuery({
+    queryKey: ['properties'],
+    queryFn: async () => (await api.get('/buildings/properties')).data,
+    enabled: isPM,
+  });
+  const [selectedProps, setSelectedProps] = useState<string[]>(
+    (user.managedProperties ?? []).map((p: any) => p.id),
+  );
   const [name, setName] = useState(user.name ?? '');
   const [email, setEmail] = useState(user.email ?? '');
   // idNumber for admins: if it equals the email (legacy default) show empty so admin can set a real one
@@ -127,6 +137,9 @@ function AdminEditModal({ user, onClose, onSaved }: { user: any; onClose: () => 
         ...(idNumber.trim() && { idNumber: idNumber.trim() }),
         preferredLang,
       });
+      if (isPM) {
+        await api.patch(`/users/${user.id}/properties`, { propertyIds: selectedProps });
+      }
       toast.success(t('admin.cleaners.savedMsg'));
       onSaved();
       onClose();
@@ -163,21 +176,39 @@ function AdminEditModal({ user, onClose, onSaved }: { user: any; onClose: () => 
               : user.role === 'SHIFT_SUPERVISOR' ? t('admin.cleaners.supervisorRole')
               : t('admin.cleaners.manager')}
           </span>
-          {user.role === 'PROPERTY_MANAGER' && (() => {
-            const names = (user.managedProperties ?? []).map((p: any) => p.name);
-            const label = names.length ? names.join(' · ') : (user.property?.name ?? null);
-            return (
-              <span className="text-xs px-2.5 py-1 rounded-full"
-                style={{
-                  background: label ? 'rgba(0,229,204,0.08)' : 'rgba(239,68,68,0.12)',
-                  color: label ? 'var(--color-text-secondary)' : '#f87171',
-                  border: `1px solid ${label ? 'rgba(255,255,255,0.1)' : 'rgba(239,68,68,0.4)'}`,
-                }}>
-                🏘️ {label ?? t('admin.cleaners.pickProperty')}
-              </span>
-            );
-          })()}
         </div>
+
+        {/* Property manager: pick which properties belong to them, right here */}
+        {isPM && (
+          <div className="flex flex-col gap-2 rounded-xl p-3" style={{ background: 'rgba(0,229,204,0.04)', border: '1px solid rgba(0,229,204,0.2)' }}>
+            <span className="text-xs font-semibold" style={{ color: 'var(--color-accent)' }}>
+              🏘️ {t('admin.cleaners.assignedProperties')}
+            </span>
+            {selectedProps.length === 0 && (
+              <span className="text-[11px]" style={{ color: '#f87171' }}>{t('admin.cleaners.pickProperty')}</span>
+            )}
+            <div className="flex flex-col gap-1.5">
+              {modalProperties.map((p: any) => {
+                const checked = selectedProps.includes(p.id);
+                return (
+                  <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer select-none"
+                    style={{ color: checked ? 'var(--color-text)' : 'var(--color-text-secondary)' }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => setSelectedProps(prev => checked ? prev.filter(id => id !== p.id) : [...prev, p.id])}
+                      style={{ accentColor: '#00e5cc', width: 15, height: 15 }}
+                    />
+                    {p.name}
+                  </label>
+                );
+              })}
+              {modalProperties.length === 0 && (
+                <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>—</span>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col gap-3">
           <div>
@@ -1128,43 +1159,6 @@ export default function AdminCleaners() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Property assignment — checkbox chips; a PM can manage several properties */}
-                  {a.role === 'PROPERTY_MANAGER' && (
-                    <div className="flex items-center gap-1.5 flex-wrap max-w-xs">
-                      {(a.managedProperties ?? []).length === 0 && (
-                        <span className="text-[11px] px-2 py-1 rounded-lg" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: '#f87171' }}>
-                          {t('admin.cleaners.pickProperty')}
-                        </span>
-                      )}
-                      {properties.map((p: any) => {
-                        const checked = (a.managedProperties ?? []).some((mp: any) => mp.id === p.id);
-                        return (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={async () => {
-                              const current: string[] = (a.managedProperties ?? []).map((mp: any) => mp.id);
-                              const next = checked ? current.filter(id => id !== p.id) : [...current, p.id];
-                              try {
-                                await api.patch(`/users/${a.id}/properties`, { propertyIds: next });
-                                queryClient.invalidateQueries({ queryKey: ['users'] });
-                                toast.success(t('common.updated'));
-                              } catch { toast.error(t('common.error')); }
-                            }}
-                            className="text-[11px] px-2 py-1 rounded-lg transition-all"
-                            style={{
-                              background: checked ? 'rgba(0,229,204,0.12)' : 'rgba(255,255,255,0.04)',
-                              border: `1px solid ${checked ? 'rgba(0,229,204,0.45)' : 'rgba(255,255,255,0.12)'}`,
-                              color: checked ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-                            }}
-                          >
-                            {checked ? '☑' : '☐'} 🏘️ {p.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
                   {/* Edit (name/email) — available for all */}
                   <button
                     onClick={() => setEditAdmin(a)}
