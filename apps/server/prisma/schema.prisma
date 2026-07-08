@@ -61,6 +61,7 @@ model Property {
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   buildings    Building[]
   users        User[]
+  managers     User[]       @relation("ManagedProperties")
 
   @@map("properties")
 }
@@ -171,6 +172,7 @@ model User {
   organization      Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   building          Building?        @relation(fields: [buildingId], references: [id])
   property          Property?        @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  managedProperties Property[]       @relation("ManagedProperties") // PROPERTY_MANAGER: the properties they manage
   incidentActions   IncidentAction[]
   assignedIncidents Incident[]       @relation("AssignedCleaner")
   arrivals          CleanerArrival[]

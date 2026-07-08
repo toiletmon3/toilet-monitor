@@ -577,7 +577,7 @@ export default function AdminDashboard() {
               {range === 'custom' ? `${customFrom} ↔ ${customTo}` : t('admin.analytics.customRange')}
             </button>
           </div>
-          {properties.length > 0 && (
+          {properties.length > 1 && (
             <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}>
               <span style={{ fontSize: 14 }}>🏘️</span>
               <select value={propertyId} onChange={e => setPropertyId(e.target.value)}

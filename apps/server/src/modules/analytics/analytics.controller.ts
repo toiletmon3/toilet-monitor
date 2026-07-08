@@ -33,10 +33,14 @@ function resolveRange(days: string | undefined, from: string | undefined, to: st
 export class AnalyticsController {
   constructor(private analyticsService: AnalyticsService) {}
 
-  /** Property managers are always confined to their own property's data. */
+  /** Property managers are always confined to their own properties' data. */
   private scoped(user: any, scope: AnalyticsScope): AnalyticsScope {
-    if (user.role === 'PROPERTY_MANAGER') return { ...scope, propertyId: user.propertyId ?? '__none__' };
-    return scope;
+    if (user.role !== 'PROPERTY_MANAGER') return scope;
+    const mine: string[] = user.propertyIds?.length ? user.propertyIds : ['__none__'];
+    // A PM may narrow to ONE of their own properties via the filter; anything
+    // else collapses to the full set they manage.
+    if (scope.propertyId && mine.includes(scope.propertyId)) return scope;
+    return { ...scope, propertyId: undefined, propertyIds: mine };
   }
 
   @Get('summary')

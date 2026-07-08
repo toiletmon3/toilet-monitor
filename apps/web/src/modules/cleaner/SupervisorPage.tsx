@@ -179,6 +179,7 @@ export default function SupervisorPage() {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    queryClient.clear(); // don't leak this user's cached data to the next login
     navigate('/supervisor/login');
   };
 

@@ -12,9 +12,9 @@ export class BuildingsController {
   @UseGuards(JwtAuthGuard)
   @Get('structure')
   getStructure(@CurrentUser() user: any) {
-    // A property manager only ever sees the buildings of their own property;
-    // one with no property assigned yet sees nothing (never everything).
-    const scope = user.role === 'PROPERTY_MANAGER' ? (user.propertyId ?? '__none__') : undefined;
+    // A property manager only ever sees the buildings of their own properties;
+    // one with none assigned yet sees nothing (never everything).
+    const scope = user.role === 'PROPERTY_MANAGER' ? (user.propertyIds?.length ? user.propertyIds : ['__none__']) : undefined;
     return this.buildingsService.getStructure(user.orgId, scope);
   }
 
@@ -23,8 +23,8 @@ export class BuildingsController {
   @UseGuards(JwtAuthGuard)
   @Get('properties')
   getProperties(@CurrentUser() user: any) {
-    // A property manager only sees their own property (or nothing if unassigned)
-    const scope = user.role === 'PROPERTY_MANAGER' ? (user.propertyId ?? '__none__') : undefined;
+    // A property manager only sees their own properties (or nothing if unassigned)
+    const scope = user.role === 'PROPERTY_MANAGER' ? (user.propertyIds?.length ? user.propertyIds : ['__none__']) : undefined;
     return this.buildingsService.getProperties(user.orgId, scope);
   }
 

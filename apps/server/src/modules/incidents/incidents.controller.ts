@@ -60,13 +60,17 @@ export class IncidentsController {
     const effectiveBuildingId = (user.role === 'CLEANER' || user.role === 'SHIFT_SUPERVISOR') && user.buildingId
       ? user.buildingId
       : buildingId;
-    // Property managers are always confined to their own property's incidents
-    // (an unassigned one sees nothing)
-    const effectivePropertyId = user.role === 'PROPERTY_MANAGER' ? (user.propertyId ?? '__none__') : propertyId;
+    // Property managers are always confined to their own properties' incidents
+    // (an unassigned one sees nothing); they may narrow to one of their own.
+    const mine: string[] | undefined = user.role === 'PROPERTY_MANAGER'
+      ? (user.propertyIds?.length ? user.propertyIds : ['__none__'])
+      : undefined;
+    const pmNarrowed = mine && propertyId && mine.includes(propertyId);
 
     return this.incidentsService.findAll(user.orgId, {
       status,
-      propertyId: effectivePropertyId,
+      propertyId: mine ? (pmNarrowed ? propertyId : undefined) : propertyId,
+      propertyIds: mine && !pmNarrowed ? mine : undefined,
       buildingId: effectiveBuildingId,
       floorId,
       restroomId,
@@ -101,9 +105,14 @@ export class IncidentsController {
     const effectiveBuildingId = (user.role === 'CLEANER' || user.role === 'SHIFT_SUPERVISOR') && user.buildingId
       ? user.buildingId
       : buildingId;
-    const effectivePropertyId = user.role === 'PROPERTY_MANAGER' ? (user.propertyId ?? '__none__') : propertyId;
+    const mineU: string[] | undefined = user.role === 'PROPERTY_MANAGER'
+      ? (user.propertyIds?.length ? user.propertyIds : ['__none__'])
+      : undefined;
+    const pmNarrowedU = mineU && propertyId && mineU.includes(propertyId);
     return this.incidentsService.getUrgent(user.orgId, {
-      propertyId: effectivePropertyId, buildingId: effectiveBuildingId, floorId, restroomId,
+      propertyId: mineU ? (pmNarrowedU ? propertyId : undefined) : propertyId,
+      propertyIds: mineU && !pmNarrowedU ? mineU : undefined,
+      buildingId: effectiveBuildingId, floorId, restroomId,
       from: range?.from, to: range?.to,
     });
   }

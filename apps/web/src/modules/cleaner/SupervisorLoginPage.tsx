@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +8,7 @@ import api from '../../lib/api';
 export default function SupervisorLoginPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [idNumber, setIdNumber] = useState('');
   const [showId, setShowId] = useState(false);
   const [error, setError] = useState('');
@@ -22,6 +24,8 @@ export default function SupervisorLoginPage() {
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('user', JSON.stringify(data.user));
+      // Purge any cached data from a previously signed-in user (different role/scope)
+      queryClient.clear();
       localStorage.setItem('orgId', data.user.orgId);
       if (data.effectiveLang) setLanguage(data.effectiveLang);
       if (data.effectiveTimezone) localStorage.setItem('orgTimezone', data.effectiveTimezone);

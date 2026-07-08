@@ -188,6 +188,7 @@ export class IncidentsService {
   async findAll(orgId: string, filters: {
     status?: IncidentStatus;
     propertyId?: string;
+    propertyIds?: string[];
     buildingId?: string;
     floorId?: string;
     restroomId?: string;
@@ -206,6 +207,7 @@ export class IncidentsService {
     if (filters.floorId) where.restroom = { ...where.restroom, floorId: filters.floorId };
     if (filters.buildingId) where.restroom = { ...where.restroom, floor: { buildingId: filters.buildingId } };
     else if (filters.propertyId) where.restroom = { ...where.restroom, floor: { building: { orgId, propertyId: filters.propertyId } } };
+    else if (filters.propertyIds) where.restroom = { ...where.restroom, floor: { building: { orgId, propertyId: { in: filters.propertyIds } } } };
     if (filters.from || filters.to) {
       where.reportedAt = {};
       if (filters.from) where.reportedAt.gte = new Date(filters.from);
@@ -365,7 +367,7 @@ export class IncidentsService {
 
   async getUrgent(
     orgId: string,
-    filters: { propertyId?: string; buildingId?: string; floorId?: string; restroomId?: string; from?: Date; to?: Date } = {},
+    filters: { propertyId?: string; propertyIds?: string[]; buildingId?: string; floorId?: string; restroomId?: string; from?: Date; to?: Date } = {},
   ) {
     const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
     const s = (org?.settings ?? {}) as any;
@@ -387,6 +389,8 @@ export class IncidentsService {
       restroom.floor = { buildingId: filters.buildingId, building: { orgId } };
     } else if (filters.propertyId) {
       restroom.floor = { building: { orgId, propertyId: filters.propertyId } };
+    } else if (filters.propertyIds) {
+      restroom.floor = { building: { orgId, propertyId: { in: filters.propertyIds } } };
     }
 
     // reportedAt must be ≤ urgency cutoff, and within the selected [from, to] window.

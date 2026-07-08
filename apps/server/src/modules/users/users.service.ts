@@ -44,11 +44,11 @@ export class UsersService {
     return this.prisma.user.update({ where: { id: userId }, data: { preferredLang }, select: { id: true, preferredLang: true } });
   }
 
-  async findAll(orgId: string, propertyId?: string) {
-    // Property scope: users assigned to the property directly, or via a
-    // building that belongs to it.
-    const propertyFilter = propertyId
-      ? { OR: [{ propertyId }, { building: { propertyId } }] }
+  async findAll(orgId: string, propertyIds?: string[]) {
+    // Property scope: users assigned to one of the properties directly, or via
+    // a building that belongs to one of them.
+    const propertyFilter = propertyIds
+      ? { OR: [{ propertyId: { in: propertyIds } }, { building: { propertyId: { in: propertyIds } } }] }
       : {};
     return this.prisma.user.findMany({
       where: { orgId, ...propertyFilter },
@@ -59,6 +59,7 @@ export class UsersService {
         building: { select: { id: true, name: true, propertyId: true } },
         propertyId: true,
         property: { select: { id: true, name: true } },
+        managedProperties: { select: { id: true, name: true } },
       },
       orderBy: { name: 'asc' },
     });
@@ -121,7 +122,7 @@ export class UsersService {
    * inside their own property — never other managers. Self-edits are allowed
    * (e.g. changing their own password). Throws for anything else.
    */
-  async assertCanManageUser(requester: { id: string; role: string; propertyId?: string | null }, targetUserId: string) {
+  async assertCanManageUser(requester: { id: string; role: string; propertyIds?: string[] }, targetUserId: string) {
     if (requester.role !== 'PROPERTY_MANAGER') return;
     if (requester.id === targetUserId) return; // self-service is fine
     const target = await this.prisma.user.findUnique({
@@ -129,20 +130,26 @@ export class UsersService {
       select: { role: true, propertyId: true, building: { select: { propertyId: true } } },
     });
     if (!target) throw new ForbiddenException();
+    const mine = requester.propertyIds ?? [];
     const isWorker = target.role === 'CLEANER' || target.role === 'SHIFT_SUPERVISOR';
     const inProperty =
-      !!requester.propertyId &&
-      (target.propertyId === requester.propertyId || target.building?.propertyId === requester.propertyId);
+      (!!target.propertyId && mine.includes(target.propertyId)) ||
+      (!!target.building?.propertyId && mine.includes(target.building.propertyId));
     if (!isWorker || !inProperty) {
-      throw new ForbiddenException('Property managers can only manage workers of their own property');
+      throw new ForbiddenException('Property managers can only manage workers of their own properties');
     }
   }
 
-  async assignProperty(userId: string, propertyId: string | null) {
+  /** Replace the full set of properties a property manager manages (checkbox assignment). */
+  async setManagedProperties(userId: string, propertyIds: string[]) {
     return this.prisma.user.update({
       where: { id: userId },
-      data: { propertyId },
-      select: { id: true, propertyId: true },
+      data: {
+        managedProperties: { set: propertyIds.map(id => ({ id })) },
+        // Keep the legacy single-property column roughly in sync for older reads
+        propertyId: propertyIds[0] ?? null,
+      },
+      select: { id: true, managedProperties: { select: { id: true, name: true } } },
     });
   }
 

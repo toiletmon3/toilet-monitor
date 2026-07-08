@@ -132,7 +132,7 @@ export class AuthService {
   async getMe(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { building: true, property: true },
+      include: { building: true, property: true, managedProperties: { select: { id: true, name: true } } },
     });
     if (!user || !user.isActive) throw new UnauthorizedException();
     return {
@@ -147,6 +147,8 @@ export class AuthService {
       buildingName: user.building?.name ?? null,
       propertyId: user.propertyId ?? null,
       propertyName: user.property?.name ?? null,
+      propertyIds: user.managedProperties.map(p => p.id),
+      propertyNames: user.managedProperties.map(p => p.name),
     };
   }
 

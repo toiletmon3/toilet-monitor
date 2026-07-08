@@ -11,9 +11,9 @@ export class UsersController {
 
   @Get()
   findAll(@CurrentUser() user: any) {
-    // Property managers only see the workers of their own property
+    // Property managers only see the workers of their own properties
     // (or nothing until a property is assigned)
-    const scope = user.role === 'PROPERTY_MANAGER' ? (user.propertyId ?? '__none__') : undefined;
+    const scope = user.role === 'PROPERTY_MANAGER' ? (user.propertyIds?.length ? user.propertyIds : ['__none__']) : undefined;
     return this.usersService.findAll(user.orgId, scope);
   }
 
@@ -23,7 +23,7 @@ export class UsersController {
     @Body() dto: { name: string; idNumber: string; phone?: string; preferredLang?: string; propertyId?: string },
   ) {
     // Users a property manager creates are stamped with their property
-    if (user.role === 'PROPERTY_MANAGER') dto.propertyId = user.propertyId ?? undefined;
+    if (user.role === 'PROPERTY_MANAGER') dto.propertyId = user.propertyIds?.[0] ?? undefined;
     return this.usersService.createCleaner(user.orgId, dto);
   }
 
@@ -38,15 +38,15 @@ export class UsersController {
       if (dto.role !== 'SHIFT_SUPERVISOR') {
         throw new ForbiddenException('Property managers cannot create managers');
       }
-      dto.propertyId = user.propertyId ?? undefined;
+      dto.propertyId = user.propertyIds?.[0] ?? undefined;
     }
     return this.usersService.createAdmin(user.orgId, dto);
   }
 
-  @Patch(':id/property')
-  assignProperty(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: { propertyId: string | null }) {
+  @Patch(':id/properties')
+  setManagedProperties(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: { propertyIds: string[] }) {
     if (user.role === 'PROPERTY_MANAGER') throw new ForbiddenException();
-    return this.usersService.assignProperty(id, dto.propertyId ?? null);
+    return this.usersService.setManagedProperties(id, dto.propertyIds ?? []);
   }
 
   // Literal routes MUST come before parameterized ':id' routes in NestJS
