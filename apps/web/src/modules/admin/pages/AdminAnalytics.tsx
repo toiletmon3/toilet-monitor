@@ -110,26 +110,33 @@ export default function AdminAnalytics() {
   const params = useMemo(() => rangeToParams(range), [range]);
   const rkey = useMemo(() => rangeKey(range), [range]);
 
-  // ── Location filter — building › floor › restroom (cascading, mirrors the Overview screen) ──
+  // ── Location filter — property › building › floor › restroom (cascading, mirrors the Overview screen) ──
+  const [propertyId, setPropertyId] = useState('');
   const [buildingId, setBuildingId] = useState('');
   const [floorId, setFloorId] = useState('');
   const [restroomId, setRestroomId] = useState('');
 
-  const { data: buildings = [] } = useQuery({
+  const { data: allBuildings = [] } = useQuery({
     queryKey: ['building-structure'],
     queryFn: async () => (await api.get('/buildings/structure')).data,
   });
+  const { data: properties = [] } = useQuery({
+    queryKey: ['properties'],
+    queryFn: async () => (await api.get('/buildings/properties')).data,
+  });
+  const buildings = propertyId ? allBuildings.filter((b: any) => b.propertyId === propertyId) : allBuildings;
   const selectedBuilding = buildings.find((b: any) => b.id === buildingId);
   const floors: any[] = selectedBuilding?.floors ?? [];
   const selectedFloor = floors.find((f: any) => f.id === floorId);
   const restrooms: any[] = selectedFloor?.restrooms ?? [];
 
   // Reset the narrower selections whenever a broader one changes.
+  useEffect(() => { setBuildingId(''); setFloorId(''); setRestroomId(''); }, [propertyId]);
   useEffect(() => { setFloorId(''); setRestroomId(''); }, [buildingId]);
   useEffect(() => { setRestroomId(''); }, [floorId]);
 
-  const scopeParam = `${buildingId ? `&buildingId=${buildingId}` : ''}${floorId ? `&floorId=${floorId}` : ''}${restroomId ? `&restroomId=${restroomId}` : ''}`;
-  const scopeKey = `${buildingId}:${floorId}:${restroomId}`;
+  const scopeParam = `${propertyId ? `&propertyId=${propertyId}` : ''}${buildingId ? `&buildingId=${buildingId}` : ''}${floorId ? `&floorId=${floorId}` : ''}${restroomId ? `&restroomId=${restroomId}` : ''}`;
+  const scopeKey = `${propertyId}:${buildingId}:${floorId}:${restroomId}`;
 
   const { data: frequency } = useQuery({ queryKey: ['freq', rkey, scopeKey], queryFn: async () => (await api.get(`/analytics/issue-frequency?${params}${scopeParam}`)).data });
   const { data: hourly }    = useQuery({ queryKey: ['hourly', rkey, scopeKey], queryFn: async () => (await api.get(`/analytics/hourly?${params}${scopeParam}`)).data });
@@ -364,6 +371,18 @@ export default function AdminAnalytics() {
 
       {/* Location filter — building › floor › restroom (cascading) */}
       <div className="flex items-center gap-2 flex-wrap">
+        {properties.length > 0 && (
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}>
+            <span style={{ fontSize: 14 }}>🏘️</span>
+            <select value={propertyId} onChange={e => setPropertyId(e.target.value)}
+              className="bg-transparent text-sm outline-none" style={{ color: 'var(--color-text)', minWidth: 130 }}>
+              <option value="" style={{ background: '#0a0e1a' }}>{t('admin.dashboard.allProperties')}</option>
+              {properties.map((p: any) => (
+                <option key={p.id} value={p.id} style={{ background: '#0a0e1a' }}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}>
           <Building2 size={15} style={{ color: CYAN }} />
           <select value={buildingId} onChange={e => setBuildingId(e.target.value)}

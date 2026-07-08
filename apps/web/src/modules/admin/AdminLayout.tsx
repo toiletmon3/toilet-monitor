@@ -150,6 +150,9 @@ export default function AdminLayout() {
     navigate('/admin/login');
   };
 
+  // Property managers get the full admin experience minus kiosk templates,
+  // and all their data is scoped server-side to their own property.
+  const isPropertyManager = user?.role === 'PROPERTY_MANAGER';
   const NAV = [
     { to: '/admin', icon: LayoutDashboard, label: t('admin.nav.dashboard'), end: true },
     { to: '/admin/devices', icon: WifiOff, label: t('admin.nav.devices') },
@@ -157,7 +160,7 @@ export default function AdminLayout() {
     { to: '/admin/analytics', icon: BarChart2, label: t('admin.nav.analytics') },
     { to: '/admin/cleaners', icon: Users, label: t('admin.nav.cleaners') },
     { to: '/admin/settings', icon: Settings, label: t('admin.nav.settings') },
-    { to: '/admin/kiosk', icon: LayoutTemplate, label: t('admin.nav.kiosk') },
+    ...(isPropertyManager ? [] : [{ to: '/admin/kiosk', icon: LayoutTemplate, label: t('admin.nav.kiosk') }]),
   ];
 
   const sidebarW = collapsed ? 64 : 224;

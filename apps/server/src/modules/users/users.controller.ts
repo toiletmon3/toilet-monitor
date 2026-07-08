@@ -11,23 +11,37 @@ export class UsersController {
 
   @Get()
   findAll(@CurrentUser() user: any) {
-    return this.usersService.findAll(user.orgId);
+    // Property managers only see the workers of their own property
+    const scope = user.role === 'PROPERTY_MANAGER' && user.propertyId ? user.propertyId : undefined;
+    return this.usersService.findAll(user.orgId, scope);
   }
 
   @Post('cleaners')
   createCleaner(
     @CurrentUser() user: any,
-    @Body() dto: { name: string; idNumber: string; phone?: string; preferredLang?: string },
+    @Body() dto: { name: string; idNumber: string; phone?: string; preferredLang?: string; propertyId?: string },
   ) {
+    // Users a property manager creates are stamped with their property
+    if (user.role === 'PROPERTY_MANAGER') dto.propertyId = user.propertyId ?? undefined;
     return this.usersService.createCleaner(user.orgId, dto);
   }
 
   @Post('admins')
   createAdmin(
     @CurrentUser() user: any,
-    @Body() dto: { name: string; email: string; password: string; role?: string },
+    @Body() dto: { name: string; email: string; password: string; role?: string; propertyId?: string },
   ) {
+    if (user.role === 'PROPERTY_MANAGER') {
+      // A property manager can only define MANAGERs, and only for their own property
+      dto.role = 'MANAGER';
+      dto.propertyId = user.propertyId ?? undefined;
+    }
     return this.usersService.createAdmin(user.orgId, dto);
+  }
+
+  @Patch(':id/property')
+  assignProperty(@Param('id') id: string, @Body() dto: { propertyId: string | null }) {
+    return this.usersService.assignProperty(id, dto.propertyId ?? null);
   }
 
   // Literal routes MUST come before parameterized ':id' routes in NestJS
