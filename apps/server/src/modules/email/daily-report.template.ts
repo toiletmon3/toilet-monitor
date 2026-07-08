@@ -274,7 +274,7 @@ export function buildDailyReportHtml(data: DailyReportData, lang: string = 'he')
 
     <!-- Footer -->
     <div style="text-align:center;padding:32px 0 16px;color:#475569;font-size:11px;">
-      ${s.footer} · <span style="color:#00e5cc;">toiletcleanpro.duckdns.org</span>
+      ${s.footer} · <span style="color:#00e5cc;">cleanco.ai</span>
     </div>
 
   </div>

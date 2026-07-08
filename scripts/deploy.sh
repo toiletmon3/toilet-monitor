@@ -284,13 +284,79 @@ mkdir -p "$NGINX_ROOT"
 SSL_CERT="/etc/letsencrypt/live/toiletcleanpro.duckdns.org/fullchain.pem"
 SSL_KEY="/etc/letsencrypt/live/toiletcleanpro.duckdns.org/privkey.pem"
 
+# cleanco.ai — the new primary domain. Its cert is issued below (webroot
+# challenge) on the first deploy after the DNS A records point here; until
+# then the site keeps serving on the duckdns domain only.
+CLEANCO_CERT="/etc/letsencrypt/live/cleanco.ai/fullchain.pem"
+CLEANCO_KEY="/etc/letsencrypt/live/cleanco.ai/privkey.pem"
+ACME_WEBROOT="/var/www/certbot"
+mkdir -p "$ACME_WEBROOT"
+
+# Append the cleanco.ai HTTPS server block once its cert exists. The nginx
+# config is rewritten from scratch on every deploy, so this must be re-run
+# each time (idempotent via the grep guard).
+append_cleanco_ssl_block() {
+  if [ -f "$CLEANCO_CERT" ] && [ -f "$CLEANCO_KEY" ] && ! grep -q "server_name cleanco.ai" "$NGINX_CONF_DIR/toilet"; then
+    cat >> "$NGINX_CONF_DIR/toilet" << NGINXEOF
+
+server {
+    listen 443 ssl http2;
+    server_name cleanco.ai www.cleanco.ai;
+
+    ssl_certificate $CLEANCO_CERT;
+    ssl_certificate_key $CLEANCO_KEY;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    root /var/www/toilet;
+    index index.html;
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:3001/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /socket.io/ {
+        proxy_pass http://localhost:3001/socket.io/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+    }
+
+    location ~* \.(js|css|png|svg|ico|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+NGINXEOF
+    echo "Added cleanco.ai HTTPS server block"
+  fi
+}
+
 if [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
   echo "SSL certs found — writing HTTPS nginx config"
   cat > "$NGINX_CONF_DIR/toilet" << NGINXEOF
 server {
     listen 80;
-    server_name toiletcleanpro.duckdns.org;
-    return 301 https://\$host\$request_uri;
+    server_name toiletcleanpro.duckdns.org cleanco.ai www.cleanco.ai;
+
+    # Let's Encrypt HTTP-01 challenges must be served, not redirected
+    location ^~ /.well-known/acme-challenge/ {
+        root $ACME_WEBROOT;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
 }
 
 server {
@@ -371,6 +437,9 @@ server {
 NGINXEOF
 fi
 
+# If the cleanco.ai cert already exists, include its HTTPS block right away
+append_cleanco_ssl_block
+
 # Enable site, disable ALL default configs (idempotent)
 ln -sf "$NGINX_CONF_DIR/toilet" "$NGINX_ENABLED_DIR/toilet"
 rm -f "$NGINX_ENABLED_DIR/default"
@@ -408,6 +477,19 @@ elif [ "$RESPONSE" = "000" ]; then
   echo "WARNING: Could not reach $HEALTH_URL — nginx may not be running"
 else
   echo "Health check passed (HTTP $RESPONSE) — site is serving the app."
+fi
+
+# --- cleanco.ai certificate: issue on the first deploy after DNS points here ---
+if [ ! -f "$CLEANCO_CERT" ]; then
+  echo "cleanco.ai cert not found — attempting Let's Encrypt issuance (webroot)..."
+  if certbot certonly --webroot -w "$ACME_WEBROOT" -d cleanco.ai -d www.cleanco.ai \
+       --non-interactive --agree-tos -m ori.aha1@gmail.com; then
+    append_cleanco_ssl_block
+    nginx -t && (nginx -s reload 2>/dev/null || systemctl reload nginx 2>/dev/null || true)
+    echo "cleanco.ai is now live with HTTPS"
+  else
+    echo "WARNING: cleanco.ai cert issuance failed (DNS not propagated yet?) — will retry on next deploy"
+  fi
 fi
 
 # --- Install nginx watchdog cron (runs every 5 min) ---
