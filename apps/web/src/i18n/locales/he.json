@@ -373,7 +373,8 @@
       "checkedInAgo": "דיווח כניסה לפני {{v}}",
       "propertyManager": "מנהל נכס",
       "pickProperty": "בחר נכס...",
-      "supervisorRole": "אחראי משמרת"
+      "supervisorRole": "אחראי משמרת",
+      "resetPassword": "איפוס סיסמה"
     },
     "kiosk": {
       "title": "טמפלטים לקיוסק",

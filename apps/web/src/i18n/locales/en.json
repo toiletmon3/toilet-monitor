@@ -373,7 +373,8 @@
       "checkedInAgo": "Checked in {{v}} ago",
       "propertyManager": "Property Manager",
       "pickProperty": "Pick a property...",
-      "supervisorRole": "Shift Supervisor"
+      "supervisorRole": "Shift Supervisor",
+      "resetPassword": "Reset password"
     },
     "kiosk": {
       "title": "Kiosk Templates",

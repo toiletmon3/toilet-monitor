@@ -908,6 +908,14 @@ export default function AdminCleaners() {
                   <Pencil size={12} /> {t('admin.cleaners.edit')}
                 </button>
                 <button
+                  onClick={() => setPwUser({ id: a.id, name: a.name })}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                  style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}
+                  title={t('admin.cleaners.resetPassword')}
+                >
+                  <KeyRound size={12} /> {t('admin.cleaners.resetPassword')}
+                </button>
+                <button
                   onClick={() => handleDelete(a.id, a.name)}
                   className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all"
                   style={{ color: 'rgba(239,68,68,0.5)' }}
@@ -1140,17 +1148,15 @@ export default function AdminCleaners() {
                     <Pencil size={12} /> {t('admin.cleaners.edit')}
                   </button>
 
-                  {/* Change password — only for self */}
-                  {isSelf && (
-                    <button
-                      onClick={() => setPwUser({ id: a.id, name: a.name })}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', color: '#8b5cf6' }}
-                      title={t('admin.cleaners.changeMyPassword')}
-                    >
-                      <KeyRound size={12} /> {t('admin.cleaners.changeMyPassword')}
-                    </button>
-                  )}
+                  {/* Password — self keeps "change my password", others get "reset" */}
+                  <button
+                    onClick={() => setPwUser({ id: a.id, name: a.name })}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                    style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', color: '#8b5cf6' }}
+                    title={isSelf ? t('admin.cleaners.changeMyPassword') : t('admin.cleaners.resetPassword')}
+                  >
+                    <KeyRound size={12} /> {isSelf ? t('admin.cleaners.changeMyPassword') : t('admin.cleaners.resetPassword')}
+                  </button>
 
                   {/* Delete */}
                   <button
