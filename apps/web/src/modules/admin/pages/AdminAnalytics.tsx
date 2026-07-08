@@ -64,15 +64,32 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-type Range = { kind: 'preset'; days: number } | { kind: 'custom'; from: string; to: string };
+type Range =
+  | { kind: 'preset'; days: number }
+  | { kind: 'day'; which: 'today' | 'yesterday' }
+  | { kind: 'custom'; from: string; to: string };
 
 function rangeToParams(r: Range): string {
+  const enc = encodeURIComponent;
   if (r.kind === 'preset') return `days=${r.days}`;
-  return `from=${encodeURIComponent(r.from)}&to=${encodeURIComponent(r.to)}`;
+  if (r.kind === 'day') {
+    // Calendar days measured from LOCAL midnight — not a rolling 24h window.
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    if (r.which === 'today') return `from=${enc(start.toISOString())}&to=${enc(new Date().toISOString())}`;
+    const yStart = new Date(start);
+    yStart.setDate(yStart.getDate() - 1);
+    return `from=${enc(yStart.toISOString())}&to=${enc(new Date(start.getTime() - 1).toISOString())}`;
+  }
+  // Custom range: expand the date-only strings in LOCAL time (parsing 'YYYY-MM-DD'
+  // directly would treat it as UTC midnight and shift the day by 3h in Israel).
+  return `from=${enc(new Date(`${r.from}T00:00:00`).toISOString())}&to=${enc(new Date(`${r.to}T23:59:59.999`).toISOString())}`;
 }
 
 function rangeKey(r: Range): string {
-  return r.kind === 'preset' ? `p:${r.days}` : `c:${r.from}:${r.to}`;
+  if (r.kind === 'preset') return `p:${r.days}`;
+  if (r.kind === 'day') return `d:${r.which}`;
+  return `c:${r.from}:${r.to}`;
 }
 
 function todayIso(offset = 0) {
@@ -124,7 +141,6 @@ export default function AdminAnalytics() {
 
   const slaColor = !sla ? CYAN : sla.slaPercent >= 80 ? GREEN : sla.slaPercent >= 50 ? AMBER : RED;
 
-  const isPreset = (d: number) => range.kind === 'preset' && range.days === d;
   const applyCustom = () => {
     if (customFrom && customTo) setRange({ kind: 'custom', from: customFrom, to: customTo });
   };
@@ -137,6 +153,7 @@ export default function AdminAnalytics() {
   // Days covered by the current range (inclusive) — used for per-day averages.
   const rangeDays = useMemo(() => {
     if (range.kind === 'preset') return range.days;
+    if (range.kind === 'day') return 1;
     const ms = new Date(range.to).getTime() - new Date(range.from).getTime();
     return Math.max(1, Math.round(ms / 86_400_000) + 1);
   }, [range]);
@@ -163,7 +180,9 @@ export default function AdminAnalytics() {
     rows.push([A('summaryLocation'), scopeLabel]);
     rows.push([
       A('summaryPeriod'),
-      range.kind === 'custom' ? `${range.from} — ${range.to}` : `${range.days} ${t('admin.analytics.days')}`,
+      range.kind === 'custom' ? `${range.from} — ${range.to}`
+        : range.kind === 'day' ? t(range.which === 'today' ? 'admin.dashboard.ovToday' : 'admin.dashboard.ovYesterday')
+        : `${range.days} ${t('admin.analytics.days')}`,
     ]);
 
     const totalReports = (frequency ?? []).reduce((s: number, f: any) => s + (f.count ?? 0), 0);
@@ -305,23 +324,26 @@ export default function AdminAnalytics() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
-          {[
-            { label: t('admin.analytics.lastDay'), value: 1 },
-            { label: t('admin.analytics.last2Days'), value: 2 },
-            { label: t('admin.analytics.lastWeek'), value: 7 },
-            { label: t('admin.analytics.lastMonth'), value: 30 },
-            { label: t('admin.analytics.last2Months'), value: 60 },
-          ].map(({ label, value }) => (
-            <button key={value} onClick={() => { setRange({ kind: 'preset', days: value }); setCustomOpen(false); }}
-              className="px-3 py-1.5 rounded-lg text-sm transition-all"
-              style={{
-                background: isPreset(value) ? 'rgba(0,229,204,0.15)' : 'var(--color-card)',
-                border: `1px solid ${isPreset(value) ? CYAN : 'rgba(255,255,255,0.08)'}`,
-                color: isPreset(value) ? CYAN : 'var(--color-text-secondary)',
-              }}>
-              {label}
-            </button>
-          ))}
+          {([
+            { label: t('admin.dashboard.ovToday'), r: { kind: 'day', which: 'today' } },
+            { label: t('admin.dashboard.ovYesterday'), r: { kind: 'day', which: 'yesterday' } },
+            { label: t('admin.dashboard.ovLast7'), r: { kind: 'preset', days: 7 } },
+            { label: t('admin.dashboard.ovLast30'), r: { kind: 'preset', days: 30 } },
+            { label: t('admin.dashboard.ovLast90'), r: { kind: 'preset', days: 90 } },
+          ] as { label: string; r: Range }[]).map(({ label, r }) => {
+            const active = rangeKey(r) === rkey;
+            return (
+              <button key={label} onClick={() => { setRange(r); setCustomOpen(false); }}
+                className="px-3 py-1.5 rounded-lg text-sm transition-all"
+                style={{
+                  background: active ? 'rgba(0,229,204,0.15)' : 'var(--color-card)',
+                  border: `1px solid ${active ? CYAN : 'rgba(255,255,255,0.08)'}`,
+                  color: active ? CYAN : 'var(--color-text-secondary)',
+                }}>
+                {label}
+              </button>
+            );
+          })}
 
           {/* Custom-range button */}
           <button
