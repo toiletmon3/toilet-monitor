@@ -59,7 +59,18 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
           },
         });
 
-        for (const incident of openIncidents) {
+        // One reminder per real-world problem: when several open incidents share
+        // the same type + restroom (visitors re-reporting the same issue), only
+        // the FIRST (earliest) one drives reminders/escalations — resolving it
+        // auto-resolves the siblings anyway.
+        const firstPerGroup = new Map<string, (typeof openIncidents)[number]>();
+        for (const inc of openIncidents) {
+          const key = `${inc.restroomId}:${inc.issueTypeId}`;
+          const current = firstPerGroup.get(key);
+          if (!current || inc.reportedAt < current.reportedAt) firstPerGroup.set(key, inc);
+        }
+
+        for (const incident of firstPerGroup.values()) {
           const minutesOpen = (Date.now() - incident.reportedAt.getTime()) / 60000;
           const escalations = incident.actions.filter(a => a.actionType === 'ESCALATED');
           const cleanerReminders = escalations.filter(a => a.notes?.startsWith('cleaner:')).length;

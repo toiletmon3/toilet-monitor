@@ -110,7 +110,7 @@ export class IncidentsService {
 
     // Push to CLEANERs only — SHIFT_SUPERVISORs get notified via escalation
     this.push.sendToBuilding(orgId, buildingId, {
-      title: isPositiveFeedback ? '😊 משוב חיובי' : '🚾 ToiletMon — תקלה חדשה',
+      title: isPositiveFeedback ? '😊 משוב חיובי' : '❗ בקשה חדשה',
       body: `${issueIcon} ${issueLabel} — ${location}`,
       url: '/cleaner',
       tag: isPositiveFeedback ? 'positive-feedback' : `incident-${incident.id}`,
