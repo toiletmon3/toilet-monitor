@@ -372,7 +372,8 @@
       "mismatchEmpty": "No alerts right now — all workers are on track",
       "checkedInAgo": "Checked in {{v}} ago",
       "propertyManager": "Property Manager",
-      "pickProperty": "Pick a property..."
+      "pickProperty": "Pick a property...",
+      "supervisorRole": "Shift Supervisor"
     },
     "kiosk": {
       "title": "Kiosk Templates",

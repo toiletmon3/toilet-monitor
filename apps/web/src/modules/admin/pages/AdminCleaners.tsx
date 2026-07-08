@@ -150,6 +150,31 @@ function AdminEditModal({ user, onClose, onSaved }: { user: any; onClose: () => 
           <button onClick={onClose} style={{ color: 'var(--color-text-secondary)' }}><X size={18} /></button>
         </div>
 
+        {/* Who is this? Role (+ property scope for property managers) at a glance */}
+        <div className="flex items-center gap-2 flex-wrap -mt-1">
+          <span className="text-xs px-2.5 py-1 rounded-full font-medium"
+            style={{
+              background: user.role === 'ORG_ADMIN' ? 'rgba(139,92,246,0.15)' : user.role === 'PROPERTY_MANAGER' ? 'rgba(0,229,204,0.12)' : 'rgba(167,139,250,0.12)',
+              color: user.role === 'ORG_ADMIN' ? '#8b5cf6' : user.role === 'PROPERTY_MANAGER' ? 'var(--color-accent)' : '#a78bfa',
+              border: `1px solid ${user.role === 'ORG_ADMIN' ? 'rgba(139,92,246,0.4)' : user.role === 'PROPERTY_MANAGER' ? 'rgba(0,229,204,0.35)' : 'rgba(167,139,250,0.35)'}`,
+            }}>
+            {user.role === 'ORG_ADMIN' ? t('admin.cleaners.orgAdmin')
+              : user.role === 'PROPERTY_MANAGER' ? t('admin.cleaners.propertyManager')
+              : user.role === 'SHIFT_SUPERVISOR' ? t('admin.cleaners.supervisorRole')
+              : t('admin.cleaners.manager')}
+          </span>
+          {user.role === 'PROPERTY_MANAGER' && (
+            <span className="text-xs px-2.5 py-1 rounded-full"
+              style={{
+                background: user.property?.name ? 'rgba(0,229,204,0.08)' : 'rgba(239,68,68,0.12)',
+                color: user.property?.name ? 'var(--color-text-secondary)' : '#f87171',
+                border: `1px solid ${user.property?.name ? 'rgba(255,255,255,0.1)' : 'rgba(239,68,68,0.4)'}`,
+              }}>
+              🏘️ {user.property?.name ?? t('admin.cleaners.pickProperty')}
+            </span>
+          )}
+        </div>
+
         <div className="flex flex-col gap-3">
           <div>
             <label className="text-xs mb-1 block" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.cleaners.adminName')}</label>
