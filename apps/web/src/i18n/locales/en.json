@@ -441,6 +441,7 @@
       "staffInterfaces": "Staff Interfaces",
       "adminInterface": "Admin Interface",
       "adminInterfaceSub": "Login with email and password",
+      "oldAddress": "Legacy address — still works",
       "workerInterface": "Worker Interface",
       "workerInterfaceSub": "Login with ID number",
       "supervisorInterface": "Supervisor Interface",
