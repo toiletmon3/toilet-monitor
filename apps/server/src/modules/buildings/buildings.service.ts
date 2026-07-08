@@ -34,9 +34,9 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
 
   // ── Properties (נכסים) — a grouping layer above buildings ──────────────────
 
-  async getProperties(orgId: string, propertyId?: string) {
+  async getProperties(orgId: string, propertyIds?: string[]) {
     return this.prisma.property.findMany({
-      where: { orgId, ...(propertyId ? { id: propertyId } : {}) },
+      where: { orgId, ...(propertyIds ? { id: { in: propertyIds } } : {}) },
       include: {
         buildings: { select: { id: true, name: true } },
         users: { where: { isActive: true }, select: { id: true, name: true, role: true } },
@@ -70,9 +70,9 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     return buildings.map(b => b.id);
   }
 
-  async getStructure(orgId: string, propertyId?: string) {
+  async getStructure(orgId: string, propertyIds?: string[]) {
     return this.prisma.building.findMany({
-      where: { orgId, ...(propertyId ? { propertyId } : {}) },
+      where: { orgId, ...(propertyIds ? { propertyId: { in: propertyIds } } : {}) },
       include: {
         floors: {
           orderBy: { floorNumber: 'asc' },

@@ -163,16 +163,20 @@ function AdminEditModal({ user, onClose, onSaved }: { user: any; onClose: () => 
               : user.role === 'SHIFT_SUPERVISOR' ? t('admin.cleaners.supervisorRole')
               : t('admin.cleaners.manager')}
           </span>
-          {user.role === 'PROPERTY_MANAGER' && (
-            <span className="text-xs px-2.5 py-1 rounded-full"
-              style={{
-                background: user.property?.name ? 'rgba(0,229,204,0.08)' : 'rgba(239,68,68,0.12)',
-                color: user.property?.name ? 'var(--color-text-secondary)' : '#f87171',
-                border: `1px solid ${user.property?.name ? 'rgba(255,255,255,0.1)' : 'rgba(239,68,68,0.4)'}`,
-              }}>
-              🏘️ {user.property?.name ?? t('admin.cleaners.pickProperty')}
-            </span>
-          )}
+          {user.role === 'PROPERTY_MANAGER' && (() => {
+            const names = (user.managedProperties ?? []).map((p: any) => p.name);
+            const label = names.length ? names.join(' · ') : (user.property?.name ?? null);
+            return (
+              <span className="text-xs px-2.5 py-1 rounded-full"
+                style={{
+                  background: label ? 'rgba(0,229,204,0.08)' : 'rgba(239,68,68,0.12)',
+                  color: label ? 'var(--color-text-secondary)' : '#f87171',
+                  border: `1px solid ${label ? 'rgba(255,255,255,0.1)' : 'rgba(239,68,68,0.4)'}`,
+                }}>
+                🏘️ {label ?? t('admin.cleaners.pickProperty')}
+              </span>
+            );
+          })()}
         </div>
 
         <div className="flex flex-col gap-3">
@@ -279,8 +283,10 @@ export default function AdminCleaners() {
     queryKey: ['properties'],
     queryFn: async () => (await api.get('/buildings/properties')).data,
   });
-  // A user belongs to a property either directly or via their building
+  // A user belongs to properties via management assignment, a direct stamp,
+  // or their building. Returns a display string (possibly several names).
   const propertyNameOf = (u: any): string | null => {
+    if (u.managedProperties?.length) return u.managedProperties.map((p: any) => p.name).join(' · ');
     if (u.property?.name) return u.property.name;
     const viaBuilding = properties.find((p: any) => p.id === u.building?.propertyId);
     return viaBuilding?.name ?? null;
@@ -288,7 +294,12 @@ export default function AdminCleaners() {
 
   // Property filter: matches users assigned to the property directly, or via their building
   const byProperty = (list: any[], pid: string) =>
-    pid ? list.filter((u: any) => u.propertyId === pid || u.building?.propertyId === pid) : list;
+    pid
+      ? list.filter((u: any) =>
+          u.propertyId === pid ||
+          u.building?.propertyId === pid ||
+          (u.managedProperties ?? []).some((p: any) => p.id === pid))
+      : list;
 
   const allWorkers = (users ?? []).filter((u: any) => u.role === 'CLEANER');
   const cleaners = byProperty(
@@ -329,7 +340,11 @@ export default function AdminCleaners() {
     try {
       const payload: any = { name: adminForm.name.trim(), email: adminForm.email.trim(), password: adminForm.password, role: adminForm.role };
       if (adminForm.role === 'PROPERTY_MANAGER' && adminForm.propertyId) payload.propertyId = adminForm.propertyId;
-      await api.post('/users/admins', payload);
+      const { data: createdAdmin } = await api.post('/users/admins', payload);
+      // Managed-properties is the real assignment; more can be ticked later on the row
+      if (adminForm.role === 'PROPERTY_MANAGER' && adminForm.propertyId && createdAdmin?.id) {
+        await api.patch(`/users/${createdAdmin.id}/properties`, { propertyIds: [adminForm.propertyId] });
+      }
       // If ID number supplied, update it immediately
       if (adminForm.idNumber.trim()) {
         const { data: all } = await api.get('/users');
@@ -591,7 +606,7 @@ export default function AdminCleaners() {
           <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.cleaners.activeDesc')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {properties.length > 0 && (
+          {properties.length > 1 && (
             <select
               value={filterPropWorkers}
               onChange={e => setFilterPropWorkers(e.target.value)}
@@ -775,7 +790,7 @@ export default function AdminCleaners() {
             {allSupervisors.length}
           </span>
           <div className="ms-auto flex items-center gap-2">
-            {properties.length > 0 && (
+            {properties.length > 1 && (
             <select
               value={filterPropSupervisors}
               onChange={e => setFilterPropSupervisors(e.target.value)}
@@ -944,7 +959,7 @@ export default function AdminCleaners() {
             {allAdmins.length}
           </span>
           <div className="ms-auto flex items-center gap-2">
-            {properties.length > 0 && (
+            {properties.length > 1 && (
             <select
               value={filterPropAdmins}
               onChange={e => setFilterPropAdmins(e.target.value)}
@@ -1113,29 +1128,41 @@ export default function AdminCleaners() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Property assignment — the scope a property manager is confined to */}
+                  {/* Property assignment — checkbox chips; a PM can manage several properties */}
                   {a.role === 'PROPERTY_MANAGER' && (
-                    <select
-                      value={a.propertyId ?? ''}
-                      onChange={async e => {
-                        try {
-                          await api.patch(`/users/${a.id}/property`, { propertyId: e.target.value || null });
-                          queryClient.invalidateQueries({ queryKey: ['users'] });
-                          toast.success(t('common.updated'));
-                        } catch { toast.error(t('common.error')); }
-                      }}
-                      className="px-3 py-1.5 rounded-lg text-xs outline-none"
-                      style={{
-                        background: a.propertyId ? 'rgba(0,229,204,0.08)' : 'rgba(239,68,68,0.1)',
-                        border: `1px solid ${a.propertyId ? 'rgba(0,229,204,0.3)' : 'rgba(239,68,68,0.4)'}`,
-                        color: a.propertyId ? 'var(--color-accent)' : '#f87171',
-                      }}
-                    >
-                      <option value="">{t('admin.cleaners.pickProperty')}</option>
-                      {properties.map((p: any) => (
-                        <option key={p.id} value={p.id}>🏘️ {p.name}</option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-1.5 flex-wrap max-w-xs">
+                      {(a.managedProperties ?? []).length === 0 && (
+                        <span className="text-[11px] px-2 py-1 rounded-lg" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', color: '#f87171' }}>
+                          {t('admin.cleaners.pickProperty')}
+                        </span>
+                      )}
+                      {properties.map((p: any) => {
+                        const checked = (a.managedProperties ?? []).some((mp: any) => mp.id === p.id);
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={async () => {
+                              const current: string[] = (a.managedProperties ?? []).map((mp: any) => mp.id);
+                              const next = checked ? current.filter(id => id !== p.id) : [...current, p.id];
+                              try {
+                                await api.patch(`/users/${a.id}/properties`, { propertyIds: next });
+                                queryClient.invalidateQueries({ queryKey: ['users'] });
+                                toast.success(t('common.updated'));
+                              } catch { toast.error(t('common.error')); }
+                            }}
+                            className="text-[11px] px-2 py-1 rounded-lg transition-all"
+                            style={{
+                              background: checked ? 'rgba(0,229,204,0.12)' : 'rgba(255,255,255,0.04)',
+                              border: `1px solid ${checked ? 'rgba(0,229,204,0.45)' : 'rgba(255,255,255,0.12)'}`,
+                              color: checked ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                            }}
+                          >
+                            {checked ? '☑' : '☐'} 🏘️ {p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
 
                   {/* Edit (name/email) — available for all */}

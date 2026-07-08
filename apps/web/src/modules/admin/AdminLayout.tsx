@@ -24,6 +24,7 @@ function useClock() {
 export default function AdminLayout() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') ?? '{}');
   const lang = i18n.language as 'he' | 'en';
@@ -147,6 +148,7 @@ export default function AdminLayout() {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    queryClient.clear(); // don't leak this user's cached data to the next login
     navigate('/admin/login');
   };
 

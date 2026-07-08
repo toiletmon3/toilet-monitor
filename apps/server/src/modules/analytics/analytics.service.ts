@@ -39,7 +39,7 @@ function classifyIssue(code: string | null | undefined): 'like' | 'maintenance' 
   return 'cleaning';
 }
 
-export type AnalyticsScope = { propertyId?: string; buildingId?: string; floorId?: string; restroomId?: string };
+export type AnalyticsScope = { propertyId?: string; propertyIds?: string[]; buildingId?: string; floorId?: string; restroomId?: string };
 
 @Injectable()
 export class AnalyticsService {
@@ -55,6 +55,7 @@ export class AnalyticsService {
     if (scope?.floorId) return { floorId: scope.floorId };
     if (scope?.buildingId) return { floor: { buildingId: scope.buildingId } };
     if (scope?.propertyId) return { floor: { building: { orgId, propertyId: scope.propertyId } } };
+    if (scope?.propertyIds) return { floor: { building: { orgId, propertyId: { in: scope.propertyIds } } } };
     return { floor: { building: { orgId } } };
   }
 

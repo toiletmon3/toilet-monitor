@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +7,7 @@ import api from '../../lib/api';
 export default function AdminLoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -20,6 +22,8 @@ export default function AdminLoginPage() {
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('user', JSON.stringify(data.user));
+      // Purge any cached data from a previously signed-in user (different role/scope)
+      queryClient.clear();
       localStorage.setItem('orgId', data.user.orgId);
       navigate('/admin');
     } catch {
