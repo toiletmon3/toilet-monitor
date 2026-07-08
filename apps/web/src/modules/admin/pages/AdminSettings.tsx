@@ -585,11 +585,11 @@ function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url
 
 function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () => void }) {
   const { t } = useTranslation();
-  // The new primary domain always leads; when the admin is browsing from the
-  // legacy (duckdns) origin we show that address too as a secondary row.
+  // Both domains serve the same system; the new primary always leads and the
+  // legacy address is always offered too, regardless of which one the admin
+  // is currently browsing from.
   const PRIMARY_ORIGIN = 'https://cleanco.ai';
-  const origin = window.location.origin;
-  const showLegacy = origin !== PRIMARY_ORIGIN;
+  const LEGACY_ORIGIN = 'https://toiletcleanpro.duckdns.org';
 
   type DeviceEntry = {
     id: string;
@@ -658,9 +658,7 @@ function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () =>
           ].map(iface => (
             <div key={iface.path} className="flex flex-col gap-1.5">
               <CopyRow label={iface.label} sub={iface.sub} url={`${PRIMARY_ORIGIN}${iface.path}`} accent={iface.accent} />
-              {showLegacy && (
-                <CopyRow label={iface.label} sub={t('admin.settings.oldAddress')} url={`${origin}${iface.path}`} accent={iface.accent} />
-              )}
+              <CopyRow label={iface.label} sub={t('admin.settings.oldAddress')} url={`${LEGACY_ORIGIN}${iface.path}`} accent={iface.accent} />
             </div>
           ))}
         </div>
@@ -716,14 +714,12 @@ function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () =>
                 url={`${PRIMARY_ORIGIN}/kiosk/${d.deviceCode}`}
                 accent="#f59e0b"
               />
-              {showLegacy && (
-                <CopyRow
-                  label={`${origin}/kiosk/${d.deviceCode}`}
-                  sub={t('admin.settings.oldAddress')}
-                  url={`${origin}/kiosk/${d.deviceCode}`}
-                  accent="#f59e0b"
-                />
-              )}
+              <CopyRow
+                label={`${LEGACY_ORIGIN}/kiosk/${d.deviceCode}`}
+                sub={t('admin.settings.oldAddress')}
+                url={`${LEGACY_ORIGIN}/kiosk/${d.deviceCode}`}
+                accent="#f59e0b"
+              />
             </div>
           ))}
         </div>
