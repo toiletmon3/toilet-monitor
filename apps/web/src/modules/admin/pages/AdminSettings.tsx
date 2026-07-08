@@ -585,7 +585,11 @@ function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url
 
 function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () => void }) {
   const { t } = useTranslation();
+  // The new primary domain always leads; when the admin is browsing from the
+  // legacy (duckdns) origin we show that address too as a secondary row.
+  const PRIMARY_ORIGIN = 'https://cleanco.ai';
   const origin = window.location.origin;
+  const showLegacy = origin !== PRIMARY_ORIGIN;
 
   type DeviceEntry = {
     id: string;
@@ -647,9 +651,18 @@ function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () =>
           <h2 className="font-semibold text-white">{t('admin.settings.staffInterfaces')}</h2>
         </div>
         <div className="flex flex-col gap-2 p-4">
-          <CopyRow label={t('admin.settings.adminInterface')} sub={t('admin.settings.adminInterfaceSub')} url={`${origin}/admin`} accent="#00e5cc" />
-          <CopyRow label={t('admin.settings.workerInterface')} sub={t('admin.settings.workerInterfaceSub')} url={`${origin}/cleaner`} accent="#8b5cf6" />
-          <CopyRow label={t('admin.settings.supervisorInterface')} sub={t('admin.settings.supervisorInterfaceSub')} url={`${origin}/supervisor`} accent="#f59e0b" />
+          {[
+            { label: t('admin.settings.adminInterface'), sub: t('admin.settings.adminInterfaceSub'), path: '/admin', accent: '#00e5cc' },
+            { label: t('admin.settings.workerInterface'), sub: t('admin.settings.workerInterfaceSub'), path: '/cleaner', accent: '#8b5cf6' },
+            { label: t('admin.settings.supervisorInterface'), sub: t('admin.settings.supervisorInterfaceSub'), path: '/supervisor', accent: '#f59e0b' },
+          ].map(iface => (
+            <div key={iface.path} className="flex flex-col gap-1.5">
+              <CopyRow label={iface.label} sub={iface.sub} url={`${PRIMARY_ORIGIN}${iface.path}`} accent={iface.accent} />
+              {showLegacy && (
+                <CopyRow label={iface.label} sub={t('admin.settings.oldAddress')} url={`${origin}${iface.path}`} accent={iface.accent} />
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -699,10 +712,18 @@ function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () =>
                 </button>
               </div>
               <CopyRow
-                label={`${origin}/kiosk/${d.deviceCode}`}
-                url={`${origin}/kiosk/${d.deviceCode}`}
+                label={`${PRIMARY_ORIGIN}/kiosk/${d.deviceCode}`}
+                url={`${PRIMARY_ORIGIN}/kiosk/${d.deviceCode}`}
                 accent="#f59e0b"
               />
+              {showLegacy && (
+                <CopyRow
+                  label={`${origin}/kiosk/${d.deviceCode}`}
+                  sub={t('admin.settings.oldAddress')}
+                  url={`${origin}/kiosk/${d.deviceCode}`}
+                  accent="#f59e0b"
+                />
+              )}
             </div>
           ))}
         </div>
