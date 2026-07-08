@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, ForbiddenException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -96,6 +96,28 @@ export class UsersService {
       },
       select: { id: true, name: true, email: true, role: true, propertyId: true },
     });
+  }
+
+  /**
+   * Property managers may only touch WORKERS (cleaners + shift supervisors)
+   * inside their own property — never other managers. Self-edits are allowed
+   * (e.g. changing their own password). Throws for anything else.
+   */
+  async assertCanManageUser(requester: { id: string; role: string; propertyId?: string | null }, targetUserId: string) {
+    if (requester.role !== 'PROPERTY_MANAGER') return;
+    if (requester.id === targetUserId) return; // self-service is fine
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true, propertyId: true, building: { select: { propertyId: true } } },
+    });
+    if (!target) throw new ForbiddenException();
+    const isWorker = target.role === 'CLEANER' || target.role === 'SHIFT_SUPERVISOR';
+    const inProperty =
+      !!requester.propertyId &&
+      (target.propertyId === requester.propertyId || target.building?.propertyId === requester.propertyId);
+    if (!isWorker || !inProperty) {
+      throw new ForbiddenException('Property managers can only manage workers of their own property');
+    }
   }
 
   async assignProperty(userId: string, propertyId: string | null) {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -33,15 +33,19 @@ export class UsersController {
     @Body() dto: { name: string; email: string; password: string; role?: string; propertyId?: string },
   ) {
     if (user.role === 'PROPERTY_MANAGER') {
-      // A property manager can only define MANAGERs, and only for their own property
-      dto.role = 'MANAGER';
+      // A property manager can only add WORKERS — shift supervisors here
+      // (cleaners go through /cleaners) — never other managers.
+      if (dto.role !== 'SHIFT_SUPERVISOR') {
+        throw new ForbiddenException('Property managers cannot create managers');
+      }
       dto.propertyId = user.propertyId ?? undefined;
     }
     return this.usersService.createAdmin(user.orgId, dto);
   }
 
   @Patch(':id/property')
-  assignProperty(@Param('id') id: string, @Body() dto: { propertyId: string | null }) {
+  assignProperty(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: { propertyId: string | null }) {
+    if (user.role === 'PROPERTY_MANAGER') throw new ForbiddenException();
     return this.usersService.assignProperty(id, dto.propertyId ?? null);
   }
 
@@ -78,17 +82,20 @@ export class UsersController {
   }
 
   @Patch(':id')
-  updateWorker(@Param('id') id: string, @Body() dto: { name?: string; idNumber?: string; phone?: string }) {
+  async updateWorker(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: { name?: string; idNumber?: string; phone?: string }) {
+    await this.usersService.assertCanManageUser(user, id);
     return this.usersService.updateWorker(id, dto);
   }
 
   @Patch(':id/password')
-  changePassword(@Param('id') id: string, @Body() dto: { password: string }) {
+  async changePassword(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: { password: string }) {
+    await this.usersService.assertCanManageUser(user, id);
     return this.usersService.changePassword(id, dto.password);
   }
 
   @Patch(':id/admin')
-  updateAdmin(@Param('id') id: string, @Body() dto: { name?: string; email?: string; idNumber?: string; preferredLang?: string }) {
+  async updateAdmin(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: { name?: string; email?: string; idNumber?: string; preferredLang?: string }) {
+    await this.usersService.assertCanManageUser(user, id);
     return this.usersService.updateAdmin(id, dto);
   }
 
@@ -99,12 +106,14 @@ export class UsersController {
   }
 
   @Patch(':id/toggle')
-  toggleActive(@Param('id') id: string, @Body() dto: { isActive: boolean }) {
+  async toggleActive(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: { isActive: boolean }) {
+    await this.usersService.assertCanManageUser(user, id);
     return this.usersService.toggleActive(id, dto.isActive);
   }
 
   @Patch(':id/building')
-  assignBuilding(@Param('id') id: string, @Body() dto: { buildingId: string | null }) {
+  async assignBuilding(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: { buildingId: string | null }) {
+    await this.usersService.assertCanManageUser(user, id);
     return this.usersService.assignBuilding(id, dto.buildingId);
   }
 
@@ -139,7 +148,8 @@ export class UsersController {
   }
 
   @Delete(':id')
-  deleteUser(@Param('id') id: string) {
+  async deleteUser(@CurrentUser() user: any, @Param('id') id: string) {
+    await this.usersService.assertCanManageUser(user, id);
     return this.usersService.deleteUser(id);
   }
 
