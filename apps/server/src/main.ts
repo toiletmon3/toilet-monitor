@@ -7,7 +7,12 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+    origin: [
+      process.env.FRONTEND_URL ?? 'http://localhost:5173',
+      'https://toiletcleanpro.duckdns.org',
+      'https://cleanco.ai',
+      'https://www.cleanco.ai',
+    ],
     credentials: true,
   });
 
