@@ -599,6 +599,7 @@ function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () =>
     restroomName: string;
     isOnline: boolean;
     lastHeartbeat: string | null;
+    lastHost: string | null;
   };
 
   const allDevices: DeviceEntry[] = [];
@@ -614,6 +615,7 @@ function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () =>
             restroomName: r.name,
             isOnline: d.isOnline,
             lastHeartbeat: d.lastHeartbeat ?? null,
+            lastHost: d.lastHost ?? null,
           });
         }
       }
@@ -699,6 +701,11 @@ function UrlGuide({ structure, onRefresh }: { structure: any[]; onRefresh: () =>
                       ? `● ${t('admin.devices.online')}`
                       : `○ ${t('admin.devices.offline')} — ${fmtHeartbeat(d.lastHeartbeat)}`}
                   </div>
+                  {d.lastHost && (
+                    <div className="text-xs mt-0.5 ps-4" style={{ color: d.isOnline ? '#22c55e' : 'var(--color-text-secondary)' }}>
+                      ● {t('admin.devices.connectedVia')} <span className="font-mono">{d.lastHost}</span>
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => handleDeleteDevice(d.id, d.deviceCode)}

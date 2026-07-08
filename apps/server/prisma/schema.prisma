@@ -104,6 +104,7 @@ model Device {
   type            DeviceType @default(KIOSK)
   kioskTemplateId String?
   lastHeartbeat   DateTime?
+  lastHost        String? // domain the tablet last sent a heartbeat through (cleanco.ai / duckdns)
   isOnline        Boolean    @default(false)
   createdAt       DateTime   @default(now())
 

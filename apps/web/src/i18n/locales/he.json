@@ -233,6 +233,7 @@
     "devices": {
       "title": "מכשירים",
       "statusTitle": "סטטוס טאבלטים",
+      "connectedVia": "מחובר דרך",
       "online": "מחובר",
       "offline": "מנותק",
       "lastSeen": "נראה לאחרונה",
