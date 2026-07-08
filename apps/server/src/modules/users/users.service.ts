@@ -96,7 +96,15 @@ export class UsersService {
     });
     if (!cleaner) return { found: false };
     if (!cleaner.isActive) return { found: false, inactive: true };
-    return { found: true, name: cleaner.name, role: cleaner.role };
+    // Currently on shift? (an open arrival today with no checkout) — lets the
+    // kiosk team screen offer check-in OR check-out, not both.
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const openArrival = await this.prisma.cleanerArrival.findFirst({
+      where: { userId: cleaner.id, arrivedAt: { gte: todayStart }, leftAt: null },
+      select: { id: true },
+    });
+    return { found: true, name: cleaner.name, role: cleaner.role, checkedIn: !!openArrival };
   }
 
   async verifyAdminByIdNumber(idNumber: string) {
