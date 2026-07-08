@@ -1074,6 +1074,31 @@ export default function AdminCleaners() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Property assignment — the scope a property manager is confined to */}
+                  {a.role === 'PROPERTY_MANAGER' && (
+                    <select
+                      value={a.propertyId ?? ''}
+                      onChange={async e => {
+                        try {
+                          await api.patch(`/users/${a.id}/property`, { propertyId: e.target.value || null });
+                          queryClient.invalidateQueries({ queryKey: ['users'] });
+                          toast.success(t('common.updated'));
+                        } catch { toast.error(t('common.error')); }
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs outline-none"
+                      style={{
+                        background: a.propertyId ? 'rgba(0,229,204,0.08)' : 'rgba(239,68,68,0.1)',
+                        border: `1px solid ${a.propertyId ? 'rgba(0,229,204,0.3)' : 'rgba(239,68,68,0.4)'}`,
+                        color: a.propertyId ? 'var(--color-accent)' : '#f87171',
+                      }}
+                    >
+                      <option value="">{t('admin.cleaners.pickProperty')}</option>
+                      {properties.map((p: any) => (
+                        <option key={p.id} value={p.id}>🏘️ {p.name}</option>
+                      ))}
+                    </select>
+                  )}
+
                   {/* Edit (name/email) — available for all */}
                   <button
                     onClick={() => setEditAdmin(a)}

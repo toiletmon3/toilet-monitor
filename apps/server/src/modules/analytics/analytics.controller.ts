@@ -35,7 +35,7 @@ export class AnalyticsController {
 
   /** Property managers are always confined to their own property's data. */
   private scoped(user: any, scope: AnalyticsScope): AnalyticsScope {
-    if (user.role === 'PROPERTY_MANAGER') return { ...scope, propertyId: user.propertyId ?? scope.propertyId };
+    if (user.role === 'PROPERTY_MANAGER') return { ...scope, propertyId: user.propertyId ?? '__none__' };
     return scope;
   }
 

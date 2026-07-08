@@ -12,7 +12,8 @@ export class UsersController {
   @Get()
   findAll(@CurrentUser() user: any) {
     // Property managers only see the workers of their own property
-    const scope = user.role === 'PROPERTY_MANAGER' && user.propertyId ? user.propertyId : undefined;
+    // (or nothing until a property is assigned)
+    const scope = user.role === 'PROPERTY_MANAGER' ? (user.propertyId ?? '__none__') : undefined;
     return this.usersService.findAll(user.orgId, scope);
   }
 

@@ -61,7 +61,8 @@ export class IncidentsController {
       ? user.buildingId
       : buildingId;
     // Property managers are always confined to their own property's incidents
-    const effectivePropertyId = user.role === 'PROPERTY_MANAGER' && user.propertyId ? user.propertyId : propertyId;
+    // (an unassigned one sees nothing)
+    const effectivePropertyId = user.role === 'PROPERTY_MANAGER' ? (user.propertyId ?? '__none__') : propertyId;
 
     return this.incidentsService.findAll(user.orgId, {
       status,
@@ -100,7 +101,7 @@ export class IncidentsController {
     const effectiveBuildingId = (user.role === 'CLEANER' || user.role === 'SHIFT_SUPERVISOR') && user.buildingId
       ? user.buildingId
       : buildingId;
-    const effectivePropertyId = user.role === 'PROPERTY_MANAGER' && user.propertyId ? user.propertyId : propertyId;
+    const effectivePropertyId = user.role === 'PROPERTY_MANAGER' ? (user.propertyId ?? '__none__') : propertyId;
     return this.incidentsService.getUrgent(user.orgId, {
       propertyId: effectivePropertyId, buildingId: effectiveBuildingId, floorId, restroomId,
       from: range?.from, to: range?.to,
