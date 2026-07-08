@@ -45,31 +45,31 @@ export class IncidentsService {
     });
     if (existing) return existing;
 
-    // Rate limiting: prevent duplicates, but allow re-reporting once IN_PROGRESS for 5+ min
-    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+    // Rate limiting: prevent duplicates, but allow re-reporting once 2+ min have passed
+    const dedupWindowAgo = new Date(Date.now() - 2 * 60 * 1000);
 
-    // Block if OPEN and reported within the last 5 min
+    // Block if OPEN and reported within the last 2 min
     const recentOpen = await this.prisma.incident.findFirst({
       where: {
         restroomId: dto.restroomId,
         issueTypeId: dto.issueTypeId,
         status: 'OPEN',
-        reportedAt: { gte: fiveMinAgo },
+        reportedAt: { gte: dedupWindowAgo },
       },
     });
     if (recentOpen) throw new ConflictException('A recent report for this issue already exists');
 
-    // Block if IN_PROGRESS and acknowledged within the last 5 min (team just dispatched)
+    // Block if IN_PROGRESS and acknowledged within the last 2 min (team just dispatched)
     const recentInProgress = await this.prisma.incident.findFirst({
       where: {
         restroomId: dto.restroomId,
         issueTypeId: dto.issueTypeId,
         status: 'IN_PROGRESS',
-        acknowledgedAt: { gte: fiveMinAgo },
+        acknowledgedAt: { gte: dedupWindowAgo },
       },
     });
     if (recentInProgress) throw new ConflictException('A team member is already handling this');
-    // If IN_PROGRESS but 5+ min have passed — allow new report (issue may have recurred)
+    // If IN_PROGRESS but 2+ min have passed — allow new report (issue may have recurred)
 
     // Check if this is positive feedback — auto-resolve immediately (no action needed)
     const issueType = await this.prisma.issueType.findUnique({ where: { id: dto.issueTypeId } });
