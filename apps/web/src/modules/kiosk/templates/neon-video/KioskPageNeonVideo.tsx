@@ -8,9 +8,9 @@
  * tile, positioned in percentages of the video itself inside an
  * aspect-ratio-locked wrapper, so they track the artwork on any screen size.
  *
- * This template is intentionally report-only: the ONLY interactive elements are
- * the issue-report hotspots. There is deliberately no team/cleaner-mode entry
- * and no language switcher — taps can only create reports.
+ * Interactive elements: the issue-report hotspots plus a small "🧹 צוות"
+ * button (bottom corner) that opens the same CleanerCheckIn screen as the
+ * classic template. There is no language switcher.
  *
  * The video file lives in `apps/web/public/kiosk-templates/` so a missing file
  * never breaks the build; drop the MP4 there to activate the look.
@@ -25,6 +25,7 @@ import api from '../../../../lib/api';
 import { queueIncident, syncPending, getPendingCount } from '../../../../lib/offline';
 import { joinRestroom, sendHeartbeat } from '../../../../lib/socket';
 import KioskConfirmation from '../../components/KioskConfirmation';
+import CleanerCheckIn from '../../components/CleanerCheckIn';
 
 /** Background video served from /public. The ?v= suffix is a cache-buster:
  *  nginx serves static assets as immutable for 1y, so bump this whenever the
@@ -89,6 +90,7 @@ export default function KioskPageNeonVideo() {
   const [stats, setStats] = useState<{ weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null } | null>(null);
   const [statsView, setStatsView] = useState<'week' | 'today'>('week');
   const [layout, setLayout] = useState<any>(null);
+  const [showCleanerMode, setShowCleanerMode] = useState(false);
   const lang = i18n.language as 'he' | 'en';
   const showHotspots = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('hotspots');
 
@@ -218,6 +220,17 @@ export default function KioskPageNeonVideo() {
 
   if (confirmed) return <KioskConfirmation issueCode={confirmed} onReturn={() => setConfirmed(null)} />;
 
+  if (showCleanerMode && deviceInfo) {
+    return (
+      <CleanerCheckIn
+        restroomId={deviceInfo.restroom.id}
+        deviceCode={deviceCode}
+        onBack={() => setShowCleanerMode(false)}
+        onReassigned={() => window.location.reload()}
+      />
+    );
+  }
+
   return (
     <div
       className="flex items-center justify-center overflow-hidden"
@@ -308,6 +321,29 @@ export default function KioskPageNeonVideo() {
             ⏳ {pendingCount}
           </div>
         )}
+
+        {/* Team / cleaner-mode entry — same behaviour as the classic template's
+            corner button: opens CleanerCheckIn for check-in and resolving. */}
+        <button
+          type="button"
+          onPointerDown={() => setShowCleanerMode(true)}
+          className="select-none"
+          style={{
+            position: 'absolute',
+            bottom: '1.2%',
+            insetInlineEnd: '3%',
+            zIndex: 2,
+            padding: '6px 14px',
+            borderRadius: 12,
+            background: 'rgba(0,229,204,0.08)',
+            color: 'rgba(0,229,204,0.55)',
+            border: '1px solid rgba(0,229,204,0.2)',
+            fontSize: 12,
+            WebkitTapHighlightColor: 'transparent',
+            cursor: 'pointer',
+          }}>
+          🧹 צוות
+        </button>
       </div>
     </div>
   );
