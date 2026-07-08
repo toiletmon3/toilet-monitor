@@ -105,6 +105,7 @@ model Device {
   kioskTemplateId String?
   lastHeartbeat   DateTime?
   lastHost        String? // domain the tablet last sent a heartbeat through (cleanco.ai / duckdns)
+  hostsSeen       Json? // { "<host>": "<ISO last heartbeat>" } — all domains with recent heartbeats
   isOnline        Boolean    @default(false)
   createdAt       DateTime   @default(now())
 

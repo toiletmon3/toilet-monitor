@@ -41,7 +41,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
           include: {
             restrooms: {
               include: {
-                devices: { select: { id: true, deviceCode: true, isOnline: true, lastHeartbeat: true, lastHost: true, kioskTemplateId: true } },
+                devices: { select: { id: true, deviceCode: true, isOnline: true, lastHeartbeat: true, lastHost: true, hostsSeen: true, kioskTemplateId: true } },
                 incidents: {
                   where: { status: { in: ['OPEN', 'IN_PROGRESS'] } },
                   select: { id: true, status: true, issueTypeId: true, reportedAt: true },
@@ -77,13 +77,24 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async heartbeat(deviceCode: string, host?: string) {
+    const cleanHost = host?.replace(/^www\./, '');
+    // Track a per-domain last-seen map so simultaneous connections through
+    // both domains all stay visible (lastHost alone is last-writer-wins).
+    let hostsSeen: Record<string, string> | undefined;
+    if (cleanHost) {
+      const device = await this.prisma.device.findUnique({
+        where: { deviceCode },
+        select: { hostsSeen: true },
+      });
+      hostsSeen = { ...((device?.hostsSeen as Record<string, string> | null) ?? {}) };
+      hostsSeen[cleanHost] = new Date().toISOString();
+    }
     return this.prisma.device.update({
       where: { deviceCode },
       data: {
         lastHeartbeat: new Date(),
         isOnline: true,
-        // Which domain the tablet reached us through (nginx passes Host as-is)
-        ...(host ? { lastHost: host.replace(/^www\./, '') } : {}),
+        ...(cleanHost ? { lastHost: cleanHost, hostsSeen } : {}),
       },
     });
   }
