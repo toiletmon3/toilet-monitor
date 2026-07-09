@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 
@@ -310,12 +310,35 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  /**
+   * Reject config requests for tablets that were deleted from the admin UI.
+   * Without this the kiosk page happily renders a default template for any
+   * code, so deleted kiosks look alive forever. A ROOM-* code whose restroom
+   * still exists is allowed — it self-registers on first load.
+   */
+  private async assertKioskCodeAlive(deviceCode: string) {
+    const blocked = await this.prisma.blockedDeviceCode.findUnique({ where: { deviceCode } });
+    if (blocked) throw new NotFoundException('Device removed');
+    const device = await this.prisma.device.findUnique({ where: { deviceCode }, select: { id: true } });
+    if (device) return;
+    if (deviceCode.startsWith('ROOM-')) {
+      const restroom = await this.prisma.restroom.findUnique({
+        where: { id: deviceCode.slice(5) },
+        select: { id: true },
+      });
+      if (restroom) return;
+    }
+    throw new NotFoundException('Device not registered');
+  }
+
   async getKioskButtons(deviceCode: string) {
+    await this.assertKioskCodeAlive(deviceCode);
     const template = await this.resolveTemplate(deviceCode);
     return template ? (template.buttons as any[]) : this.defaultButtons();
   }
 
   async getKioskConfig(deviceCode: string) {
+    await this.assertKioskCodeAlive(deviceCode);
     const template = await this.resolveTemplate(deviceCode);
     return {
       theme: template?.theme ?? 'default',
@@ -502,8 +525,12 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
       where: { floor: { buildingId } },
       select: { id: true },
     });
-    await this.deleteIncidentsForRestrooms(restrooms.map((r) => r.id));
-    return this.prisma.building.delete({ where: { id: buildingId } });
+    const restroomIds = restrooms.map((r) => r.id);
+    const devices = await this.devicesOfRestrooms(restroomIds);
+    await this.deleteIncidentsForRestrooms(restroomIds);
+    const deleted = await this.prisma.building.delete({ where: { id: buildingId } });
+    await this.blockAndKickDevices(devices);
+    return deleted;
   }
 
   async deleteFloor(floorId: string) {
@@ -511,16 +538,27 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
       where: { floorId },
       select: { id: true },
     });
-    await this.deleteIncidentsForRestrooms(restrooms.map((r) => r.id));
-    return this.prisma.floor.delete({ where: { id: floorId } });
+    const restroomIds = restrooms.map((r) => r.id);
+    const devices = await this.devicesOfRestrooms(restroomIds);
+    await this.deleteIncidentsForRestrooms(restroomIds);
+    const deleted = await this.prisma.floor.delete({ where: { id: floorId } });
+    await this.blockAndKickDevices(devices);
+    return deleted;
   }
 
   async deleteRestroom(restroomId: string) {
+    const devices = await this.devicesOfRestrooms([restroomId]);
     await this.deleteIncidentsForRestrooms([restroomId]);
-    return this.prisma.restroom.delete({ where: { id: restroomId } });
+    const deleted = await this.prisma.restroom.delete({ where: { id: restroomId } });
+    await this.blockAndKickDevices(devices);
+    return deleted;
   }
 
   async deleteDevice(deviceId: string) {
+    const device = await this.prisma.device.findUnique({
+      where: { id: deviceId },
+      select: { deviceCode: true, restroomId: true },
+    });
     const incidents = await this.prisma.incident.findMany({
       where: { deviceId },
       select: { id: true },
@@ -530,6 +568,34 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
       await this.prisma.incidentAction.deleteMany({ where: { incidentId: { in: incidentIds } } });
       await this.prisma.incident.deleteMany({ where: { id: { in: incidentIds } } });
     }
-    return this.prisma.device.delete({ where: { id: deviceId } });
+    const deleted = await this.prisma.device.delete({ where: { id: deviceId } });
+    if (device) await this.blockAndKickDevices([device]);
+    return deleted;
+  }
+
+  private devicesOfRestrooms(restroomIds: string[]) {
+    if (restroomIds.length === 0) return Promise.resolve([]);
+    return this.prisma.device.findMany({
+      where: { restroomId: { in: restroomIds } },
+      select: { deviceCode: true, restroomId: true },
+    });
+  }
+
+  /**
+   * Kiosk URLs are public and ROOM-* codes self-register, so deleting the DB
+   * row alone lets the tablet resurrect itself (or keep faking success via the
+   * offline queue). Blocking the code makes the deletion stick, and the
+   * config-changed broadcast reloads any tablet that still has the page open
+   * so it lands on the "device removed" screen immediately.
+   */
+  private async blockAndKickDevices(devices: Array<{ deviceCode: string; restroomId: string }>) {
+    for (const d of devices) {
+      await this.prisma.blockedDeviceCode.upsert({
+        where: { deviceCode: d.deviceCode },
+        create: { deviceCode: d.deviceCode },
+        update: { blockedAt: new Date() },
+      });
+      this.events.broadcastToRestroom(d.restroomId, 'kiosk:config-changed', { deviceCodes: [d.deviceCode] });
+    }
   }
 }

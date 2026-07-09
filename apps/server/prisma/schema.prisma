@@ -135,6 +135,17 @@ model Device {
   @@map("devices")
 }
 
+// Device codes an admin deleted. Kiosk URLs are public and ROOM-* codes
+// self-register, so without this a deleted tablet resurrects itself on the
+// next page load. A blocked code is refused everywhere until an admin
+// re-registers the tablet through the kiosk selector.
+model BlockedDeviceCode {
+  deviceCode String   @id
+  blockedAt  DateTime @default(now())
+
+  @@map("blocked_device_codes")
+}
+
 // =============================================
 // USERS
 // =============================================
