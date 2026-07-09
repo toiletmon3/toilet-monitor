@@ -70,6 +70,11 @@ export class AuthService {
   }
 
   async validateKioskDevice(deviceCode: string) {
+    // Codes deleted from the admin UI stay blocked — otherwise the public
+    // ROOM-* auto-create below resurrects the device on the next page load.
+    const blocked = await this.prisma.blockedDeviceCode.findUnique({ where: { deviceCode } });
+    if (blocked) throw new UnauthorizedException('Device removed by admin');
+
     let device = await this.prisma.device.findUnique({
       where: { deviceCode },
       include: {
@@ -114,6 +119,10 @@ export class AuthService {
       include: { floor: { include: { building: { include: { organization: true } } } } },
     });
     if (!restroom) throw new NotFoundException('Restroom not found');
+
+    // Deliberate re-registration through the kiosk selector (admin-verified)
+    // lifts any block left by a previous deletion.
+    await this.prisma.blockedDeviceCode.deleteMany({ where: { deviceCode } });
 
     const device = await this.prisma.device.upsert({
       where: { deviceCode },

@@ -7,6 +7,7 @@ import KioskPageNeon from './templates/neon/KioskPageNeon';
 import KioskPageNeonPro from './templates/neonpro/KioskPageNeonPro';
 import KioskPageNeonImage from './templates/neon-image/KioskPageNeonImage';
 import KioskPageNeonVideo from './templates/neon-video/KioskPageNeonVideo';
+import KioskRemoved from './KioskRemoved';
 
 /**
  * Reads the kiosk template (theme + buttons) assigned to this device and renders
@@ -31,7 +32,12 @@ export default function KioskDispatcher() {
     let cancelled = false;
     api.get(`/buildings/kiosk-config/${deviceCode}`)
       .then(r => { if (!cancelled) setTheme(r.data?.theme ?? 'default'); })
-      .catch(() => { if (!cancelled) setTheme('default'); });
+      .catch(err => {
+        if (cancelled) return;
+        // 404 = the device was deleted from the admin UI → show the removed
+        // screen. Network errors keep the offline-first default kiosk.
+        setTheme(err?.response?.status === 404 ? 'removed' : 'default');
+      });
     return () => { cancelled = true; };
   }, [deviceCode]);
 
@@ -58,6 +64,7 @@ export default function KioskDispatcher() {
   if (theme === null) {
     return <div style={{ background: '#000', width: '100%', height: '100dvh' }} />;
   }
+  if (theme === 'removed') return <KioskRemoved />;
   if (theme === 'neon') return <KioskPageNeon />;
   if (theme === 'neon-pro') return <KioskPageNeonPro />;
   if (theme === 'neon-image') return <KioskPageNeonImage />;
