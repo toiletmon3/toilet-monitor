@@ -58,6 +58,7 @@
     "onMyWay": "On my way",
     "returnTask": "↩ Return",
     "done": "Done",
+    "resolveViaKiosk": "Tasks are marked as done only via the kiosk team screen",
     "newTask": "❗ New task!",
     "resolved": "Resolved ✅",
     "returnedToQueue": "Returned to queue",

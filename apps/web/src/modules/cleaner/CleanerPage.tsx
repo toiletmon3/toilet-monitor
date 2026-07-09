@@ -10,11 +10,9 @@ import { useCurrentUser } from '../../lib/useCurrentUser';
 import IOSInstallBanner from '../../components/IOSInstallBanner';
 import toast from 'react-hot-toast';
 
-function IncidentCard({ inc, lang, onResolve }: {
+function IncidentCard({ inc, lang }: {
   inc: any; lang: string;
-  onResolve: () => void;
 }) {
-  const { t } = useTranslation();
   const location = [
     inc.restroom?.floor?.building?.name,
     inc.restroom?.floor?.name,
@@ -41,11 +39,6 @@ function IncidentCard({ inc, lang, onResolve }: {
           {timeAgo(inc.reportedAt, lang)}
         </span>
       </div>
-      <button onClick={onResolve}
-        className="w-full py-2.5 rounded-xl text-sm font-medium active:scale-95 transition-all"
-        style={{ background: 'rgba(0,229,204,0.15)', color: 'var(--color-accent)', border: '1px solid rgba(0,229,204,0.4)' }}>
-        ✓ {t('cleaner.done')}
-      </button>
     </div>
   );
 }
@@ -167,14 +160,6 @@ export default function CleanerPage() {
     socket.on('incident:resolved', () => queryClient.invalidateQueries({ queryKey: ['cleaner-incidents'] }));
     return () => { socket.off('incident:created', handler); };
   }, [queryClient]);
-
-  const handleResolve = async (incidentId: string) => {
-    await api.patch(`/incidents/${incidentId}/resolve`, { cleanerIdNumber: user.idNumber });
-    queryClient.invalidateQueries({ queryKey: ['cleaner-incidents'] });
-    queryClient.invalidateQueries({ queryKey: ['cleaner-today'] });
-    queryClient.invalidateQueries({ queryKey: ['cleaner-positive-feedback'] });
-    toast.success(t('cleaner.resolved'));
-  };
 
   const handleLogout = () => {
     unregisterPush().catch(() => {});
@@ -362,9 +347,12 @@ export default function CleanerPage() {
               <div className="flex-1 h-px" style={{ background: 'rgba(239,68,68,0.2)' }} />
             </div>
             {openIncidents.map((inc: any) => (
-              <IncidentCard key={inc.id} inc={inc} lang={lang}
-                onResolve={() => handleResolve(inc.id)} />
+              <IncidentCard key={inc.id} inc={inc} lang={lang} />
             ))}
+            <div className="rounded-xl px-3 py-2 text-xs text-center"
+              style={{ background: 'rgba(0,229,204,0.06)', border: '1px dashed rgba(0,229,204,0.3)', color: 'var(--color-text-secondary)' }}>
+              ℹ️ {t('cleaner.resolveViaKiosk')}
+            </div>
           </div>
         )}
 
