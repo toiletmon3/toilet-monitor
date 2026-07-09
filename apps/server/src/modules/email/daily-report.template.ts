@@ -79,8 +79,7 @@ function sectionTitle(text: string): string {
     </td></tr>`;
 }
 
-export function buildDailyReportHtml(data: DailyReportData, lang: string = 'he'): string {
-  const s: ReportStrings = getReportStrings(lang);
+function renderReportSections(data: DailyReportData, s: ReportStrings): string {
   const slaColor = data.slaPercent >= 80 ? '#22c55e' : data.slaPercent >= 50 ? '#eab308' : '#ef4444';
   const nameAlign = s.dir === 'rtl' ? 'right' : 'left';
   const valueAlign = s.dir === 'rtl' ? 'left' : 'right';
@@ -175,19 +174,7 @@ export function buildDailyReportHtml(data: DailyReportData, lang: string = 'he')
     </tr>`;
   }).join('');
 
-  return `<!DOCTYPE html>
-<html lang="${s.htmlLang}" dir="${s.dir}">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0b1120;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <div dir="${s.dir}" style="max-width:600px;margin:0 auto;padding:24px 16px;text-align:${nameAlign};">
-
-    <!-- Header -->
-    <div style="text-align:center;padding:24px 0 16px;">
-      <div style="font-size:32px;">🚾</div>
-      <h1 style="color:#00e5cc;font-size:20px;margin:8px 0 4px;">${s.dailySummary} — ${data.orgName}</h1>
-      <div style="color:#64748b;font-size:13px;">${data.date}</div>
-    </div>
-
+  return `
     <!-- Overview (slide-5 style) -->
     ${overviewBlock}
 
@@ -272,6 +259,27 @@ export function buildDailyReportHtml(data: DailyReportData, lang: string = 'he')
       </td></tr>
     </table>` : ''}
 
+`;
+}
+
+/** Full-document wrapper shared by the single- and multi-property reports. */
+function wrapReportHtml(s: ReportStrings, titleName: string, date: string, inner: string): string {
+  const nameAlign = s.dir === 'rtl' ? 'right' : 'left';
+  return `<!DOCTYPE html>
+<html lang="${s.htmlLang}" dir="${s.dir}">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0b1120;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div dir="${s.dir}" style="max-width:600px;margin:0 auto;padding:24px 16px;text-align:${nameAlign};">
+
+    <!-- Header -->
+    <div style="text-align:center;padding:24px 0 16px;">
+      <div style="font-size:32px;">🚾</div>
+      <h1 style="color:#00e5cc;font-size:20px;margin:8px 0 4px;">${s.dailySummary} — ${titleName}</h1>
+      <div style="color:#64748b;font-size:13px;">${date}</div>
+    </div>
+
+    ${inner}
+
     <!-- Footer -->
     <div style="text-align:center;padding:32px 0 16px;color:#475569;font-size:11px;">
       ${s.footer} · <span style="color:#00e5cc;">cleanco.ai</span>
@@ -280,4 +288,25 @@ export function buildDailyReportHtml(data: DailyReportData, lang: string = 'he')
   </div>
 </body>
 </html>`;
+}
+
+export function buildDailyReportHtml(data: DailyReportData, lang: string = 'he'): string {
+  const s: ReportStrings = getReportStrings(lang);
+  return wrapReportHtml(s, data.orgName, data.date, renderReportSections(data, s));
+}
+
+/**
+ * One email, several properties: the full set of report sections repeated per
+ * property, each block introduced by a prominent property header — the daily
+ * summary a PROPERTY_MANAGER receives.
+ */
+export function buildMultiPropertyReportHtml(datas: DailyReportData[], lang: string = 'he'): string {
+  const s: ReportStrings = getReportStrings(lang);
+  const inner = datas.map(d => `
+    <div style="margin-top:26px;padding:12px 14px;background:#0f172a;border-radius:12px;border:1px solid #164e63;text-align:center;">
+      <span style="color:#00e5cc;font-size:17px;font-weight:bold;">🏘️ ${d.orgName}</span>
+    </div>
+    ${renderReportSections(d, s)}`).join('');
+  const title = datas.map(d => d.orgName).join(' · ');
+  return wrapReportHtml(s, title, datas[0]?.date ?? '', inner);
 }
