@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from './email.service';
-import { buildDailyReportHtml, DailyReportData, OverviewData } from './daily-report.template';
+import { buildDailyReportHtml, buildMultiPropertyReportHtml, DailyReportData, OverviewData } from './daily-report.template';
 import { getReportStrings } from './daily-report.i18n';
 import { translateLocationPath } from '../../common/locale/translate-name';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -65,6 +65,10 @@ export class DailyReportService {
       const ok = await this.email.send([r.email!], subject, html);
       if (ok) sentTo.push(r.email!);
     }
+    // Property managers get their own per-property digest in the same run
+    const pmSent = await this.sendPropertyManagerReports(org.id);
+    sentTo.push(...pmSent);
+
     return { sent: sentTo.length > 0, recipients: sentTo };
   }
 
@@ -143,9 +147,13 @@ export class DailyReportService {
       const ok = await this.email.send([r.email!], subject, html);
       if (ok) sentCount++;
     }
+    // Property managers get their own per-property digest in the same run
+    const pmSent = await this.sendPropertyManagerReports(org.id);
+    sentCount += pmSent.length;
+
     if (sentCount > 0) {
       this.sentDates.set(sentKey, 'sent');
-      this.logger.log(`Daily report sent for ${org.name} to ${sentCount}/${recipients.length} recipient(s)`);
+      this.logger.log(`Daily report sent for ${org.name} to ${sentCount} recipient(s) (${pmSent.length} property managers)`);
     }
   }
 
@@ -166,9 +174,9 @@ export class DailyReportService {
    * The KPI trends compare this window against the previous equal-length window
    * (e.g. yesterday vs the day before).
    */
-  private async gatherOverview(orgId: string, from: Date, to: Date): Promise<OverviewData | undefined> {
+  private async gatherOverview(orgId: string, from: Date, to: Date, propertyId?: string): Promise<OverviewData | undefined> {
     try {
-      const ov = await this.analytics.getOverview(orgId, from, to);
+      const ov = await this.analytics.getOverview(orgId, from, to, undefined, undefined, undefined, propertyId);
       const cur = ov.kpis.current;
       return {
         avgScore: { value: cur.avgScore.value, trend: cur.avgScore.trend },
@@ -202,7 +210,42 @@ export class DailyReportService {
     return properties.length > 0 ? properties.map(p => p.name).join(' · ') : fallback;
   }
 
-  private async gatherYesterdayData(orgId: string, orgName: string): Promise<DailyReportData & { _yesterdayStart: Date }> {
+  /**
+   * Property managers get ONE email with the full report repeated per property
+   * they manage (each block gathered with that property's scope).
+   */
+  private async sendPropertyManagerReports(orgId: string): Promise<string[]> {
+    const pms = await this.prisma.user.findMany({
+      where: { orgId, role: 'PROPERTY_MANAGER', isActive: true, email: { not: null } },
+      select: {
+        email: true,
+        preferredLang: true,
+        managedProperties: { select: { id: true, name: true }, orderBy: { name: 'asc' } },
+      },
+    });
+    const sentTo: string[] = [];
+    for (const pm of pms) {
+      if (!pm.email || pm.managedProperties.length === 0) continue;
+      try {
+        const datas: (DailyReportData & { _yesterdayStart: Date })[] = [];
+        for (const prop of pm.managedProperties) {
+          datas.push(await this.gatherYesterdayData(orgId, prop.name, prop.id));
+        }
+        const lang = pm.preferredLang ?? 'he';
+        const html = buildMultiPropertyReportHtml(datas.map(d => this.localizeData(d, lang)), lang);
+        const strings = getReportStrings(lang);
+        const names = pm.managedProperties.map(prop => prop.name).join(' · ');
+        const subject = `${strings.subjectPrefix} — ${names} — ${this.formatDate(datas[0]._yesterdayStart, strings.dateLocale)}`;
+        const ok = await this.email.send([pm.email], subject, html);
+        if (ok) sentTo.push(pm.email);
+      } catch (err) {
+        this.logger.warn(`Property-manager report failed for ${pm.email}: ${err}`);
+      }
+    }
+    return sentTo;
+  }
+
+  private async gatherYesterdayData(orgId: string, orgName: string, propertyId?: string): Promise<DailyReportData & { _yesterdayStart: Date }> {
     const now = new Date();
     const yesterdayEnd = new Date(now.toLocaleString('en-US', { timeZone: DEFAULT_TZ }));
     yesterdayEnd.setHours(0, 0, 0, 0);
@@ -213,7 +256,7 @@ export class DailyReportService {
     const from = new Date(yesterdayStart.getTime() - tzOffset);
     const to = new Date(yesterdayEnd.getTime() - tzOffset);
 
-    const orgFilter = { restroom: { floor: { building: { orgId } } } };
+    const orgFilter = { restroom: { floor: { building: { orgId, ...(propertyId ? { propertyId } : {}) } } } };
     const dateFilter = { reportedAt: { gte: from, lt: to } };
 
     const [total, resolved, open, inProgress] = await Promise.all([
@@ -280,7 +323,10 @@ export class DailyReportService {
     const hotspots = [...restroomMap.values()].sort((a, b) => b.count - a.count).slice(0, 5);
 
     const cleaners = await this.prisma.user.findMany({
-      where: { orgId, role: 'CLEANER', isActive: true },
+      where: {
+        orgId, role: 'CLEANER', isActive: true,
+        ...(propertyId ? { OR: [{ propertyId }, { building: { propertyId } }] } : {}),
+      },
       select: {
         id: true,
         name: true,
@@ -311,7 +357,10 @@ export class DailyReportService {
 
     const arrivals = await this.prisma.cleanerArrival.findMany({
       where: {
-        user: { orgId, role: 'CLEANER' },
+        user: {
+          orgId, role: 'CLEANER',
+          ...(propertyId ? { OR: [{ propertyId }, { building: { propertyId } }] } : {}),
+        },
         arrivedAt: { gte: from, lt: to },
       },
       select: {
@@ -347,7 +396,7 @@ export class DailyReportService {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     });
 
-    const overview = await this.gatherOverview(orgId, from, to);
+    const overview = await this.gatherOverview(orgId, from, to, propertyId);
 
     return {
       _yesterdayStart: yesterdayStart,
