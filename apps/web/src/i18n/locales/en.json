@@ -242,7 +242,13 @@
       "justNow": "Just now",
       "ago": "ago",
       "allConnected": "All tablets are connected",
-      "noDevices": "No registered tablets"
+      "noDevices": "No registered tablets",
+      "sensor": "Presence sensor",
+      "kiosk": "Kiosk",
+      "occupied": "Occupied",
+      "vacant": "Vacant",
+      "visitsToday": "Visits today",
+      "installSensor": "Install sensor"
     },
     "dashboard": {
       "allBuildings": "All Buildings",

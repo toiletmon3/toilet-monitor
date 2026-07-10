@@ -242,7 +242,13 @@
       "justNow": "הרגע",
       "ago": "לפני",
       "allConnected": "כל הטאבלטים מחוברים",
-      "noDevices": "אין טאבלטים רשומים"
+      "noDevices": "אין טאבלטים רשומים",
+      "sensor": "חיישן נוכחות",
+      "kiosk": "קיוסק",
+      "occupied": "תפוס",
+      "vacant": "פנוי",
+      "visitsToday": "ביקורים היום",
+      "installSensor": "התקן חיישן"
     },
     "dashboard": {
       "allBuildings": "כל הבניינים",

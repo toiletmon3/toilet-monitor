@@ -514,6 +514,7 @@ export default function AdminKiosk() {
     for (const f of b.floors ?? []) {
       for (const r of f.restrooms ?? []) {
         for (const d of r.devices ?? []) {
+          if (d.type && d.type !== 'KIOSK') continue; // radar sensors don't render kiosk templates
           allDevices.push({ ...d, buildingName: b.name, floorName: f.name, restroomName: r.name });
         }
       }
