@@ -308,7 +308,9 @@
       "ddAvgResponse": "Avg response",
       "ddSatisfaction": "Satisfaction",
       "ddScore": "Score",
-      "allProperties": "All Properties"
+      "allProperties": "All Properties",
+      "ovPeople": "People through",
+      "ddPeople": "People through"
     },
     "cleaners": {
       "onShift": "Currently on shift",
