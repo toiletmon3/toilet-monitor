@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Wifi, WifiOff, Building2, Tablet, Radar, Plus } from 'lucide-react';
+import { Wifi, WifiOff, Building2, Tablet, Radar, Plus, Settings2, X } from 'lucide-react';
 import api from '../../../lib/api';
 import { getSocket, joinOrg } from '../../../lib/socket';
 
@@ -34,6 +34,33 @@ export default function AdminDevices() {
   const lang = i18n.language;
   const queryClient = useQueryClient();
   const [buildingId, setBuildingId] = useState<string>(''); // '' = all
+
+  // Visit-counting tuning dialog for a sensor device
+  const [cfgDevice, setCfgDevice] = useState<any>(null);
+  const [cfgOccupied, setCfgOccupied] = useState(1);
+  const [cfgEmpty, setCfgEmpty] = useState(15);
+  const [cfgSaving, setCfgSaving] = useState(false);
+
+  const openConfig = (d: any) => {
+    setCfgDevice(d);
+    setCfgOccupied(Math.round((d.sensorConfig?.occupiedAfterMs ?? 1000) / 1000));
+    setCfgEmpty(Math.round((d.sensorConfig?.emptyAfterMs ?? 15000) / 1000));
+  };
+
+  const saveConfig = async () => {
+    if (!cfgDevice) return;
+    setCfgSaving(true);
+    try {
+      await api.patch(`/sensors/devices/${cfgDevice.id}/config`, {
+        occupiedAfterSec: cfgOccupied,
+        emptyAfterSec: cfgEmpty,
+      });
+      queryClient.invalidateQueries({ queryKey: ['building-structure'] });
+      setCfgDevice(null);
+    } finally {
+      setCfgSaving(false);
+    }
+  };
 
   const { data: structure = [] } = useQuery({
     queryKey: ['building-structure'],
@@ -190,9 +217,21 @@ export default function AdminDevices() {
                       <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
                         {d.buildingName} › {d.floorName} › {d.restroomName}
                       </div>
-                      {isSensor && sensor && (
-                        <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-                          {t('admin.devices.visitsToday')}: <b style={{ color: '#22c55e' }}>{sensor.visitsToday}</b>
+                      {isSensor && (
+                        <div className="text-xs mt-0.5 flex items-center gap-3">
+                          {sensor && (
+                            <span style={{ color: 'var(--color-text-secondary)' }}>
+                              {t('admin.devices.visitsToday')}: <b style={{ color: '#22c55e' }}>{sensor.visitsToday}</b>
+                            </span>
+                          )}
+                          <button
+                            onClick={() => openConfig(d)}
+                            className="flex items-center gap-1 hover:underline"
+                            style={{ color: 'var(--color-accent)' }}
+                          >
+                            <Settings2 size={12} />
+                            {t('admin.devices.sensorCfgTitle')}
+                          </button>
                         </div>
                       )}
                     </div>
@@ -216,6 +255,68 @@ export default function AdminDevices() {
           </div>
         )}
       </div>
+
+      {/* Sensor visit-counting tuning dialog */}
+      {cfgDevice && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setCfgDevice(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-6 flex flex-col gap-4"
+            style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-white flex items-center gap-2">
+                <Radar size={16} style={{ color: 'var(--color-accent)' }} />
+                {t('admin.devices.sensorCfgTitle')}
+              </h3>
+              <button onClick={() => setCfgDevice(null)} style={{ color: 'var(--color-text-secondary)' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="text-xs font-mono" style={{ color: 'var(--color-text-secondary)' }}>
+              {cfgDevice.deviceCode}
+            </div>
+
+            <label className="flex flex-col gap-1 text-sm" style={{ color: 'var(--color-text)' }}>
+              {t('admin.devices.sensorCfgOccupied')}
+              <input
+                type="number" min={1} max={30} value={cfgOccupied}
+                onChange={e => setCfgOccupied(Number(e.target.value))}
+                className="rounded-lg p-2.5"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--color-text)' }}
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm" style={{ color: 'var(--color-text)' }}>
+              {t('admin.devices.sensorCfgEmpty')}
+              <input
+                type="number" min={3} max={300} value={cfgEmpty}
+                onChange={e => setCfgEmpty(Number(e.target.value))}
+                className="rounded-lg p-2.5"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--color-text)' }}
+              />
+            </label>
+
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              {t('admin.devices.sensorCfgHint')}
+            </p>
+
+            <button
+              onClick={saveConfig}
+              disabled={cfgSaving}
+              className="rounded-xl py-2.5 font-bold disabled:opacity-50"
+              style={{ background: 'var(--color-accent)', color: '#00222a' }}
+            >
+              {cfgSaving ? '…' : t('admin.devices.sensorCfgSave')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

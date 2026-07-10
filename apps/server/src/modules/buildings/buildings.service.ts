@@ -79,7 +79,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
           include: {
             restrooms: {
               include: {
-                devices: { select: { id: true, deviceCode: true, type: true, isOnline: true, lastHeartbeat: true, lastHost: true, hostsSeen: true, kioskTemplateId: true } },
+                devices: { select: { id: true, deviceCode: true, type: true, isOnline: true, lastHeartbeat: true, lastHost: true, hostsSeen: true, kioskTemplateId: true, sensorConfig: true } },
                 incidents: {
                   where: { status: { in: ['OPEN', 'IN_PROGRESS'] } },
                   select: { id: true, status: true, issueTypeId: true, reportedAt: true },

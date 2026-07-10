@@ -88,7 +88,28 @@ export class SensorsService {
     const orgId = restroom?.floor.building.orgId;
     if (orgId) this.events.broadcastToOrg(orgId, 'sensor:presence', payload);
 
-    return { ok: true };
+    // Piggyback tuning config on the response — the bridge applies and
+    // persists it, so admin changes reach the sensor within one report cycle.
+    return { ok: true, config: (device as any).sensorConfig ?? null };
+  }
+
+  /** Admin tuning of the visit-counting behavior (values in seconds). */
+  async updateConfig(deviceId: string, dto: { occupiedAfterSec?: number; emptyAfterSec?: number }) {
+    const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(v)));
+    const device = await this.prisma.device.findUnique({ where: { id: deviceId }, select: { sensorConfig: true } });
+    if (!device) throw new NotFoundException('Device not found');
+
+    const current = (device.sensorConfig as Record<string, number> | null) ?? {};
+    const sensorConfig = {
+      ...current,
+      ...(dto.occupiedAfterSec != null ? { occupiedAfterMs: clamp(dto.occupiedAfterSec, 1, 30) * 1000 } : {}),
+      ...(dto.emptyAfterSec != null ? { emptyAfterMs: clamp(dto.emptyAfterSec, 3, 300) * 1000 } : {}),
+    };
+    return this.prisma.device.update({
+      where: { id: deviceId },
+      data: { sensorConfig },
+      select: { id: true, deviceCode: true, sensorConfig: true },
+    });
   }
 
   /** Per-restroom sensor status for the whole org — powers the admin devices page. */

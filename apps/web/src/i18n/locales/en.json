@@ -246,7 +246,12 @@
       "sensor": "Presence sensor",
       "kiosk": "Kiosk",
       "visitsToday": "Visits today",
-      "installSensor": "Install sensor"
+      "installSensor": "Install sensor",
+      "sensorCfgTitle": "Counting settings",
+      "sensorCfgOccupied": "Count entry after (seconds of continuous presence)",
+      "sensorCfgEmpty": "Visit ends after (seconds of empty room)",
+      "sensorCfgHint": "Saved on the server and delivered to the sensor automatically within a minute — no re-flash needed.",
+      "sensorCfgSave": "Save"
     },
     "dashboard": {
       "allBuildings": "All Buildings",

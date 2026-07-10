@@ -246,7 +246,12 @@
       "sensor": "חיישן נוכחות",
       "kiosk": "קיוסק",
       "visitsToday": "ביקורים היום",
-      "installSensor": "התקן חיישן"
+      "installSensor": "התקן חיישן",
+      "sensorCfgTitle": "הגדרות ספירה",
+      "sensorCfgOccupied": "כניסה נספרת אחרי (שניות של נוכחות רצופה)",
+      "sensorCfgEmpty": "ביקור מסתיים אחרי (שניות של חדר ריק)",
+      "sensorCfgHint": "ההגדרה נשמרת בשרת ומגיעה לחיישן אוטומטית תוך כדקה — בלי צריבה מחדש.",
+      "sensorCfgSave": "שמור"
     },
     "dashboard": {
       "allBuildings": "כל הבניינים",
