@@ -5,6 +5,11 @@ name: Production Healthcheck
 
 on:
   workflow_dispatch: {}
+  # Also runs when this file changes — lets sessions without workflow-dispatch
+  # permission trigger a probe by pushing a trivial edit here.
+  push:
+    branches: [main]
+    paths: ['.github/workflows/healthcheck.yml']
 
 jobs:
   probe:
