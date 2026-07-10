@@ -32,8 +32,8 @@ constexpr uint32_t EMPTY_AFTER_MS = 15000;     // continuous absence before "emp
 constexpr uint32_t HEARTBEAT_EVERY_MS = 60000; // status ping to the server
 
 constexpr const char *SETUP_AP_NAME = "ToiletMon-Setup";
-constexpr const char *DEFAULT_SERVER = "https://toiletcleanpro.duckdns.org";
-constexpr const char *FIRMWARE_VERSION = "1.0.0";
+constexpr const char *DEFAULT_SERVER = "https://cleanco.ai"; // primary domain (duckdns still works)
+constexpr const char *FIRMWARE_VERSION = "1.0.1";
 
 Preferences prefs;
 String wifiSsid, wifiPass, deviceCode, serverUrl;
