@@ -124,6 +124,7 @@ model Device {
   type            DeviceType @default(KIOSK)
   kioskTemplateId String?
   lastHeartbeat   DateTime?
+  sensorConfig    Json? // radar tuning: { occupiedAfterMs, emptyAfterMs } — delivered to the bridge in report responses
   lastHost        String? // domain the tablet last sent a heartbeat through (cleanco.ai / duckdns)
   hostsSeen       Json? // { "<host>": "<ISO last heartbeat>" } — all domains with recent heartbeats
   isOnline        Boolean    @default(false)

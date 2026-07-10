@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, UseGuards } from '@nestjs/common';
 import { SensorsService, SensorReportDto } from './sensors.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -24,6 +24,15 @@ export class SensorsController {
   @Get('summary')
   orgSummary(@CurrentUser() user: any) {
     return this.sensorsService.orgSummary(user.orgId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('devices/:deviceId/config')
+  updateConfig(
+    @Param('deviceId') deviceId: string,
+    @Body() dto: { occupiedAfterSec?: number; emptyAfterSec?: number },
+  ) {
+    return this.sensorsService.updateConfig(deviceId, dto);
   }
 
   @UseGuards(JwtAuthGuard)

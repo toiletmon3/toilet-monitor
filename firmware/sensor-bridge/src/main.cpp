@@ -27,13 +27,15 @@ constexpr size_t FRAME_LEN = 30;
 constexpr uint8_t FRAME_HEADER[4] = {0xAA, 0xFF, 0x03, 0x00};
 
 // ── Presence tuning ──────────────────────────────────────────────────────────
-constexpr uint32_t OCCUPIED_AFTER_MS = 1000;   // continuous presence before "occupied"
-constexpr uint32_t EMPTY_AFTER_MS = 15000;     // continuous absence before "empty"
+// Admin-configurable per device: the server piggybacks {occupiedAfterMs,
+// emptyAfterMs} on every report response; we apply + persist them.
+uint32_t occupiedAfterMs = 1000;               // continuous presence before "occupied"
+uint32_t emptyAfterMs = 15000;                 // continuous absence before "empty"
 constexpr uint32_t HEARTBEAT_EVERY_MS = 60000; // status ping to the server
 
 constexpr const char *SETUP_AP_NAME = "ToiletMon-Setup";
 constexpr const char *DEFAULT_SERVER = "https://cleanco.ai"; // primary domain (duckdns still works)
-constexpr const char *FIRMWARE_VERSION = "1.0.1";
+constexpr const char *FIRMWARE_VERSION = "1.0.2";
 
 Preferences prefs;
 String wifiSsid, wifiPass, deviceCode, serverUrl;
@@ -68,6 +70,36 @@ void loadConfig() {
   wifiPass = prefs.getString("pass", "");
   deviceCode = prefs.getString("deviceCode", "");
   serverUrl = prefs.getString("serverUrl", DEFAULT_SERVER);
+  occupiedAfterMs = prefs.getULong("occMs", occupiedAfterMs);
+  emptyAfterMs = prefs.getULong("empMs", emptyAfterMs);
+}
+
+// Server report responses carry {"config":{"occupiedAfterMs":…,"emptyAfterMs":…}}
+// when an admin tuned this sensor. Tiny hand parser — two known integer keys.
+void applyServerConfig(const String &body) {
+  auto readInt = [&](const char *key) -> long {
+    int i = body.indexOf(key);
+    if (i < 0) return -1;
+    i = body.indexOf(':', i);
+    return i < 0 ? -1 : body.substring(i + 1).toInt();
+  };
+  long occ = readInt("\"occupiedAfterMs\"");
+  long emp = readInt("\"emptyAfterMs\"");
+  bool changed = false;
+  if (occ >= 500 && occ <= 60000 && (uint32_t)occ != occupiedAfterMs) {
+    occupiedAfterMs = occ;
+    prefs.putULong("occMs", occupiedAfterMs);
+    changed = true;
+  }
+  if (emp >= 3000 && emp <= 600000 && (uint32_t)emp != emptyAfterMs) {
+    emptyAfterMs = emp;
+    prefs.putULong("empMs", emptyAfterMs);
+    changed = true;
+  }
+  if (changed) {
+    Serial.printf("[config] tuned from server: occupied=%lums empty=%lums\n",
+                  (unsigned long)occupiedAfterMs, (unsigned long)emptyAfterMs);
+  }
 }
 
 void wipeAndReboot() {
@@ -238,9 +270,9 @@ void updatePresence() {
   uint32_t now = millis();
 
   if (!occupied) {
-    // Present right now, and continuously for OCCUPIED_AFTER_MS.
+    // Present right now, and continuously for occupiedAfterMs.
     if (lastPresentAt && now - lastPresentAt < 200 &&
-        (lastAbsentAt == 0 || now - lastAbsentAt >= OCCUPIED_AFTER_MS)) {
+        (lastAbsentAt == 0 || now - lastAbsentAt >= occupiedAfterMs)) {
       occupied = true;
       occupiedSince = now;
       pendingStart = true;
@@ -248,7 +280,7 @@ void updatePresence() {
     }
   } else {
     if (lastAbsentAt && now - lastAbsentAt < 200 &&
-        (lastPresentAt == 0 || now - lastPresentAt >= EMPTY_AFTER_MS)) {
+        (lastPresentAt == 0 || now - lastPresentAt >= emptyAfterMs)) {
       occupied = false;
       pendingEnd = true;
       pendingEndDurationSec = (now - occupiedSince) / 1000;
@@ -291,9 +323,11 @@ bool postReport(const String &eventType, uint32_t durationSec) {
   body += "}";
 
   int status = http.POST(body);
+  bool ok = status >= 200 && status < 300;
+  if (ok) applyServerConfig(http.getString());
   http.end();
   Serial.printf("[report] %s -> %d (%s)\n", url.c_str(), status, body.c_str());
-  return status >= 200 && status < 300;
+  return ok;
 }
 
 void flushReports() {
