@@ -193,10 +193,11 @@ function GlanceBlock({ glance, lang, t, minutesUnit }: any) {
     <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
       <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>{t('admin.dashboard.glanceTitle')}</h3>
       {/* KPI strip */}
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+      <div className="grid grid-cols-3 lg:grid-cols-7 gap-2">
         <GlanceChip label={t('admin.dashboard.ovAvgScore')} value={glance.avgScore ?? '—'} color="#3b82f6" />
         <GlanceChip label={t('admin.dashboard.ovComplaints')} value={glance.complaintsTotal ?? '—'} color="#ef4444" />
-        <GlanceChip label={t('admin.dashboard.ovVisits')} value={glance.visits ?? 0} color="#22c55e" />
+        <GlanceChip label={t('admin.dashboard.ovPeople')} value={glance.peopleCount ?? 0} color="#22c55e" />
+        <GlanceChip label={t('admin.dashboard.ovVisits')} value={glance.visits ?? 0} color="#38bdf8" />
         <GlanceChip label={t('admin.dashboard.ovResponseTime')} value={`${glance.avgResponse ?? 0} ${minutesUnit}`} color="#f97316" />
         <GlanceChip label={t('admin.dashboard.ovComplaintRate')} value={`${glance.complaintRate ?? 0}%`} color="#a855f7" />
         <GlanceChip label={t('admin.dashboard.ovTimeSaved')} value={`${glance.timeSaved ?? 0} ${t('admin.dashboard.ovHoursShort')}`} color="#eab308" />
@@ -274,7 +275,7 @@ function DeepDiveTable({ rows, lang, t, minutesUnit }: any) {
           <thead className="sticky top-0" style={{ background: 'var(--color-card)' }}>
             <tr style={{ color: 'var(--color-text-secondary)' }}>
               {[
-                'ddRoomName','ddVisits','ddComplaints','ddTopComplaint','ddCleaners','ddSupervisors','ddAvgResponse','ddSatisfaction','ddScore',
+                'ddRoomName','ddPeople','ddVisits','ddComplaints','ddTopComplaint','ddCleaners','ddSupervisors','ddAvgResponse','ddSatisfaction','ddScore',
               ].map(k => (
                 <th key={k} className="text-start font-medium px-3 py-2.5 text-[10px] uppercase tracking-wide whitespace-nowrap">{t(`admin.dashboard.${k}`)}</th>
               ))}
@@ -287,6 +288,7 @@ function DeepDiveTable({ rows, lang, t, minutesUnit }: any) {
               return (
                 <tr key={r.restroomId} className="border-t hover:bg-white/5" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                   <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: 'var(--color-text)' }}>{translateLocationPath(r.location, lang)}</td>
+                  <td className="px-3 py-2.5 tabular-nums font-semibold" style={{ color: '#22c55e' }}>{r.peopleCount ?? 0}</td>
                   <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>{r.visits}</td>
                   <td className="px-3 py-2.5 tabular-nums" style={{ color: '#ef4444' }}>{r.complaints}</td>
                   <td className="px-3 py-2.5" style={{ minWidth: 160 }}>
@@ -667,8 +669,9 @@ export default function AdminDashboard() {
           <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.dashboard.ovPrevPeriod')}</span>
           <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)', opacity: 0.7 }}>{fmtRange(prevKpis?.from, prevKpis?.to)}</span>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCardLight label={t('admin.dashboard.ovAvgScore')} value={prevKpis?.avgScore?.value ?? 100} color="#3b82f6" spark={prevKpis?.avgScore?.spark} />
+          <KpiCardLight label={t('admin.dashboard.ovPeople')} value={fmtNum(prevKpis?.people?.value ?? 0)} color="#22c55e" spark={prevKpis?.people?.spark} />
           <KpiCardLight label={t('admin.dashboard.ovComplaints')} value={fmtNum(prevKpis?.complaints?.value ?? 0)} color="#ef4444" spark={prevKpis?.complaints?.spark} />
           <KpiCardLight label={t('admin.dashboard.ovResponseTime')} value={prevKpis?.responseTime?.value ?? 0} unit={minutesUnit} color="#f59e0b" spark={prevKpis?.responseTime?.spark} />
           <KpiCardLight label={t('admin.dashboard.ovTimeSaved')} value={prevKpis?.timeSaved?.value ?? 0} unit={t('admin.dashboard.ovHoursShort')} color="#eab308" spark={prevKpis?.timeSaved?.spark} />
@@ -681,8 +684,9 @@ export default function AdminDashboard() {
           <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-accent)' }}>{t('admin.dashboard.ovCurrentPeriod')}</span>
           <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>{fmtRange(curKpis?.from, curKpis?.to)}</span>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCardBold label={t('admin.dashboard.ovAvgScore')} value={curKpis?.avgScore?.value ?? 100} color="#3b82f6" trend={curKpis?.avgScore?.trend} spark={curKpis?.avgScore?.spark} />
+          <KpiCardBold label={t('admin.dashboard.ovPeople')} value={fmtNum(curKpis?.people?.value ?? 0)} color="#22c55e" trend={curKpis?.people?.trend} spark={curKpis?.people?.spark} />
           <KpiCardBold label={t('admin.dashboard.ovComplaints')} value={fmtNum(curKpis?.complaints?.value ?? 0)} color="#ef4444" trend={curKpis?.complaints?.trend} spark={curKpis?.complaints?.spark} />
           <KpiCardBold label={t('admin.dashboard.ovResponseTime')} value={curKpis?.responseTime?.value ?? 0} unit={minutesUnit} color="#f97316" trend={curKpis?.responseTime?.trend} spark={curKpis?.responseTime?.spark} />
           <KpiCardBold label={t('admin.dashboard.ovTimeSaved')} value={curKpis?.timeSaved?.value ?? 0} unit={t('admin.dashboard.ovHoursShort')} color="#eab308" trend={curKpis?.timeSaved?.trend} spark={curKpis?.timeSaved?.spark} />

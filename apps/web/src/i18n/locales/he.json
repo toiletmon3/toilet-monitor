@@ -308,7 +308,9 @@
       "ddAvgResponse": "זמן תגובה ממוצע",
       "ddSatisfaction": "שביעות רצון",
       "ddScore": "ציון",
-      "allProperties": "כל הנכסים"
+      "allProperties": "כל הנכסים",
+      "ovPeople": "אנשים שעברו",
+      "ddPeople": "אנשים שעברו"
     },
     "cleaners": {
       "onShift": "כרגע בעבודה",

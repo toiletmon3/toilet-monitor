@@ -518,6 +518,16 @@ export class AnalyticsService {
     const curComplaints = curAll.filter(i => !isLike(i));
     const prevComplaints = prevAll.filter(i => !isLike(i));
 
+    // Real people-count from radar sensors: one presence_end = one visit.
+    const radarVisits = await this.prisma.sensorEvent.findMany({
+      where: { restroom: restroomFilter, type: 'presence_end', createdAt: { gte: prevFrom, lte: to } },
+      select: { restroomId: true, createdAt: true },
+    });
+    const curVisits = radarVisits.filter(v => inCurrent(v.createdAt));
+    const prevVisits = radarVisits.filter(v => inPrev(v.createdAt));
+    const visitsByRoom = new Map<string, number>();
+    for (const v of curVisits) visitsByRoom.set(v.restroomId, (visitsByRoom.get(v.restroomId) ?? 0) + 1);
+
     const periodKpis = (complaints: ScoredIncident[]) => {
       const scores = [...this.computeRoomScores(complaints).values()];
       const avgScore = scores.length ? Math.round(scores.reduce((s, r) => s + r.score, 0) / scores.length) : 100;
@@ -564,6 +574,11 @@ export class AnalyticsService {
     const curSpark = buildSpark(curComplaints, dayKeysBetween(from, to));
     const prevSpark = buildSpark(prevComplaints, dayKeysBetween(prevFrom, from));
 
+    const visitSpark = (visits: { createdAt: Date }[], keys: string[]) =>
+      keys.map(key => visits.filter(v => dayOf(v.createdAt) === key).length);
+    const curPeopleSpark = visitSpark(curVisits, dayKeysBetween(from, to));
+    const prevPeopleSpark = visitSpark(prevVisits, dayKeysBetween(prevFrom, from));
+
     const trend = (now: number, before: number, higherIsBetter: boolean) => {
       const diff = now - before;
       const pct = before === 0 ? (now === 0 ? 0 : 100) : Math.round((diff / before) * 100);
@@ -578,6 +593,7 @@ export class AnalyticsService {
         from: prevFrom, to: from,
         avgScore:     { value: prev.avgScore,    spark: prevSpark.avgScore },
         complaints:   { value: prev.complaints,  spark: prevSpark.complaints },
+        people:       { value: prevVisits.length, spark: prevPeopleSpark },
         responseTime: { value: prev.avgResponse, spark: prevSpark.avgResponse },
         timeSaved:    { value: prev.timeSavedH,  spark: prevSpark.timeSaved },
       },
@@ -585,6 +601,7 @@ export class AnalyticsService {
         from, to,
         avgScore:     { value: cur.avgScore,    spark: curSpark.avgScore,    trend: trend(cur.avgScore, prev.avgScore, true) },
         complaints:   { value: cur.complaints,  spark: curSpark.complaints,  trend: trend(cur.complaints, prev.complaints, false) },
+        people:       { value: curVisits.length, spark: curPeopleSpark,      trend: trend(curVisits.length, prevVisits.length, true) },
         responseTime: { value: cur.avgResponse, spark: curSpark.avgResponse, trend: trend(cur.avgResponse, prev.avgResponse, false) },
         timeSaved:    { value: cur.timeSavedH,  spark: curSpark.timeSaved,   trend: trend(cur.timeSavedH, prev.timeSavedH, true) },
       },
@@ -667,6 +684,7 @@ export class AnalyticsService {
         status: (openByRoom.get(r.id) ?? 0) > 0 ? 'attention' : 'ok',
         lastArrival: arr?.last ?? null,
         arrivalCount: arr?.count ?? 0,
+        peopleCount: visitsByRoom.get(r.id) ?? 0,
       };
     }).sort((a, b) => a.score - b.score);
 
@@ -688,7 +706,7 @@ export class AnalyticsService {
       ? { icon: cleaningTop[0].icon, nameI18n: cleaningTop[0].nameI18n, count: cleaningTop[0].count, percent: Math.round((cleaningTop[0].count / Math.max(1, curComplaints.length)) * 100) }
       : null;
 
-    const glance = { visits, complaintRate, satisfactionPct, dailySeries, topComplaint };
+    const glance = { visits, peopleCount: curVisits.length, complaintRate, satisfactionPct, dailySeries, topComplaint };
 
     // ── Deep Dive (slide 8): per-room wide table ──
     const deepDive = rooms.map(r => {
@@ -710,6 +728,7 @@ export class AnalyticsService {
         location: r.location,
         buildingId: r.buildingId,
         visits: roomIncidents.length,
+        peopleCount: visitsByRoom.get(r.restroomId) ?? 0,
         complaints: roomComplaints.length,
         topComplaint: top
           ? { icon: top.icon, nameI18n: top.nameI18n, count: top.count, percent: Math.round((top.count / Math.max(1, roomComplaints.length)) * 100) }

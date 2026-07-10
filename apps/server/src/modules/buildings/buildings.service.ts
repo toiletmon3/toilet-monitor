@@ -340,6 +340,23 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
   async getKioskConfig(deviceCode: string) {
     await this.assertKioskCodeAlive(deviceCode);
     const template = await this.resolveTemplate(deviceCode);
+
+    // Is a radar presence sensor paired to this kiosk's restroom?
+    const device = await this.prisma.device.findUnique({
+      where: { deviceCode },
+      select: { restroomId: true },
+    });
+    const restroomId =
+      device?.restroomId ?? (deviceCode.startsWith('ROOM-') ? deviceCode.slice(5) : null);
+    let sensor: { present: boolean; online: boolean } = { present: false, online: false };
+    if (restroomId) {
+      const sensors = await this.prisma.device.findMany({
+        where: { restroomId, type: 'SENSOR' },
+        select: { isOnline: true },
+      });
+      sensor = { present: sensors.length > 0, online: sensors.some((s) => s.isOnline) };
+    }
+
     return {
       theme: template?.theme ?? 'default',
       buttons: template ? (template.buttons as any[]) : this.defaultButtons(),
@@ -348,6 +365,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
       statsLayout: (template as any)?.statsLayout ?? null,
       templateId: template?.id ?? null,
       templateName: template?.name ?? null,
+      sensor,
     };
   }
 
