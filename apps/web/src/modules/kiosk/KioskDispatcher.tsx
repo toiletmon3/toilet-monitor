@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../lib/api';
 import { getSocket, joinRestroom } from '../../lib/socket';
+import { useScrollLock } from '../../lib/useScrollLock';
 import KioskPage from './KioskPage';
 import KioskPageNeon from './templates/neon/KioskPageNeon';
 import KioskPageNeonPro from './templates/neonpro/KioskPageNeonPro';
@@ -47,6 +48,7 @@ function SensorBadge({ online }: { online: boolean }) {
 }
 
 export default function KioskDispatcher() {
+  useScrollLock(); // wall tablets must never bounce/pan
   const { deviceCode } = useParams<{ deviceCode: string }>();
   const [theme, setTheme] = useState<string | null>(null);
   const [sensor, setSensor] = useState<{ present: boolean; online: boolean } | null>(null);

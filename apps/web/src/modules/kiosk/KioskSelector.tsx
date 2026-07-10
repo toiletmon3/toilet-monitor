@@ -11,12 +11,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Settings, ArrowRight } from 'lucide-react';
 import api from '../../lib/api';
+import { useScrollLock } from '../../lib/useScrollLock';
 
 type SetupStep = 'pin' | 'building' | 'floor' | 'restroom' | 'done';
 
 const NUMPAD = ['1','2','3','4','5','6','7','8','9','←','0','✓'];
 
 export default function KioskSelector() {
+  useScrollLock(); // kiosk-side screen — same no-scroll behavior as the kiosk itself
   const navigate = useNavigate();
 
   const [step, setStep] = useState<SetupStep>('pin');
