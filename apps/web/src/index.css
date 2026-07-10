@@ -38,10 +38,18 @@
     color: var(--color-text);
     font-family: 'Heebo', 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    /* Android 7 overscroll fix */
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Scroll policy: pages scroll normally by default. ONLY kiosk screens lock
+     scrolling (Android 7 overscroll fix on the wall tablets) — kiosk routes
+     add this class to <html> via the useScrollLock() hook. Do NOT put
+     overflow:hidden back on html/body globally. */
+  html.scroll-lock,
+  html.scroll-lock body,
+  html.scroll-lock #root {
     overflow: hidden;
     overscroll-behavior: none;
-    -webkit-overflow-scrolling: touch;
   }
 
   /* Android 7 touch highlight removal */

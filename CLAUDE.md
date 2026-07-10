@@ -166,6 +166,11 @@ Roles: SUPER_ADMIN, ORG_ADMIN, MANAGER, SHIFT_SUPERVISOR, CLEANER.
 - Conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, `ci:`)
 - Hebrew UI with i18n (he/en), code in English
 - Pre-push enforced via Husky
+- **Scroll policy (user directive): every new page/interface scrolls normally
+  by default; ONLY kiosk screens are scroll-locked.** Kiosk routes call
+  `useScrollLock()` (adds `.scroll-lock` to `<html>`). Never put
+  `overflow: hidden` back on `html`/`body` globally in `index.css`, and never
+  build a new page that depends on a global scroll lock.
 
 ---
 
