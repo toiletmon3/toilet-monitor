@@ -105,9 +105,10 @@ model Restroom {
   gender  Gender        @default(UNISEX)
   status  RestroomStatus @default(ACTIVE)
 
-  floor     Floor      @relation(fields: [floorId], references: [id], onDelete: Cascade)
-  devices   Device[]
-  incidents Incident[]
+  floor        Floor         @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  devices      Device[]
+  incidents    Incident[]
+  sensorEvents SensorEvent[]
 
   @@map("restrooms")
 }
@@ -131,8 +132,29 @@ model Device {
   restroom      Restroom       @relation(fields: [restroomId], references: [id], onDelete: Cascade)
   kioskTemplate KioskTemplate? @relation(fields: [kioskTemplateId], references: [id], onDelete: SetNull)
   incidents     Incident[]
+  sensorEvents  SensorEvent[]
 
   @@map("devices")
+}
+
+// Presence transitions reported by radar sensors (HLK-LD2450 bridges).
+// presence_start = someone entered an empty restroom; presence_end = it
+// emptied out, durationSec covering the whole occupied stretch (one
+// "visit" for analytics/cleaning triggers).
+model SensorEvent {
+  id          String   @id @default(uuid())
+  deviceId    String
+  restroomId  String
+  type        String // presence_start / presence_end
+  durationSec Int?
+  targets     Int?
+  createdAt   DateTime @default(now())
+
+  device   Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  restroom Restroom @relation(fields: [restroomId], references: [id], onDelete: Cascade)
+
+  @@index([restroomId, createdAt])
+  @@map("sensor_events")
 }
 
 // Device codes an admin deleted. Kiosk URLs are public and ROOM-* codes

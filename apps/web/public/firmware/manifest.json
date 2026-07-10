@@ -1,0 +1,11 @@
+{
+  "name": "ToiletMon Sensor Bridge",
+  "version": "1.0.0",
+  "new_install_prompt_erase": false,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [{ "path": "toiletmon-sensor.bin", "offset": 0 }]
+    }
+  ]
+}
