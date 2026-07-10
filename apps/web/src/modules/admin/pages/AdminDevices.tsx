@@ -190,13 +190,8 @@ export default function AdminDevices() {
                         {d.buildingName} › {d.floorName} › {d.restroomName}
                       </div>
                       {isSensor && sensor && (
-                        <div className="text-xs flex items-center gap-3 mt-0.5">
-                          <span style={{ color: sensor.occupied ? '#f59e0b' : '#22c55e', fontWeight: 600 }}>
-                            {sensor.occupied ? `● ${t('admin.devices.occupied')}` : `○ ${t('admin.devices.vacant')}`}
-                          </span>
-                          <span style={{ color: 'var(--color-text-secondary)' }}>
-                            {t('admin.devices.visitsToday')}: <b>{sensor.visitsToday}</b>
-                          </span>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+                          {t('admin.devices.visitsToday')}: <b style={{ color: '#22c55e' }}>{sensor.visitsToday}</b>
                         </div>
                       )}
                     </div>
