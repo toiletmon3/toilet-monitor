@@ -245,8 +245,6 @@
       "noDevices": "No registered tablets",
       "sensor": "Presence sensor",
       "kiosk": "Kiosk",
-      "occupied": "Occupied",
-      "vacant": "Vacant",
       "visitsToday": "Visits today",
       "installSensor": "Install sensor"
     },
