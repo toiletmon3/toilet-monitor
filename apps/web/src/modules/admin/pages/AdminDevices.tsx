@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Wifi, WifiOff, Building2, Tablet } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Wifi, WifiOff, Building2, Tablet, Radar, Plus } from 'lucide-react';
 import api from '../../../lib/api';
 import { getSocket, joinOrg } from '../../../lib/socket';
 
@@ -40,15 +41,31 @@ export default function AdminDevices() {
     refetchInterval: 30_000,
   });
 
+  // Live radar-sensor status per restroom (occupied / visits today)
+  const { data: sensorSummaries = [] } = useQuery({
+    queryKey: ['sensor-summaries'],
+    queryFn: async () => (await api.get('/sensors/summary')).data,
+    refetchInterval: 30_000,
+  });
+  const sensorByRestroom = new Map(
+    (sensorSummaries as any[]).map((s: any) => [s.restroomId, s]),
+  );
+
   useEffect(() => {
     const orgId = localStorage.getItem('orgId');
     if (orgId) joinOrg(orgId);
 
     const socket = getSocket();
     const refresh = () => queryClient.invalidateQueries({ queryKey: ['building-structure'] });
+    const refreshSensors = () => queryClient.invalidateQueries({ queryKey: ['sensor-summaries'] });
     socket.on('device:offline', refresh);
     socket.on('device:online', refresh);
-    return () => { socket.off('device:offline', refresh); socket.off('device:online', refresh); };
+    socket.on('sensor:presence', refreshSensors);
+    return () => {
+      socket.off('device:offline', refresh);
+      socket.off('device:online', refresh);
+      socket.off('sensor:presence', refreshSensors);
+    };
   }, [queryClient]);
 
   // Flatten every device across the org with its full location + status.
@@ -76,6 +93,14 @@ export default function AdminDevices() {
       {/* Header with building filter */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl font-bold text-white">{t('admin.devices.statusTitle')}</h1>
+        <Link
+          to="/flash"
+          className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold"
+          style={{ background: 'rgba(0,229,204,0.1)', border: '1px solid rgba(0,229,204,0.35)', color: 'var(--color-accent)' }}
+        >
+          <Plus size={15} />
+          {t('admin.devices.installSensor')}
+        </Link>
         <div
           className="flex items-center gap-2 rounded-xl px-3 py-2"
           style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)' }}
@@ -138,6 +163,8 @@ export default function AdminDevices() {
           <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
             {devices.map(d => {
               const exact = formatExact(d.lastHeartbeat, lang);
+              const isSensor = d.type === 'SENSOR';
+              const sensor = isSensor ? sensorByRestroom.get(d.restroomId) : undefined;
               return (
                 <div key={d.id} className="px-5 py-3 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
@@ -149,10 +176,29 @@ export default function AdminDevices() {
                       }}
                     />
                     <div className="min-w-0">
-                      <div className="text-sm font-mono font-medium text-white truncate">{d.deviceCode}</div>
+                      <div className="text-sm font-mono font-medium text-white truncate flex items-center gap-2">
+                        {isSensor && <Radar size={13} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />}
+                        {d.deviceCode}
+                        <span
+                          className="text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          style={{ background: 'rgba(0,229,204,0.12)', color: 'var(--color-accent)' }}
+                        >
+                          {isSensor ? t('admin.devices.sensor') : t('admin.devices.kiosk')}
+                        </span>
+                      </div>
                       <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
                         {d.buildingName} › {d.floorName} › {d.restroomName}
                       </div>
+                      {isSensor && sensor && (
+                        <div className="text-xs flex items-center gap-3 mt-0.5">
+                          <span style={{ color: sensor.occupied ? '#f59e0b' : '#22c55e', fontWeight: 600 }}>
+                            {sensor.occupied ? `● ${t('admin.devices.occupied')}` : `○ ${t('admin.devices.vacant')}`}
+                          </span>
+                          <span style={{ color: 'var(--color-text-secondary)' }}>
+                            {t('admin.devices.visitsToday')}: <b>{sensor.visitsToday}</b>
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="text-xs flex-shrink-0 text-end">
