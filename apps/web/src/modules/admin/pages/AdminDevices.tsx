@@ -74,7 +74,8 @@ export default function AdminDevices() {
     for (const f of b.floors ?? []) {
       for (const r of f.restrooms ?? []) {
         for (const d of r.devices ?? []) {
-          allDevices.push({ ...d, buildingId: b.id, buildingName: b.name, floorName: f.name, restroomName: r.name });
+          // restroomId comes from the tree position — device rows in /structure don't carry it
+          allDevices.push({ ...d, restroomId: r.id, buildingId: b.id, buildingName: b.name, floorName: f.name, restroomName: r.name });
         }
       }
     }
