@@ -1,0 +1,21 @@
+# On-demand production health probe from a neutral network (GitHub runners).
+# Useful when the dev environment's egress proxy can't reach the site.
+
+name: Production Healthcheck
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe production endpoints
+        run: |
+          fail=0
+          for path in / /flash /firmware/manifest.json /firmware/toiletmon-sensor.bin /api/buildings/kiosk-diagnose; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://toiletcleanpro.duckdns.org$path")
+            echo "$path -> $code"
+            if [ "$code" != "200" ]; then fail=1; fi
+          done
+          exit $fail
