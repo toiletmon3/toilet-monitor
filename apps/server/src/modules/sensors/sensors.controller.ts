@@ -14,6 +14,12 @@ export class SensorsController {
     return this.sensorsService.report(deviceCode, dto);
   }
 
+  @Public()
+  @Get(':deviceCode/diagnose')
+  diagnose(@Param('deviceCode') deviceCode: string) {
+    return this.sensorsService.diagnose(deviceCode);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('summary')
   orgSummary(@CurrentUser() user: any) {
