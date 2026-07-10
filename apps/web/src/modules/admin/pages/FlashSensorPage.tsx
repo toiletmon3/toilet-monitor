@@ -58,8 +58,10 @@ export default function FlashSensorPage() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
-      <div className="max-w-2xl mx-auto space-y-8">
+    // The app locks scrolling globally (kiosk overscroll fix on html/body),
+    // so this standalone page needs its own scroll container.
+    <div dir="rtl" className="h-screen overflow-y-auto bg-slate-950 text-slate-100 p-6 md:p-10">
+      <div className="max-w-2xl mx-auto space-y-8 pb-16">
         <header>
           <h1 className="text-2xl font-bold">📡 התקנת חיישן נוכחות</h1>
           <p className="text-slate-400 mt-1">
