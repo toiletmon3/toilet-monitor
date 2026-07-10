@@ -1,9 +1,9 @@
 # Builds the ESP32 sensor-bridge firmware and commits the flashable binary
 # into apps/web/public/firmware/ so the /flash page can serve it.
 #
-# The commit is pushed with GH_PAT (not GITHUB_TOKEN) on purpose: pushes made
-# with the default token don't trigger other workflows, and we WANT the
-# binary commit to trigger deploy.yml so the site picks it up.
+# Pushes made with GITHUB_TOKEN don't trigger other workflows, so after
+# committing the binary we dispatch deploy.yml explicitly via the API
+# (explicit workflow_dispatch calls ARE allowed with GITHUB_TOKEN).
 #
 # No trigger loop: this workflow only fires on firmware/** changes, while its
 # own commit only touches apps/web/public/firmware/**.
@@ -22,13 +22,16 @@ concurrency:
   group: firmware-build
   cancel-in-progress: true
 
+permissions:
+  contents: write
+  actions: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GH_PAT }}
           ref: main
 
       - uses: actions/setup-python@v5
@@ -56,14 +59,23 @@ jobs:
           ls -la apps/web/public/firmware/
 
       - name: Commit binary to main
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add apps/web/public/firmware/toiletmon-sensor.bin
           if git diff --cached --quiet; then
             echo "Binary unchanged, nothing to commit"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git commit -m "ci: build sensor firmware binary"
           git pull --rebase origin main
           git push origin main
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger deploy so the site ships the new binary
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref main -R "${{ github.repository }}"
