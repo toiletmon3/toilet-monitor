@@ -12,6 +12,7 @@ import { EventsModule } from './modules/events/events.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { PushModule } from './modules/push/push.module';
 import { EmailModule } from './modules/email/email.module';
+import { SensorsModule } from './modules/sensors/sensors.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -35,6 +36,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     SchedulerModule,
     PushModule,
     EmailModule,
+    SensorsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

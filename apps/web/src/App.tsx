@@ -1,4 +1,8 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+// Lazy — pulls in esp-web-tools (WebSerial flasher), admins-only page.
+const FlashSensorPage = lazy(() => import('./modules/admin/pages/FlashSensorPage'));
 import KioskDispatcher from './modules/kiosk/KioskDispatcher';
 import KioskSelector from './modules/kiosk/KioskSelector';
 import CleanerPage from './modules/cleaner/CleanerPage';
@@ -42,6 +46,16 @@ export default function App() {
           <Route path="settings" element={<AdminSettings />} />
           <Route path="kiosk" element={<AdminKiosk />} />
         </Route>
+
+        {/* Sensor installer — browser-based ESP32 flashing */}
+        <Route
+          path="/flash"
+          element={
+            <Suspense fallback={null}>
+              <FlashSensorPage />
+            </Suspense>
+          }
+        />
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/admin" replace />} />
