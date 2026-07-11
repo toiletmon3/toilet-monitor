@@ -145,9 +145,9 @@ export class PushService implements OnModuleInit {
    * iPhone never completed the install-PWA + allow-notifications flow simply
    * won't have an `apple` subscription here.
    */
-  async diagnose() {
+  async diagnose(orgId: string) {
     const users = await this.prisma.user.findMany({
-      where: { isActive: true },
+      where: { isActive: true, orgId },
       select: {
         name: true,
         role: true,
@@ -176,11 +176,12 @@ export class PushService implements OnModuleInit {
    * exact per-device outcome (including the push provider's error status), so
    * "notifications don't arrive" can be split into client-side vs server-side.
    */
-  async sendTestToAll() {
+  async sendTestToAll(orgId: string) {
     if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
       return { error: 'VAPID keys not configured on the server' };
     }
     const subs = await this.prisma.pushSubscription.findMany({
+      where: { orgId },
       include: { user: { select: { name: true, role: true } } },
     });
     const payload = JSON.stringify({

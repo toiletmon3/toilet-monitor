@@ -559,14 +559,14 @@ schema→`prisma migrate` בלבד · נגעת ב־endpoint→הרץ §2.5 · ha
 
 **סטטוס אבטחה (עדכן תוך כדי):**
 - [x] 🔴 3.1 admin-bypass הוסר (endpoint + service + frontend) — ✅ בוצע (גל 0)
-- [ ] 🔴 3.2 RolesGuard + מטריצת הרשאות + ולידציית role
+- [x] 🔴 3.2 RolesGuard + @Roles על users/analytics/buildings/incidents + ולידציית role ב-createAdmin (חוסם CLEANER→SUPER_ADMIN) — ✅ בוצע (גל 1)
 - [ ] ⏭️ 3.3 `assertCanManageUser` אוכף org לכל תפקיד — **דולג לבקשת המשתמש** (עדיין פתוח!)
-- [~] 🔴 3.4/3.8 IDOR — ✅ מחיקות (building/floor/restroom/device/property) org-scoped; שאר המוטציות/קריאות עדיין פתוחות
-- [ ] 🔴 3.5 WebSocket handshake auth + CORS מוקשח
+- [~] 🔴 3.4/3.8 IDOR — ✅ מחיקות (building/floor/restroom/device/property) org-scoped; שאר המוטציות עדיין פתוחות
+- [ ] ⏭️ 3.5 WebSocket handshake auth — **דולג לבקשת המשתמש** (מנהלים ממשיכים לראות ת"ז של עובדיהם; הפיד עדיין לא מאומת)
 - [x] 🟠 3.6 JWT fail-fast (הוסר fallback-secret) — ✅ בוצע (גל 0); 3.14/3.28 (env validation מלא) עדיין פתוח
 - [ ] 🟠 3.7 cleaner login: orgId חובה + 2FA + lockout
-- [ ] 🟠 3.9/3.10 push/diagnose/kiosk-diagnose מוגנים+scoped
-- [ ] 🟠 3.11 analytics org-scope
+- [x] 🟠 3.9/3.10 push/diagnose + push/test + kiosk-diagnose — מוגנים (admin) + org-scoped — ✅ בוצע (גל 1)
+- [x] 🟠 3.11 analytics org-scope (restroomScope + getSummary תמיד כוללים orgId) — ✅ בוצע (גל 1)
 - [ ] 🟠 3.12 rate limiting + body limit
 - [ ] 🟠 3.13 DTO validation + forbidNonWhitelisted
 - [ ] 🟡 3.16-3.26 (reassign/incident-auth/sync/mass-assign/CRON/helmet/perms/localStorage/CSV)

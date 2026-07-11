@@ -102,6 +102,16 @@ export class UsersService {
       select: { name: true },
     });
     if (emailTaken) throw new ConflictException(`האימייל כבר בשימוש אצל ${emailTaken.name}`);
+
+    // Never let SUPER_ADMIN (cross-org superuser) or an unknown role be minted
+    // through the API — only these roles may be assigned here. SUPER_ADMIN is
+    // provisioned out-of-band (seed/DB), not via user creation.
+    const ASSIGNABLE_ROLES = ['ORG_ADMIN', 'MANAGER', 'SHIFT_SUPERVISOR', 'PROPERTY_MANAGER'];
+    const role = dto.role ?? 'MANAGER';
+    if (!ASSIGNABLE_ROLES.includes(role)) {
+      throw new ForbiddenException('Cannot assign this role');
+    }
+
     const passwordHash = await bcrypt.hash(dto.password, 12);
     return this.prisma.user.create({
       data: {
@@ -110,7 +120,7 @@ export class UsersService {
         email: dto.email,
         idNumber: dto.email,
         passwordHash,
-        role: (dto.role as any) ?? 'MANAGER',
+        role: role as any,
         propertyId: dto.propertyId ?? null,
       },
       select: { id: true, name: true, email: true, role: true, propertyId: true },

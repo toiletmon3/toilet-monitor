@@ -51,9 +51,12 @@ export class AnalyticsService {
    * overview filter so the analytics page can scope the same way.
    */
   private restroomScope(orgId: string, scope?: AnalyticsScope) {
-    if (scope?.restroomId) return { id: scope.restroomId };
-    if (scope?.floorId) return { floorId: scope.floorId };
-    if (scope?.buildingId) return { floor: { buildingId: scope.buildingId } };
+    // The orgId constraint is ALWAYS included so a client that passes another
+    // org's restroom/floor/building id gets an empty result set (never a
+    // cross-tenant read), matching a restroom only if it also lives in this org.
+    if (scope?.restroomId) return { id: scope.restroomId, floor: { building: { orgId } } };
+    if (scope?.floorId) return { floorId: scope.floorId, floor: { building: { orgId } } };
+    if (scope?.buildingId) return { floor: { buildingId: scope.buildingId, building: { orgId } } };
     if (scope?.propertyId) return { floor: { building: { orgId, propertyId: scope.propertyId } } };
     if (scope?.propertyIds) return { floor: { building: { orgId, propertyId: { in: scope.propertyIds } } } };
     return { floor: { building: { orgId } } };
@@ -61,7 +64,7 @@ export class AnalyticsService {
 
   async getSummary(orgId: string, buildingId?: string) {
     const buildingFilter = buildingId
-      ? { floor: { buildingId } }
+      ? { floor: { buildingId, building: { orgId } } }
       : { floor: { building: { orgId } } };
     const incidentWhere = { restroom: buildingFilter };
 

@@ -4,11 +4,17 @@ import { BuildingsService } from './buildings.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles, ADMIN_ROLES, ADMIN_PM_ROLES, ALL_ROLES } from '../../common/decorators/roles.decorator';
 
+// Admin/PM by default for the whole controller. The two exceptions below are:
+//   - @Public() routes (kiosk config/heartbeat/public-structure) — RolesGuard skips them.
+//   - getStructure — the cleaner & supervisor apps read it, so it stays open to all roles.
+@Roles(...ADMIN_PM_ROLES)
 @Controller('buildings')
 export class BuildingsController {
   constructor(private buildingsService: BuildingsService) {}
 
+  @Roles(...ALL_ROLES)
   @UseGuards(JwtAuthGuard)
   @Get('structure')
   getStructure(@CurrentUser() user: any) {
@@ -171,10 +177,11 @@ export class BuildingsController {
     return this.buildingsService.getKioskConfig(deviceCode);
   }
 
-  @Public()
+  @Roles(...ADMIN_ROLES)
+  @UseGuards(JwtAuthGuard)
   @Get('kiosk-diagnose')
-  kioskDiagnose() {
-    return this.buildingsService.kioskDiagnose();
+  kioskDiagnose(@CurrentUser() user: any) {
+    return this.buildingsService.kioskDiagnose(user.orgId);
   }
 
   @Public()
