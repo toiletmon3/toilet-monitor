@@ -445,22 +445,38 @@ export default function KioskPageNeonVideo() {
         )}
 
         {/* Team / cleaner-mode entry — pinned above the artwork at the top
-            corner. Opens CleanerCheckIn for check-in and resolving. */}
+            corner. Opens CleanerCheckIn for check-in and resolving.
+
+            Navigate on onClick, NOT onPointerDown: this button sits top-right,
+            and CleanerCheckIn's "חזרה" back button lands in the exact same spot
+            in RTL. Switching screens on pointerdown left the finger's release
+            (the click) to fall straight onto that back button and bounce right
+            back out — so a quick Hebrew tap looked dead while a long-press or a
+            drag (which cancels the click) worked. onClick fires only after a
+            full press-and-release on this button, so nothing leaks to the next
+            screen. Generous fixed-size target + high zIndex for a wall tablet. */}
         <button
           type="button"
-          onPointerDown={() => setShowCleanerMode(true)}
+          onClick={() => setShowCleanerMode(true)}
           className="select-none"
           style={{
             position: 'absolute',
-            top: '1%',
-            right: '2%',
-            zIndex: 3,
-            padding: '6px 14px',
-            borderRadius: 12,
-            background: 'rgba(0,229,204,0.08)',
-            color: 'rgba(0,229,204,0.55)',
-            border: '1px solid rgba(0,229,204,0.2)',
-            fontSize: 12,
+            top: '2.5%',
+            right: '3%',
+            zIndex: 20,
+            minWidth: 96,
+            minHeight: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '8px 18px',
+            borderRadius: 14,
+            background: 'rgba(0,229,204,0.12)',
+            color: 'rgba(0,229,204,0.7)',
+            border: '1px solid rgba(0,229,204,0.35)',
+            fontSize: 15,
+            fontWeight: 600,
             WebkitTapHighlightColor: 'transparent',
             cursor: 'pointer',
           }}>
