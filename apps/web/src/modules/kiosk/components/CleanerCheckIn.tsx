@@ -40,6 +40,11 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
   const [selBuilding, setSelBuilding] = useState<any>(null);
   const [selFloor, setSelFloor] = useState<any>(null);
 
+  // Radar presence-sensor status for this tablet's restroom. Shown only on the
+  // manager screen (moved off the public kiosk, where the badge used to overlap
+  // and block the team button).
+  const [sensor, setSensor] = useState<{ present: boolean; online: boolean } | null>(null);
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const resetCountdown = () => setCountdown(AUTO_CLOSE_SEC);
 
@@ -79,6 +84,13 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
         setCleaner({ idNumber, name: av.name });
         setIsAdmin(true);
         setStep('admin_action');
+        // Load the paired presence sensor's status for this tablet, shown on
+        // the manager screen. Best-effort — a missing config never blocks login.
+        if (deviceCode) {
+          api.get(`/buildings/kiosk-config/${deviceCode}`)
+            .then(r => setSensor(r.data?.sensor ?? null))
+            .catch(() => {});
+        }
         return;
       }
 
@@ -389,6 +401,27 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
             <h2 className="text-2xl font-bold text-white">שלום, {cleaner?.name}</h2>
             <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>כניסת מנהל מערכת</p>
           </div>
+
+          {/* Radar presence-sensor status for this tablet's restroom. Moved here
+              from the public kiosk, where the badge overlapped the team button. */}
+          {sensor?.present && (
+            <div
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm"
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: `1px solid ${sensor.online ? 'rgba(74,222,128,0.35)' : 'rgba(248,113,113,0.35)'}`,
+                color: sensor.online ? '#4ade80' : '#f87171',
+              }}>
+              <span
+                style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: sensor.online ? '#4ade80' : '#f87171',
+                  boxShadow: sensor.online ? '0 0 8px rgba(74,222,128,0.8)' : 'none',
+                }}
+              />
+              📡 {sensor.online ? 'חיישן פעיל' : 'חיישן מנותק'}
+            </div>
+          )}
 
           {deviceCode && (
             <button
