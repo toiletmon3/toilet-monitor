@@ -558,12 +558,12 @@ schema→`prisma migrate` בלבד · נגעת ב־endpoint→הרץ §2.5 · ha
 **אחרי merge ל־main:** המתן ~30ש · WebFetch ל־`deploy.yml` runs → האחרונה ✓ · נכשל→אבחן לפי duration (CLAUDE.md).
 
 **סטטוס אבטחה (עדכן תוך כדי):**
-- [ ] 🔴 3.1 admin-bypass הוסר (endpoint + frontend)
+- [x] 🔴 3.1 admin-bypass הוסר (endpoint + service + frontend) — ✅ בוצע (גל 0)
 - [ ] 🔴 3.2 RolesGuard + מטריצת הרשאות + ולידציית role
-- [ ] 🔴 3.3 `assertCanManageUser` אוכף org לכל תפקיד
-- [ ] 🔴 3.4/3.8 IDOR — org-ownership בכל מוטציה/קריאה לפי id
+- [ ] ⏭️ 3.3 `assertCanManageUser` אוכף org לכל תפקיד — **דולג לבקשת המשתמש** (עדיין פתוח!)
+- [~] 🔴 3.4/3.8 IDOR — ✅ מחיקות (building/floor/restroom/device/property) org-scoped; שאר המוטציות/קריאות עדיין פתוחות
 - [ ] 🔴 3.5 WebSocket handshake auth + CORS מוקשח
-- [ ] 🟠 3.6/3.14/3.28 JWT/env fail-fast
+- [x] 🟠 3.6 JWT fail-fast (הוסר fallback-secret) — ✅ בוצע (גל 0); 3.14/3.28 (env validation מלא) עדיין פתוח
 - [ ] 🟠 3.7 cleaner login: orgId חובה + 2FA + lockout
 - [ ] 🟠 3.9/3.10 push/diagnose/kiosk-diagnose מוגנים+scoped
 - [ ] 🟠 3.11 analytics org-scope

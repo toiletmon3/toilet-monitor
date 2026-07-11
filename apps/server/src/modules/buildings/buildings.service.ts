@@ -53,7 +53,9 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     return this.prisma.property.update({ where: { id: propertyId }, data: { name } });
   }
 
-  async deleteProperty(propertyId: string) {
+  async deleteProperty(propertyId: string, orgId: string) {
+    const owned = await this.prisma.property.findFirst({ where: { id: propertyId, orgId }, select: { id: true } });
+    if (!owned) throw new NotFoundException('Property not found');
     // Unlink (never delete) the buildings and users that referenced it
     await this.prisma.building.updateMany({ where: { propertyId }, data: { propertyId: null } });
     await this.prisma.user.updateMany({ where: { propertyId }, data: { propertyId: null } });
@@ -538,7 +540,9 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async deleteBuilding(buildingId: string) {
+  async deleteBuilding(buildingId: string, orgId: string) {
+    const owned = await this.prisma.building.findFirst({ where: { id: buildingId, orgId }, select: { id: true } });
+    if (!owned) throw new NotFoundException('Building not found');
     const restrooms = await this.prisma.restroom.findMany({
       where: { floor: { buildingId } },
       select: { id: true },
@@ -551,7 +555,9 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     return deleted;
   }
 
-  async deleteFloor(floorId: string) {
+  async deleteFloor(floorId: string, orgId: string) {
+    const owned = await this.prisma.floor.findFirst({ where: { id: floorId, building: { orgId } }, select: { id: true } });
+    if (!owned) throw new NotFoundException('Floor not found');
     const restrooms = await this.prisma.restroom.findMany({
       where: { floorId },
       select: { id: true },
@@ -564,7 +570,9 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     return deleted;
   }
 
-  async deleteRestroom(restroomId: string) {
+  async deleteRestroom(restroomId: string, orgId: string) {
+    const owned = await this.prisma.restroom.findFirst({ where: { id: restroomId, floor: { building: { orgId } } }, select: { id: true } });
+    if (!owned) throw new NotFoundException('Restroom not found');
     const devices = await this.devicesOfRestrooms([restroomId]);
     await this.deleteIncidentsForRestrooms([restroomId]);
     const deleted = await this.prisma.restroom.delete({ where: { id: restroomId } });
@@ -572,11 +580,12 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     return deleted;
   }
 
-  async deleteDevice(deviceId: string) {
-    const device = await this.prisma.device.findUnique({
-      where: { id: deviceId },
+  async deleteDevice(deviceId: string, orgId: string) {
+    const device = await this.prisma.device.findFirst({
+      where: { id: deviceId, restroom: { floor: { building: { orgId } } } },
       select: { deviceCode: true, restroomId: true },
     });
+    if (!device) throw new NotFoundException('Device not found');
     const incidents = await this.prisma.incident.findMany({
       where: { deviceId },
       select: { id: true },
