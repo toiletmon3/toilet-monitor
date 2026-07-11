@@ -58,12 +58,14 @@ export default function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const qc = useQueryClient();
-  const [bypassReady, setBypassReady] = useState(!!localStorage.getItem('accessToken'));
+  // Authenticated iff we already hold an access token. There is no unauthenticated
+  // "admin bypass" — an admin without a token is sent to the login screen.
+  const [authed] = useState(!!localStorage.getItem('accessToken'));
 
   const { data: orgSettings } = useQuery({
     queryKey: ['org-settings'],
     queryFn: async () => (await api.get('/users/org-settings')).data,
-    enabled: bypassReady,
+    enabled: authed,
   });
 
   // tzOverride gives instant feedback when timezone changes in Settings (via custom event),
@@ -83,21 +85,8 @@ export default function AdminLayout() {
   const tz = tzOverride ?? orgSettings?.timezone ?? 'Asia/Jerusalem';
 
   useEffect(() => {
-    if (bypassReady) return;
-    fetch('/api/auth/admin-bypass')
-      .then(r => r.json())
-      .then(data => {
-        if (data?.accessToken) {
-          localStorage.setItem('accessToken', data.accessToken);
-          localStorage.setItem('refreshToken', data.refreshToken);
-          localStorage.setItem('user', JSON.stringify(data.user));
-          setBypassReady(true);
-        } else {
-          navigate('/admin/login');
-        }
-      })
-      .catch(() => navigate('/admin/login'));
-  }, [bypassReady, navigate]);
+    if (!authed) navigate('/admin/login');
+  }, [authed, navigate]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -113,7 +102,7 @@ export default function AdminLayout() {
 
   // WebSocket — join org room and refresh incidents in real-time
   useEffect(() => {
-    if (!bypassReady) return;
+    if (!authed) return;
     const orgId = user.orgId;
     if (!orgId) return;
     joinOrg(orgId);
@@ -131,9 +120,9 @@ export default function AdminLayout() {
       socket.off('incident:updated', refresh);
       socket.off('incident:resolved', refresh);
     };
-  }, [bypassReady, user.orgId, qc]);
+  }, [authed, user.orgId, qc]);
 
-  if (!bypassReady) {
+  if (!authed) {
     return (
       <div className="h-screen flex items-center justify-center" style={{ background: 'var(--color-bg)', color: 'var(--color-text)' }}>
         <div className="text-center">

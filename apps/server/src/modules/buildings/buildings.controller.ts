@@ -42,8 +42,8 @@ export class BuildingsController {
 
   @UseGuards(JwtAuthGuard)
   @Delete('properties/:id')
-  deleteProperty(@Param('id') id: string) {
-    return this.buildingsService.deleteProperty(id);
+  deleteProperty(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.buildingsService.deleteProperty(id, user.orgId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -99,26 +99,26 @@ export class BuildingsController {
 
   @UseGuards(JwtAuthGuard)
   @Delete(':buildingId')
-  deleteBuilding(@Param('buildingId') buildingId: string) {
-    return this.buildingsService.deleteBuilding(buildingId);
+  deleteBuilding(@CurrentUser() user: any, @Param('buildingId') buildingId: string) {
+    return this.buildingsService.deleteBuilding(buildingId, user.orgId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete('floors/:floorId')
-  deleteFloor(@Param('floorId') floorId: string) {
-    return this.buildingsService.deleteFloor(floorId);
+  deleteFloor(@CurrentUser() user: any, @Param('floorId') floorId: string) {
+    return this.buildingsService.deleteFloor(floorId, user.orgId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete('restrooms/:restroomId')
-  deleteRestroom(@Param('restroomId') restroomId: string) {
-    return this.buildingsService.deleteRestroom(restroomId);
+  deleteRestroom(@CurrentUser() user: any, @Param('restroomId') restroomId: string) {
+    return this.buildingsService.deleteRestroom(restroomId, user.orgId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete('devices/:deviceId')
-  deleteDevice(@Param('deviceId') deviceId: string) {
-    return this.buildingsService.deleteDevice(deviceId);
+  deleteDevice(@CurrentUser() user: any, @Param('deviceId') deviceId: string) {
+    return this.buildingsService.deleteDevice(deviceId, user.orgId);
   }
 
   // ── Kiosk templates ──────────────────────────────────────────────────────────

@@ -10,9 +10,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     config: ConfigService,
     private prisma: PrismaService,
   ) {
+    const secret = config.get<string>('JWT_SECRET');
+    if (!secret) {
+      // Fail closed: never fall back to a hardcoded/guessable secret, which would
+      // let anyone forge admin tokens. Refuse to start the auth strategy instead.
+      throw new Error('JWT_SECRET is not set — refusing to start');
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: config.get('JWT_SECRET') ?? 'fallback-secret',
+      secretOrKey: secret,
     });
   }
 

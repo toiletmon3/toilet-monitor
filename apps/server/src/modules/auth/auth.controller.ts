@@ -46,12 +46,6 @@ export class AuthController {
   }
 
   @Public()
-  @Get('admin-bypass')
-  adminBypass() {
-    return this.authService.getAdminBypassToken();
-  }
-
-  @Public()
   @Patch('kiosk/:deviceCode/restroom')
   reassignDevice(
     @Param('deviceCode') deviceCode: string,
