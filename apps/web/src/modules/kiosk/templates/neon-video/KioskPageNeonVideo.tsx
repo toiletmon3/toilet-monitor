@@ -117,7 +117,7 @@ function getPinnedLang(): 'he' | 'en' | null {
 
 /** How long the kiosk stays in a visitor-chosen language with nobody touching
  *  the screen before flipping back to the default. */
-const LANG_IDLE_REVERT_MS = 3 * 60 * 1000;
+const LANG_IDLE_REVERT_MS = 30 * 1000;
 
 export default function KioskPageNeonVideo() {
   const { deviceCode } = useParams<{ deviceCode: string }>();
