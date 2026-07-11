@@ -318,6 +318,52 @@ export class IncidentsService {
 
     const orgId = incident.restroom.floor.building.orgId;
     this.events.broadcastToOrg(orgId, 'incident:updated', incident);
+
+    // When an admin resolves an incident, also resolve all other open/in-progress
+    // incidents of the same type in the same restroom (mirrors resolve()).
+    if (dto.status === 'RESOLVED') {
+      const siblings = await this.prisma.incident.findMany({
+        where: {
+          id: { not: incidentId },
+          restroomId: incident.restroomId,
+          issueTypeId: incident.issueTypeId,
+          status: { in: ['OPEN', 'IN_PROGRESS'] },
+        },
+        select: { id: true },
+      });
+
+      if (siblings.length > 0) {
+        const now = new Date();
+        for (const sib of siblings) {
+          await this.prisma.incident.update({
+            where: { id: sib.id },
+            data: {
+              status: 'RESOLVED',
+              resolvedAt: now,
+              actions: {
+                create: {
+                  actionType: 'RESOLVED',
+                  userId: adminUserId,
+                  notes: dto.note ?? 'resolved with parent incident',
+                  performedAt: now,
+                },
+              },
+            },
+          });
+        }
+        // Broadcast resolution of sibling incidents
+        const resolved = await this.prisma.incident.findMany({
+          where: { id: { in: siblings.map(s => s.id) } },
+          include: INCIDENT_INCLUDE,
+        });
+        for (const r of resolved) {
+          this.events.broadcastToOrg(orgId, 'incident:updated', r);
+          this.events.broadcastToOrg(orgId, 'incident:resolved', r);
+          this.events.broadcastToRestroom(r.restroomId, 'incident:resolved', r);
+        }
+      }
+    }
+
     return incident;
   }
 
