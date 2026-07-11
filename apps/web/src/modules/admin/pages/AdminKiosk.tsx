@@ -237,7 +237,7 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
   // applies to every theme, stored alongside the overlay layout in statsLayout.
   const confirmScale: number = layout?.confirmScale ?? 1;
   const nudgeConfirmScale = (delta: number) => {
-    const next = Math.min(2, Math.max(0.7, +(confirmScale + delta).toFixed(2)));
+    const next = Math.min(4, Math.max(0.7, +(confirmScale + delta).toFixed(2)));
     if (next === confirmScale) return;
     const nextLayout = { ...layout, confirmScale: next };
     setLayout(nextLayout);
