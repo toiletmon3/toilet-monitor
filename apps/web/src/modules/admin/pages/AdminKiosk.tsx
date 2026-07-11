@@ -141,9 +141,16 @@ function NudgeBtn({ onClick, title, children }: { onClick: () => void; title: st
 }
 
 const DEFAULT_STATS_LAYOUT = {
+  // neon-image — bare numbers dropped into the artwork's baked-in text
   usersNum:   { top: 10,   right: 24.5 },
   periodWord: { top: 10,   right: 64.5 },
   minutesNum: { top: 14.5, right: 24 },
+  // neon-video — whole stat lines per language (Hebrew anchors from the right
+  // edge next to the icons at the top-right; English anchors from the left)
+  heUsers:    { top: 11.7, right: 24.5 },
+  heResponse: { top: 16.6, right: 24.5 },
+  enUsers:    { top: 11.7, left: 24.5 },
+  enResponse: { top: 16.6, left: 24.5 },
   fontScale: 1.3,
 };
 
@@ -207,7 +214,13 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
   });
   const nudgePos = (key: string, dTop: number, dRight: number) => {
     const cur = layout?.[key] ?? (DEFAULT_STATS_LAYOUT as any)[key];
-    const next = { ...layout, [key]: { top: +(cur.top + dTop).toFixed(1), right: +(cur.right + dRight).toFixed(1) } };
+    // Entries anchor from the right edge (Hebrew lines / neon-image) or from
+    // the left edge (English lines). dRight means "push toward the left", so
+    // it flips sign for left-anchored entries to keep the arrows physical.
+    const horiz = 'left' in cur
+      ? { left: +(cur.left - dRight).toFixed(1) }
+      : { right: +(cur.right + dRight).toFixed(1) };
+    const next = { ...layout, [key]: { top: +(cur.top + dTop).toFixed(1), ...horiz } };
     setLayout(next);
     layoutMut.mutate(next);
   };
@@ -408,12 +421,18 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
       {!editing && (currentTheme === 'neon-image' || currentTheme === 'neon-video') && (
         <div className="px-5 py-3 border-t flex flex-col gap-2" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
           <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>מיקום הנתונים על התבנית</span>
-          {([
+          {(currentTheme === 'neon-video' ? [
+            // Bilingual video template — a whole stat line per language.
+            { key: 'heUsers',    label: 'משתמשים — עברית' },
+            { key: 'heResponse', label: 'זמן תגובה — עברית' },
+            { key: 'enUsers',    label: 'משתמשים — אנגלית' },
+            { key: 'enResponse', label: 'זמן תגובה — אנגלית' },
+          ] : [
             { key: 'usersNum',   label: 'מספר משתמשים' },
             { key: 'periodWord', label: 'שבוע / יום' },
             { key: 'minutesNum', label: 'דקות תגובה' },
-          ] as const).map(row => {
-            const v = (layout?.[row.key] ?? (DEFAULT_STATS_LAYOUT as any)[row.key]) as { top: number; right: number };
+          ]).map(row => {
+            const v = (layout?.[row.key] ?? (DEFAULT_STATS_LAYOUT as any)[row.key]) as { top: number; right?: number; left?: number };
             return (
               <div key={row.key} className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs" style={{ color: 'var(--color-text)', width: 92 }}>{row.label}</span>
@@ -422,7 +441,7 @@ function TemplateCard({ template, buildings, devices, onRefresh }: { template: a
                 <NudgeBtn onClick={() => nudgePos(row.key, 0, -0.5)} title="ימינה">→</NudgeBtn>
                 <NudgeBtn onClick={() => nudgePos(row.key, 0, 0.5)} title="שמאלה">←</NudgeBtn>
                 <span className="text-[10px] tabular-nums" style={{ color: 'var(--color-text-secondary)', marginInlineStart: 6 }}>
-                  ↕{v.top} ↔{v.right}
+                  ↕{v.top} ↔{v.right ?? v.left}
                 </span>
               </div>
             );

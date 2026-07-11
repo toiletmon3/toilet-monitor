@@ -5,6 +5,14 @@
     "dailyUsers": "Reports today",
     "avgResponse": "Avg response time",
     "minutes": "minutes",
+    "videoStats": {
+      "usersWeek": "{{n}} users this week",
+      "usersWeekOne": "1 user this week",
+      "usersToday": "{{n}} users today",
+      "usersTodayOne": "1 user today",
+      "response": "Avg response: {{n}} min",
+      "responseOne": "Avg response: 1 min"
+    },
     "positiveFeedback": "Great job / Positive feedback",
     "buttons": {
       "toilet_paper": "Toilet Paper",
