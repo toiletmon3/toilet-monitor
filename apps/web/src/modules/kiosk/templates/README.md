@@ -33,14 +33,23 @@ re-drawn — the image *is* the design, and only the tap targets are real DOM.
 Same hotspot approach as `neon-image`, but the background is a short MP4 that
 plays in an infinite loop (`autoPlay muted loop playsInline`, so kiosk browsers
 start it without a user gesture). The animated video *is* the design — only the
-tap targets are real DOM.
+tap targets are real DOM. Bilingual: two videos (Hebrew / English) with a
+discreet עב/EN toggle that swaps the video and the i18n language together, plus
+a "🧹 צוות" team button at the top corner.
 
-- `KioskPageNeonVideo.tsx` — looping video background + percentage-positioned
+- `KioskPageNeonVideo.tsx` — looping video backgrounds + percentage-positioned
   hotspots wired to the same `handleIssuePress(code)` logic as every other template.
-- Background file: `apps/web/public/kiosk-templates/neon-video-bg.mp4`
-  (576×1024 H.264, ~4s loop). A missing file does not break the build.
+- Background files: `apps/web/public/kiosk-templates/neon-video-he.mp4` and
+  `neon-video-en.mp4` (576×1024 H.264, ~4s loops, identical tile layout, no
+  baked-in stat text). A missing file does not break the build.
+- Live stats are overlaid as complete sentences next to the ✦/🕐 icons baked
+  into the artwork; per-language positions are admin-tunable
+  ("מיקום הנתונים על התבנית").
 - Hotspot coordinates are defined in the `HOTSPOTS` array; open the kiosk with
   `?hotspots=1` to outline and label every hotspot while tuning.
+- `?lang=he|en` pins the kiosk to one language (org default + idle auto-revert
+  are skipped) — use it while nudging the English overlay positions from the
+  admin, since every nudge reloads the kiosk.
 
 Activated via the admin theme picker (theme ids `neon-image` / `neon-video`) —
 no App.tsx edit needed; `KioskDispatcher` renders the matching template when the

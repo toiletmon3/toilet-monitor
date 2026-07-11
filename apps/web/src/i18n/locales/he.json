@@ -5,6 +5,14 @@
     "dailyUsers": "משתמשים היום",
     "avgResponse": "זמן תגובה ממוצע",
     "minutes": "דקות",
+    "videoStats": {
+      "usersWeek": "{{n}} משתמשים השבוע",
+      "usersWeekOne": "משתמש אחד השבוע",
+      "usersToday": "{{n}} משתמשים היום",
+      "usersTodayOne": "משתמש אחד היום",
+      "response": "{{n}} דקות · זמן תגובה ממוצע",
+      "responseOne": "דקה אחת · זמן תגובה ממוצע"
+    },
     "positiveFeedback": "עבודה טובה / משוב חיובי",
     "buttons": {
       "toilet_paper": "החלפת נייר טואלט",
