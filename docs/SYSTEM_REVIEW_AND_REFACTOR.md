@@ -4,529 +4,577 @@
 > תוכנית עבודה מסודרת: איך לבדוק את כל המערכת מקצה לקצה, איזה קוד למחוק, איך להפוך
 > את הקוד לפשוט ומסודר יותר, איך לשכתב חלקים "נכון", ובעיקר — **אילו פרצות אבטחה
 > קיימות היום ואיך לסגור אותן.**
->
-> המסמך מבוסס על סקירה אמיתית של הקוד (יולי 2026, branch `claude/system-review-refactor-qbldax`),
-> עם הפניות מדויקות לקבצים ולשורות. הוא **תיאורי ומנחה בלבד** — אין לבצע את השינויים
-> אוטומטית מהמסמך הזה. כל שינוי דורש PR נפרד, בדיקות, וסדר עבודה מבוקר (ראו §8).
+
+## איך נבנה המסמך הזה (מתודולוגיה)
+
+הממצאים כאן **אינם** ניחוש. הם תוצר של סקירה רב־סוכנית של הקוד (יולי 2026, branch
+`claude/system-review-refactor-qbldax`):
+
+1. **מיפוי** — 10 סוכנים קראו במקביל את כל תת־המערכות (auth, users, buildings, incidents,
+   analytics+scheduler, events+push, email, sensors, web, infra) והחזירו מפה מבנית: קוד מת,
+   כפילות, מורכבות, מקרי קצה.
+2. **ביקורת אבטחה** — 9 סוכני אבטחה סרקו את הקוד לפי 9 מימדים (auth/authz, IDOR רב־ארגוני,
+   endpoints ציבוריים, ולידציית קלט, WebSocket, סודות/deploy, rate-limiting, אבטחת frontend,
+   ותקינות/מקרי קצה). התקבלו **73 ממצאים** עם הפניות מדויקות לקובץ:שורה וקוד מצוטט.
+3. **אימות אדוורסרי** — כל ממצא נשלח לסוכן שמנסה **להפריך** אותו מול הקוד. הרצה זו נקטעה
+   באמצע עקב מגבלת session, אז חלק מהאימותים לא הושלמו. הממצאים הקריטיים ביותר
+   (backdoor, IDOR, JWT fallback, no-role-guard) **אומתו ידנית מול הקוד** לפני הכתיבה ומסומנים ✅.
+
+**⚠️ אזהרת שימוש:** המסמך תיאורי ומנחה — **אין לבצע ממנו שינויים אוטומטית.** מספרי שורות
+עשויים לזוז; לפני כל תיקון פתח את הקובץ ואמת את הקוד. כל שינוי = PR נפרד + בדיקות + אימות
+deploy (§8). ממצא שלא סומן ✅ — אמת בעצמך לפני שאתה משנה קוד על סמכו.
 
 ---
 
 ## תוכן עניינים
 
-1. [מטרה ואיך להשתמש במסמך](#1-מטרה-ואיך-להשתמש-במסמך)
-2. [מפת המערכת בקצרה](#2-מפת-המערכת-בקצרה)
-3. [חלק א׳ — איך לבדוק את כל המערכת](#3-חלק-א--איך-לבדוק-את-כל-המערכת)
-4. [חלק ב׳ — פרצות אבטחה (לפי חומרה)](#4-חלק-ב--פרצות-אבטחה-לפי-חומרה)
-5. [חלק ג׳ — קוד למחיקה / לא רלוונטי](#5-חלק-ג--קוד-למחיקה--לא-רלוונטי)
-6. [חלק ד׳ — ניקוי, פישוט וסידור הקוד](#6-חלק-ד--ניקוי-פישוט-וסידור-הקוד)
-7. [חלק ה׳ — שכתוב "נכון" + מקרי קצה לא טריוויאליים](#7-חלק-ה--שכתוב-נכון--מקרי-קצה-לא-טריוויאליים)
-8. [חלק ו׳ — סדר עבודה מומלץ (Roadmap)](#8-חלק-ו--סדר-עבודה-מומלץ-roadmap)
-9. [נספח — Checklist מהיר](#9-נספח--checklist-מהיר)
+1. [מפת המערכת בקצרה](#1-מפת-המערכת-בקצרה)
+2. [חלק א׳ — איך לבדוק את כל המערכת](#2-חלק-א--איך-לבדוק-את-כל-המערכת)
+3. [חלק ב׳ — פרצות אבטחה (טבלת תקציר + פירוט לפי חומרה)](#3-חלק-ב--פרצות-אבטחה)
+4. [חלק ג׳ — קוד למחיקה / לא רלוונטי](#4-חלק-ג--קוד-למחיקה--לא-רלוונטי)
+5. [חלק ד׳ — ניקוי, פישוט וסידור הקוד](#5-חלק-ד--ניקוי-פישוט-וסידור-הקוד)
+6. [חלק ה׳ — תקינות ומקרי קצה לא טריוויאליים](#6-חלק-ה--תקינות-ומקרי-קצה-לא-טריוויאליים)
+7. [חלק ו׳ — סדר עבודה מומלץ (Roadmap)](#7-חלק-ו--סדר-עבודה-מומלץ-roadmap)
+8. [נספח — Checklist מהיר](#8-נספח--checklist-מהיר)
 
 ---
 
-## 1. מטרה ואיך להשתמש במסמך
-
-המערכת גדלה אורגנית (סנסורים, קיוסקים, אימיילים, PWA, ריבוי־ארגונים) והצטברו בה:
-- **חורי אבטחה ממשיים** — חלקם קריטיים (גישה ל־token אדמין ללא סיסמה, מחיקת נתונים חוצת־ארגונים).
-- **קוד כפול** — לוגיקת scoping של Property Manager משוכפלת ב־3 controllers, `include` מקונן חוזר עשרות פעמים.
-- **טיפוסים חלשים** — `any` בכל מקום, אין DTO אמיתי ולכן ה־`ValidationPipe` כמעט חסר משמעות.
-- **אין שכבת הרשאות תפקיד** — לכל משתמש מאומת (גם מנקה) יש למעשה גישה לרוב פעולות האדמין.
-
-**איך לעבוד עם המסמך:**
-- קרא §2 להתמצאות מהירה.
-- לפני כל push — הרץ את הבדיקות ב־§3.
-- כשעובדים על אבטחה — §4 מסודר לפי חומרה; **התחל מ־CRITICAL**.
-- לכל פריט יש: *מה הבעיה → איפה בקוד → מה החשיפה → התיקון*.
-- אל תבצע הכל בבת אחת. עקוב אחרי ה־Roadmap ב־§8 (PR-ים קטנים, כל אחד נבדק בנפרד).
-
-**עיקרון מנחה:** כל תיקון אבטחה שמשנה התנהגות ציבורית (endpoints, tokens, CORS) חייב
-בדיקת רגרסיה ידנית על ה־flows המרכזיים (קיוסק, מנקה, אדמין) **לפני** merge ל־main, כי
-שבירה כאן = השבתת production.
-
----
-
-## 2. מפת המערכת בקצרה
+## 1. מפת המערכת בקצרה
 
 ```
 apps/
-  server/   NestJS 11 + Prisma 5 + Passport-JWT + Socket.io   (API under /api? ראה main.ts)
+  server/   NestJS 11 + Prisma 5 + Passport-JWT + Socket.io   (multi-tenant by orgId)
     src/modules/{auth,users,buildings,incidents,analytics,events,scheduler,push,email,sensors}
     src/common/{guards,decorators,locale}
   web/      React 19 + Vite 6 + Tailwind v4 + TanStack Query + Zustand + i18next + PWA
-    src/modules/{admin,cleaner,kiosk}  src/lib/{api,socket,push,offline}
+    src/modules/{admin,cleaner,kiosk}  src/lib/{api,socket,push,offline,export}
 packages/shared-types
-scripts/{deploy.sh,server-setup.sh,nginx-watchdog.sh}
+scripts/{deploy.sh,server-setup.sh,nginx-watchdog.sh}   .github/workflows/deploy.yml
 ```
 
-**מודל הרשאות (Prisma `Role`):** `SUPER_ADMIN, ORG_ADMIN, MANAGER, PROPERTY_MANAGER, SHIFT_SUPERVISOR, CLEANER`.
+**מודל הרשאות (Prisma `Role`):** `SUPER_ADMIN, ORG_ADMIN, MANAGER, PROPERTY_MANAGER,
+SHIFT_SUPERVISOR, CLEANER`.
 
-**נקודת האבטחה המרכזית:** `JwtAuthGuard` רשום כ־`APP_GUARD` גלובלי
-(`apps/server/src/app.module.ts:42`), כלומר **הכל מוגן כברירת מחדל** — אלא אם סומן
-`@Public()`. זה טוב. הבעיה היא ש־(א) יש הרבה מדי `@Public()`, ו־(ב) אין שכבה שנייה של
-**הרשאה לפי תפקיד** אחרי האימות — אז "מאומת" שווה בפועל "אדמין".
+**עמוד השדרה של האבטחה:** `JwtAuthGuard` רשום כ־`APP_GUARD` גלובלי
+(`apps/server/src/app.module.ts:42`) → **הכל מוגן כברירת מחדל**, אלא אם `@Public()`. זה טוב.
+**אבל** יש שתי חולשות מבניות שמהן נובעות רוב הפרצות:
+- **אין שכבת הרשאה לפי תפקיד** (אין `RolesGuard`, אין `@Roles`). כלומר: "מאומת" = "אדמין".
+- **כמעט אין בדיקות בעלות (org-ownership)** במוטציות. כלומר: כל id → כל ארגון (IDOR).
+
+מנקה מקבל token בקלות (login עם ת"ז בלבד, בלי סיסמה) — ולכן שתי החולשות האלה יחד הופכות
+כל מנקה לאדמין־על אפקטיבי חוצה־ארגונים.
 
 ---
 
-## 3. חלק א׳ — איך לבדוק את כל המערכת
+## 2. חלק א׳ — איך לבדוק את כל המערכת
 
-### 3.1 הכנה מקומית
+### 2.1 הכנה מקומית
 ```bash
-pnpm install                       # workspace root (pnpm 9)
-# DB לפיתוח (Postgres 16) — Docker
-docker compose up -d db redis      # אם קיים compose; אחרת Postgres מקומי
-cd apps/server && cp .env.example .env   # ודא DATABASE_URL, JWT_SECRET, JWT_REFRESH_SECRET
-npx prisma migrate dev             # מריץ migrations + generate
-npx prisma db seed                 # אם רוצים נתוני דמו (prisma/seed.ts)
+pnpm install                              # workspace root (pnpm 9)
+docker compose up -d db redis             # Postgres 16 + Redis 7
+cd apps/server && cp .env.example .env     # ודא DATABASE_URL, JWT_SECRET, JWT_REFRESH_SECRET, CRON_SECRET, VAPID_*
+npx prisma migrate dev                    # migrations + generate
+npx prisma db seed                        # נתוני דמו (prisma/seed.ts)
 ```
-> ⚠️ **אף פעם** `prisma db push --accept-data-loss` על production — מוחק טבלאות (ראו CLAUDE.md).
+> ⚠️ **אף פעם** `prisma db push --accept-data-loss` על production — מוחק טבלאות (CLAUDE.md).
 
-### 3.2 בדיקות סטטיות (typecheck) — חובה לפני push
+### 2.2 בדיקות סטטיות (typecheck) — חובה לפני push
 ```bash
 cd apps/server && npx tsc --noEmit
-cd ../web      && npx tsc -b        # tsc -b, לא רק --noEmit! (project references)
+cd ../web      && npx tsc -b              # tsc -b, לא רק --noEmit! (project references)
 ```
-זכור: `sw.ts` מוחרג מ־`tsconfig.app.json` (WebWorker vs DOM). קסטים `.buffer as ArrayBuffer`
-נדרשים ב־TS5. הכל מפורט ב־CLAUDE.md > Pre-push checklist.
+זכור (CLAUDE.md): `sw.ts` מוחרג מ־`tsconfig.app.json`; קסטים `.buffer as ArrayBuffer` ב־TS5.
 
-### 3.3 בדיקות אוטומטיות (Backend)
-מצב נוכחי: קיימים רק `app.controller.spec.ts` ו־`test/app.e2e-spec.ts` (כמעט ריק). **כיסוי בדיקות ~0.**
+### 2.3 בדיקות אוטומטיות (Backend)
+**מצב נוכחי: כיסוי ≈ 0** — רק `app.controller.spec.ts` ו־`test/app.e2e-spec.ts` (placeholder).
 ```bash
 cd apps/server
-npx jest                     # unit
-npx jest --config test/jest-e2e.json   # e2e
+npx jest                                  # unit
+npx jest --config test/jest-e2e.json      # e2e
 ```
-**מה חסר וצריך להוסיף (ראו §7.6):** בדיקות ל־auth (login/refresh/bypass), ל־scoping של
-Property Manager, ול־IDOR — בדיוק המקומות שבורים עכשיו.
+המקומות ששבורים עכשיו (§3, §6) הם בדיוק מה שאין לו בדיקות. ראה §2.6 לרשימת בדיקות רגרסיה לכתוב.
 
-### 3.4 בדיקות Frontend
+### 2.4 בדיקות Frontend
 ```bash
-cd apps/web
-npx tsc -b
-pnpm build                   # vite build — מגלה בעיות PWA/manifest
-pnpm dev                     # smoke ידני
+cd apps/web && npx tsc -b && pnpm build && pnpm dev
 ```
-בדיקה ידנית מהירה (smoke) לכל flow:
-| Flow | מסלול | מה לוודא |
-|------|-------|----------|
-| קיוסק | `/kiosk/:deviceCode` | scroll-lock פעיל, כפתורי דיווח, אישור |
+Smoke ידני לכל flow:
+| Flow | מסלול | לוודא |
+|------|-------|-------|
+| קיוסק | `/kiosk/:deviceCode` | scroll-lock פעיל, דיווח, אישור, offline sync |
 | מנקה | `/cleaner` | login ת"ז, קבלת משימות, resolve |
-| מפקח | `/supervisor` | login, רשימת מנקים פעילים |
-| אדמין | `/admin` | login מייל+סיסמה, דשבורד, incidents, analytics |
+| מפקח | `/supervisor` | login, מנקים פעילים, resolve |
+| אדמין | `/admin` | login מייל+סיסמה, דשבורד, incidents, analytics, export |
 | PWA | התקנה + push | subscribe, קבלת notification |
 
-> **מדיניות scroll (הנחיית משתמש):** רק מסכי קיוסק נעולים (`useScrollLock`). אסור להחזיר
-> `overflow:hidden` גלובלי ל־`html`/`body`. כל דף חדש חייב לגלול רגיל.
+> **מדיניות scroll (הנחיית משתמש):** רק קיוסק נעול (`useScrollLock`). אסור `overflow:hidden`
+> גלובלי ל־`html`/`body`. כל דף חדש גולל רגיל.
 
-### 3.5 בדיקות אבטחה ידניות (עד שיש אוטומציה)
-הרץ מול server מקומי. אלו בדיוק ה־exploits מ־§4 — הם צריכים **להיכשל** אחרי התיקונים:
+### 2.5 בדיקות אבטחה ידניות (עד שיש אוטומציה)
+אלו ה־exploits מ־§3 — הם צריכים **להיכשל** אחרי התיקונים, ולעבור (להוכיח את הפרצה) עכשיו:
 ```bash
-# 1) Backdoor — אמור להיעלם לגמרי אחרי התיקון (§4.1)
-curl -s http://localhost:3001/api/auth/admin-bypass | jq
+BASE=http://localhost:3001/api
 
-# 2) IDOR חוצה-ארגונים — עם token של CLEANER מארגון A, נסה למחוק building של ארגון B (§4.2)
-curl -X DELETE http://localhost:3001/api/buildings/<OTHER_ORG_BUILDING_ID> \
-     -H "Authorization: Bearer $CLEANER_TOKEN"
+# 🔴 1) Backdoor — token אדמין מלא, אנונימי (§3.1)
+curl -s $BASE/auth/admin-bypass | jq
 
-# 3) Role escalation — token של CLEANER משנה הגדרות ארגון (§4.5)
-curl -X PATCH http://localhost:3001/api/users/org-settings \
-     -H "Authorization: Bearer $CLEANER_TOKEN" -H 'Content-Type: application/json' \
-     -d '{"name":"hacked"}'
+# 🔴 2) Privilege escalation — token של CLEANER יוצר SUPER_ADMIN (§3.2)
+curl -s -X POST $BASE/auth/cleaner/login -H 'Content-Type: application/json' -d '{"idNumber":"<cleaner-id>"}' | jq -r .accessToken   # -> $T
+curl -s -X POST $BASE/users/admins -H "Authorization: Bearer $T" -H 'Content-Type: application/json' \
+     -d '{"name":"x","email":"x@x.com","password":"x","role":"SUPER_ADMIN"}' | jq
 
-# 4) WebSocket cross-tenant — הצטרפות לחדר של ארגון זר וקבלת broadcasts (§4.4)
-#    (מבחן בדפדפן: socket.emit('join:org',{orgId:'<OTHER_ORG>'}))
+# 🔴 3) Cross-tenant account takeover — שינוי סיסמת אדמין של ארגון אחר (§3.3)
+curl -s -X PATCH $BASE/users/<victim-id-other-org>/password -H "Authorization: Bearer $T" \
+     -H 'Content-Type: application/json' -d '{"password":"pwned"}'
 
-# 5) Push abuse — שליחת notification לכל המכשירים ללא אימות (§4.6)
-curl -s http://localhost:3001/api/push/test | jq
+# 🔴 4) IDOR — מחיקת building של ארגון אחר, כולל כל האירועים (§3.4)
+curl -s -X DELETE $BASE/buildings/<building-id-other-org> -H "Authorization: Bearer $T"
+
+# 🟠 5) דליפת roster חוצת-ארגונים, אנונימית (§3.9)
+curl -s $BASE/push/diagnose | jq          # וגם: $BASE/buildings/kiosk-diagnose
+
+# 🟠 6) Push abuse — התראה אמיתית לכל המכשירים בכל הארגונים (§3.10)
+curl -s $BASE/push/test | jq
+
+# 🟠 7) WebSocket cross-tenant (בדפדפן):
+#      const s=io('http://localhost:3001'); s.emit('join:org',{orgId:'<other-org>'});
+#      s.onAny((e,d)=>console.log(e,d))   // אמור לקבל incident:* של ארגון זר, כולל ת"ז
 ```
-**כלים מומלצים:** `npm audit` / `pnpm audit` לתלויות, ו־[OWASP ZAP] או Burp לסריקה
-פסיבית מול staging (לא production). בדיקת secrets: ודא שאין `.env` ב־git (`git ls-files | grep env`).
+**כלים:** `pnpm audit` לתלויות; `git ls-files | grep -iE 'env|secret'` לוודא שאין סודות ב־git;
+OWASP ZAP/Burp מול **staging בלבד** (לא production).
 
-### 3.6 Pre-push checklist (קצר)
-1. `tsc --noEmit` (server) + `tsc -b` (web) — ✓
-2. חבילה חדשה? ודא `deploy.sh` מריץ `pnpm install --frozen-lockfile` לפני build.
-3. שינוי schema? רק דרך `prisma/migrations/` (migrate dev), אף פעם `db push`.
-4. שינוי endpoint ציבורי/אבטחה? הרץ את §3.5.
-5. אחרי merge ל־main — **אמת שה־deploy עבר** (CLAUDE.md > Post-merge verification).
+### 2.6 בדיקות רגרסיה אוטומטיות שכדאי לכתוב (e2e)
+כל אחת צריכה לעבור **אחרי** התיקון:
+```
+✗ GET  /auth/admin-bypass                    → 404 (הוסר)
+✗ POST /users/admins {role:SUPER_ADMIN} כ-CLEANER → 403
+✗ PATCH /users/:foreignId/password           → 403/404 (org אחר)
+✗ DELETE /buildings/:foreignId               → 404 (org אחר)
+✗ PATCH /sensors/devices/:foreignId/config   → 404 (org אחר)
+✗ GET  /analytics/* ?buildingId=<foreign>    → לא מחזיר נתונים של org אחר
+✗ GET  /push/diagnose | /push/test | /buildings/kiosk-diagnose → 401/403
+✗ WS join:org עם orgId זר                    → אין broadcasts
+✓ happy-path (קיוסק/מנקה/מפקח/אדמין)          → עדיין עובד
+```
+
+### 2.7 Pre-push checklist מקוצר
+1. `tsc --noEmit` (server) + `tsc -b` (web).
+2. חבילה חדשה? `deploy.sh` מריץ `pnpm install --frozen-lockfile` לפני build.
+3. שינוי schema? רק `prisma migrate` — אף פעם `db push`.
+4. נגעת ב־endpoint/אבטחה? הרץ §2.5.
+5. אחרי merge ל־main — **אמת deploy** (CLAUDE.md > Post-merge verification).
 
 ---
 
-## 4. חלק ב׳ — פרצות אבטחה (לפי חומרה)
+## 3. חלק ב׳ — פרצות אבטחה
 
-> כל הממצאים אומתו מול הקוד בפועל. סדר הטיפול: **CRITICAL → HIGH → MEDIUM**.
+### טבלת תקציר (מסודר לפי חומרה)
+
+| # | חומרה | פרצה | קובץ עיקרי |
+|---|-------|------|-----------|
+| 3.1 | 🔴 CRITICAL ✅ | `GET /auth/admin-bypass` — token אדמין מלא לכל אנונימי | `auth.controller.ts:48` |
+| 3.2 | 🔴 CRITICAL ✅ | אין הרשאות תפקיד — CLEANER יוצר SUPER_ADMIN (mass-assign `role`) | `users.controller.ts:30` |
+| 3.3 | 🔴 CRITICAL ✅ | Cross-tenant account takeover — `changePassword` על כל userId | `users.service.ts:250` |
+| 3.4 | 🔴 CRITICAL ✅ | IDOR — `deleteBuilding/Floor/Restroom` מוחק נתוני ארגון אחר | `buildings.service.ts:541` |
+| 3.5 | 🔴 CRITICAL ✅ | WebSocket ללא אימות — דליפת אירועים חוצת־ארגון (כולל ת"ז) | `events.gateway.ts:31` |
+| 3.6 | 🟠 HIGH ✅ | JWT `?? 'fallback-secret'` — זיוף token אם `JWT_SECRET` ריק | `jwt.strategy.ts:15` |
+| 3.7 | 🟠 HIGH | Cleaner login עם ת"ז בלבד, חוצה־ארגון, brute-forceable | `auth.service.ts:28` |
+| 3.8 | 🟠 HIGH | IDOR — `deleteUser`/`updateAdmin`/`toggle`/`assignBuilding`/`deleteDevice`/`adminUpdate` | `users.service.ts`,`buildings`,`incidents` |
+| 3.9 | 🟠 HIGH | דליפת roster/מפת תשתית חוצת־ארגון — `push/diagnose`, `kiosk-diagnose` | `push.service.ts:148` |
+| 3.10 | 🟠 HIGH | `GET /push/test` — התראה אמיתית לכל המכשירים בכל הארגונים | `push.controller.ts:41` |
+| 3.11 | 🟠 HIGH | IDOR ב־analytics — `buildingId/floorId/restroomId` מפילים את סינון ה־org | `analytics.service.ts:54` |
+| 3.12 | 🟠 HIGH | אין rate-limiting בכלל (brute-force + DoS + bcrypt amplification) | `app.module.ts` |
+| 3.13 | 🟠 HIGH | `ValidationPipe.whitelist` חסר־שיניים — אין DTO אמיתי | `main.ts:18` |
+| 3.14 | 🟠 HIGH | אין fail-fast על env — סודות חסרים מדרדרים לברירת־מחדל לא בטוחה | `app.module.ts:20` |
+| 3.15 | 🟠 HIGH ✅ | Frontend מפעיל את ה־backdoor אוטומטית ב־`/admin` | `AdminLayout.tsx:87` |
+| 3.16 | 🟡 MEDIUM | `reassignDevice` ציבורי — חטיפת קיוסק + ביטול חסימות | `auth.controller.ts:54` |
+| 3.17 | 🟡 MEDIUM | פעולות incident ציבוריות סומכות על `cleanerIdNumber` מהגוף (impersonation) | `incidents.controller.ts:135` |
+| 3.18 | 🟡 MEDIUM | `POST /incidents/sync` — `body:any`, batch לא חסום → DB flood | `incidents.service.ts:127` |
+| 3.19 | 🟡 MEDIUM | `updateOrgSettings`/`updateTemplate` — spread של גוף לתוך Prisma (mass-assign) | `users.service.ts:28` |
+| 3.20 | 🟡 MEDIUM | `CRON_SECRET` ב־query string → נכתב ל־nginx logs | `email.controller.ts:124` |
+| 3.21 | 🟡 MEDIUM | אין helmet/HSTS/CSP/X-Frame-Options | `main.ts:9` |
+| 3.22 | 🟡 MEDIUM | קבצי סוד/גיבויי DB נכתבים 0644 ולא נמחקים | `deploy.sh:57` |
+| 3.23 | 🟡 MEDIUM | Push subscribe ציבורי עם `userId`/`orgId` מהגוף (hijack) | `push.controller.ts:17` |
+| 3.24 | 🟡 MEDIUM | Kiosk auto-create devices + sensor report ציבוריים → זבל/flood | `auth.service.ts:90`,`sensors.service.ts:52` |
+| 3.25 | 🟡 MEDIUM | Tokens ב־localStorage (קריאים לכל script/XSS) | `api.ts:18` |
+| 3.26 | 🟡 MEDIUM | CSV/Formula injection ב־export ל־Excel | `export.ts:50` |
+| 3.27 | 🟢 LOW | אין rotation/revocation ל־refresh token; אין logout | `auth.service.ts:189` |
+| 3.28 | 🟢 LOW | `JWT_REFRESH_SECRET` חסר → refresh נחתם ב־`JWT_SECRET` (tokens ניתנים להחלפה) | `auth.service.ts:167` |
+| 3.29 | 🟢 LOW | דליפת מטא־מפתח SSH ל־`GITHUB_STEP_SUMMARY` | `deploy.yml:61` |
+
+---
 
 ### 🔴 CRITICAL
 
-#### 4.1 Backdoor ציבורי: `GET /api/auth/admin-bypass` מחזיר token אדמין ללא סיסמה
-**איפה:** `auth.controller.ts:48-52` + `auth.service.ts:49-56`.
+#### 3.1 ✅ Backdoor ציבורי: `GET /api/auth/admin-bypass` מחזיר token אדמין מלא ללא סיסמה
+**קוד:** `auth.controller.ts:48-52` (`@Public() @Get('admin-bypass')`) → `auth.service.ts:49-56`
+`getAdminBypassToken()` מוצא `findFirst({ role: { in:['ORG_ADMIN','SUPER_ADMIN','MANAGER'] }, isActive:true })`
+ומחזיר `generateTokens(admin)` — access + refresh 7 ימים + שם/מייל/ת"ז/orgId.
+**Exploit:** `curl https://toiletcleanpro.duckdns.org/api/auth/admin-bypass` → שליטה מלאה על הארגון.
+**תיקון:** **מחק** את ה־endpoint ואת `getAdminBypassToken()`, וגם את הקריאה מה־frontend (§3.15).
+אם חייבים dev-shortcut: `if (NODE_ENV !== 'production')` + סוד משותף, ולעולם לא `@Public()`.
+
+#### 3.2 ✅ אין הרשאות תפקיד — CLEANER יכול ליצור SUPER_ADMIN
+**קוד:** אין `RolesGuard`/`@Roles` בכל ה־repo; הגארד היחיד הוא `JwtAuthGuard` גלובלי.
+ב־`users.controller.ts:30 createAdmin` הבדיקה היחידה היא `if (user.role === 'PROPERTY_MANAGER')` —
+כל שאר התפקידים (כולל CLEANER) עוברים. `users.service.ts:113` כותב `role: dto.role as any` ישר ל־Prisma.
+**Exploit:** login מנקה (ת"ז בלבד) → `POST /users/admins {role:'SUPER_ADMIN'}` → חשבון על בארגון.
+ה־`whitelist` לא עוזר כי ה־`@Body` הוא interface שנמחק ב־runtime (§3.13).
+**תיקון:** בנה `RolesGuard` + `@Roles()`, רשום כ־`APP_GUARD` שני, וסמן כל endpoint אדמיני. בנוסף
+ולידציה של ה־role המוענק (`@IsIn([...])`) ואיסור הענקת role גבוה מזה של המבקש. ראו §5.1.
+
+#### 3.3 ✅ Cross-tenant account takeover — `changePassword` על כל userId
+**קוד:** `users.service.ts:250 changePassword(userId, pw)` — `update({ where:{ id } })` ללא org.
+המגן־כביכול `assertCanManageUser` (`:125`) **הוא no-op לכל תפקיד שאינו PROPERTY_MANAGER**
+(`if (requester.role !== 'PROPERTY_MANAGER') return;`) — ואף אינו בודק org גם עבור PM.
+**Exploit:** משתמש מאומת כלשהו מאתר userId של אדמין (דולף מ־`/auth/me`, `/users`, verify-*, diagnose)
+ושולח `PATCH /users/<victimId>/password {password:'x'}` → מתחבר בתור אותו אדמין, **בכל ארגון**.
+**תיקון:** `assertCanManageUser` חייב לאכוף `target.orgId === requester.orgId` **לכל התפקידים**,
+וכל מוטציה על user תסונן ב־`where:{ id, orgId }`. אותו טיפול ל־`deleteUser`, `updateAdmin`,
+`updateWorker`, `toggleActive`, `assignBuilding`, `setManagedProperties`, `updateLang` (§3.8).
+
+#### 3.4 ✅ IDOR — מחיקות מדורגות חוצות־ארגון
+**קוד:** `buildings.service.ts` — `deleteBuilding(:541)`, `deleteFloor(:554)`, `deleteRestroom(:567)`
+מקבלים id ומריצים `delete` **בלי `orgId`**. כל אחד מוחק קודם את כל האירועים+פעולות שתחת המשאב.
+**Exploit:** `DELETE /buildings/<foreign-id>` (עם token של כל משתמש, גם מנקה) → מחיקת בניין של
+ארגון אחר + מחיקת כל היסטוריית האירועים שלו.
+**תיקון:** בכל מוטציה — ודא בעלות דרך היררכיית ה־org לפני הפעולה:
 ```ts
-@Public()
-@Get('admin-bypass')
-adminBypass() { return this.authService.getAdminBypassToken(); }
-// service: מוצא את האדמין הראשון בבסיס הנתונים ומחזיר לו access+refresh token מלאים
-```
-**החשיפה:** כל אדם באינטרנט שקורא ל־endpoint הזה מקבל token של אדמין מלא (`ORG_ADMIN`/`SUPER_ADMIN`)
-— שליטה מלאה על כל הארגון, כולל מחיקת נתונים. זו הפרצה החמורה ביותר במערכת.
-**התיקון:** **למחוק לחלוטין** את ה־endpoint, את `getAdminBypassToken()`, וכל קריאה אליו ב־web
-(`grep -rn "admin-bypass" apps/web/src`). אם נחוץ "dev login" — שים אותו מאחורי
-`NODE_ENV !== 'production'` **וגם** מאחורי secret, אך עדיף פשוט למחוק.
-
-#### 4.2 IDOR חוצה־ארגונים: מוטציות לא בודקות בעלות על המשאב
-רוב פעולות ה־mutation מקבלות `id` ישירות ומריצות את פעולת Prisma **בלי לוודא שה־`id`
-שייך ל־`user.orgId`**. עם token של משתמש כלשהו (גם `CLEANER`) אפשר לפגוע במשאבים של ארגון אחר.
-
-- **מחיקת בניין** — `buildings.service.ts:541 deleteBuilding(buildingId)`: אין `orgId` ב־`where`.
-  `DELETE /api/buildings/<any-id>` מוחק בניין של **כל ארגון**, כולל כל הקומות/שירותים/אירועים שתחתיו.
-- **עדכון אירוע** — `incidents.service.ts adminUpdate(incidentId,…)`: `update({ where:{ id } })`
-  ללא סינון org. כל משתמש מאומת יכול לשנות סטטוס/שיוך של אירוע בכל ארגון.
-- **תצורת סנסור** — `sensors.controller.ts:29 updateConfig` מוגן ב־`JwtAuthGuard` אבל
-  `sensors.service.ts:97` מעדכן `device` לפי `deviceId` בלבד, ללא org — כל מנקה יכול
-  לשנות את התצורה של כל סנסור בכל ארגון.
-- אותו דפוס חוזר ב־`updateBuilding`, `deleteRestroom`, `deleteDevice`, `updateFloor`,
-  `updateRestroom`, וב־kiosk-templates.
-
-**התיקון (עקרוני, אחיד):** בכל מוטציה, ודא בעלות לפני הפעולה. שתי גישות:
-```ts
-// א) בדיקה מפורשת בשירות (מיידי, בטוח):
 const b = await this.prisma.building.findFirst({ where: { id, orgId } });
-if (!b) throw new NotFoundException();   // 404 ולא 403 — לא מדליף קיום משאב
-
-// ב) מוטציה עם orgId ב-where (אטומי):
-const { count } = await this.prisma.building.deleteMany({ where: { id, orgId } });
-if (count === 0) throw new NotFoundException();
+if (!b) throw new NotFoundException();          // 404, לא 403 — לא מדליף קיום
+// floor:   where:{ id, building:{ orgId } }
+// restroom:where:{ id, floor:{ building:{ orgId } } }
 ```
-לאירועים/סנסורים שאין להם `orgId` ישיר — סנן דרך הקשר: `where:{ id, restroom:{ floor:{ building:{ orgId } } } }`.
-מומלץ לרכז זאת ב־helper `assertOwnedByOrg(entity, id, orgId)` כדי לא לשכפל.
+רכז ב־helper `assertOwnedByOrg(...)`. ראו גם §6.5 (עטיפה בטרנזקציה).
 
-#### 4.3 JWT fallback secret קבוע בקוד
-**איפה:** `jwt.strategy.ts:15` — `secretOrKey: config.get('JWT_SECRET') ?? 'fallback-secret'`.
-**החשיפה:** אם `JWT_SECRET` לא מוגדר בסביבה (טעות deploy, env לא נטען), השרת מאמת tokens
-מול המחרוזת הידועה `'fallback-secret'` — כל אחד יכול לחתום token אדמין תקף. שים לב:
-ה־signing ב־`auth.module.ts:15` **לא** משתמש ב־fallback, אז ייתכן חוסר־התאמה שקט
-(אימות מול סוד אחר מהחתימה) שמסתיר את הבעיה עד שתנוצל.
-**התיקון:**
-```ts
-const secret = config.get('JWT_SECRET');
-if (!secret) throw new Error('JWT_SECRET is required');   // fail fast — לא fallback
-super({ ..., secretOrKey: secret });
-```
-עשה את אותו fail-fast עבור `JWT_REFRESH_SECRET`. הוסף ולידציית env בזמן bootstrap
-(ראו §7.5) כדי שהשרת **יסרב לעלות** בלי סודות.
+#### 3.5 ✅ WebSocket ללא אימות — דליפת אירועים חוצת־ארגון (כולל ת"ז לאומית)
+**קוד:** `events.gateway.ts` — `cors:{origin:'*'}` (`:14`), `handleConnection` (`:23`) מקבל כל socket
+ללא JWT, ו־`handleJoinOrg`/`handleJoinRestroom` (`:31`,`:40`) עושים `client.join(data.orgId)` —
+**מזהה מהלקוח, בלי בדיקה.**
+**Exploit:** כל אתר/סקריפט/מנקה של ארגון A פותח socket, שולח `join:org` עם orgId זר, ומקבל את כל
+ה־broadcasts של אותו ארגון: `incident:created/updated/resolved` (incidents.service) ו־`incident:escalated`
+(scheduler). כל payload הוא ה־incident המלא עם `INCIDENT_INCLUDE` → כולל `actions.user.idNumber`
+ו־`assignedCleaner.idNumber` — **תעודת זהות** (שדה חובה, `schema.prisma:195`) + שמות ומיקומים.
+**תיקון:** אמת JWT ב־handshake (`client.handshake.auth.token` → `JwtService.verify` → אחרת
+`client.disconnect()`), שמור `client.data.orgId` **מה־token**, וב־join התעלם מהקלט והשתמש רק ב־orgId
+המאומת (ואמת ש־restroom שייך ל־org). `cors.origin` → רשימה מפורשת, לא `*`.
+
+---
 
 ### 🟠 HIGH
 
-#### 4.4 WebSocket ללא אימות + `CORS origin:'*'` + הצטרפות חופשית לחדרים
-**איפה:** `events.gateway.ts:13-16` (`cors:{origin:'*'}`) ו־`handleJoinOrg` (שורה 31):
-```ts
-client.join(`org:${data.orgId}`);   // כל client, כל orgId, בלי אימות
-```
-**החשיפה:** ה־gateway משדר `incident:updated`, `incident:created` וכו' לחדר `org:<id>`.
-לקוח אנונימי יכול `join:org` עם orgId זר ולקבל **זרם אירועים בזמן אמת של ארגון אחר**
-(שמות, מיקומים, סטטוסים) — דליפת מידע חוצת־tenant. בנוסף `origin:'*'` מאפשר לכל אתר לפתוח socket.
-**התיקון:**
-- אמת JWT ב־handshake: `handleConnection` יקרא token מ־`client.handshake.auth.token`,
-  יאמת עם `JwtService`, ידחה אם לא תקף (`client.disconnect()`), וישמור `client.data.orgId`.
-- ב־`join:org` — התעלם מ־`data.orgId` ותשתמש ב־`client.data.orgId` מה־token בלבד.
-- `cors.origin` — רשימת מקורות מפורשת (כמו ב־`main.ts:10-15`), לא `*`.
+#### 3.6 ✅ JWT fallback secret קבוע
+**קוד:** `jwt.strategy.ts:15` — `secretOrKey: config.get('JWT_SECRET') ?? 'fallback-secret'`.
+ה־signing (`auth.module.ts:15`) ללא fallback → אי־התאמה שקטה.
+**Exploit:** אם `JWT_SECRET` ריק בזמן boot (env לא נטען, טעות rotation, `deploy.sh` מפיל שורות
+"garbage" בשקט), אימות נעשה מול המחרוזת הידועה — תוקף חותם `{sub, role:'SUPER_ADMIN'}` ומתקבל.
+**תיקון:** fail-fast — `const s = config.get('JWT_SECRET'); if (!s) throw new Error('JWT_SECRET required');`
+אותו דבר ל־`JWT_REFRESH_SECRET`. הוסף env validation ב־boot (§3.14).
 
-#### 4.5 אין שכבת הרשאות תפקיד — "מאומת" = "אדמין"
-**איפה:** רוב ה־controllers מגנים רק עם `JwtAuthGuard` בלי בדיקת `role`. דוגמאות:
-- `users.controller.ts` — `PATCH org-settings`, `escalation-config`, `createAdmin`,
-  `deleteUser`, `toggleActive` נגישים לכל token מאומת. `assertCanManageUser` קיים לחלק,
-  אבל `updateOrgSettings`/`escalation` פתוחים לכל תפקיד (גם `CLEANER`).
-- `incidents.controller.ts` — `DELETE bulk` ו־`adminUpdate` בלי בדיקת role → מנקה יכול
-  למחוק את כל האירועים של הארגון.
-- `buildings.controller.ts` — כל ה־CRUD בלי role.
-**החשיפה:** הסלמת הרשאות אנכית. token של מנקה (שמתקבל בקלות — login עם ת"ז בלבד, §4.7)
-שקול לאדמין כמעט לכל דבר.
-**התיקון:** בנה `@Roles()` decorator + `RolesGuard` והחל אותם:
-```ts
-// common/decorators/roles.decorator.ts
-export const ROLES_KEY = 'roles';
-export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
+#### 3.7 Cleaner login — ת"ז בלבד, חוצה־ארגון, brute-forceable
+**קוד:** `auth.service.ts:28 loginCleaner(orgId?, idNumber)` — `orgId` אופציונלי; בלעדיו `findFirst`
+מתאים לכל cleaner בכל tenant. אין סיסמה. `default-org` הציבורי מספק orgId תקף חינם.
+**Exploit:** ת"ז ישראלית = 9 ספרות עם check-digit (~9M) → בלי rate-limit (§3.12) ובעזרת verify-*
+(§3.9) המרחב ניתן למניה → השתלטות חשבון.
+**תיקון:** `orgId` חובה + סינון תמידי לפיו; גורם שני (PIN/קוד ארגון); rate-limit קשיח + lockout;
+תשובות/עיכובים אחידים למניעת enumeration.
 
-// common/guards/roles.guard.ts — קורא את user.role שה-JwtStrategy כבר מחזיר
-@Injectable() export class RolesGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
-  canActivate(ctx: ExecutionContext) {
-    const roles = this.reflector.getAllAndOverride<Role[]>(ROLES_KEY, [ctx.getHandler(), ctx.getClass()]);
-    if (!roles?.length) return true;
-    const { user } = ctx.switchToHttp().getRequest();
-    return !!user && roles.includes(user.role);
-  }
-}
-```
-רשום `RolesGuard` כ־`APP_GUARD` שני (רץ אחרי JwtAuthGuard), וסמן כל endpoint אדמיני
-ב־`@Roles('ORG_ADMIN','MANAGER',…)`. הגדר **מטריצת הרשאות** מפורשת (ראו §7.1).
+#### 3.8 IDOR נוסף — מוטציות/קריאות ללא org-scoping
+כל אלו מקבלים id ופועלים בלי בדיקת org (verify מול הקוד לפני תיקון):
+- `users.service.ts` — `deleteUser(:302)`, `updateWorker/updateAdmin/toggleActive/assignBuilding(:273)`,
+  `setManagedProperties(:144)`, `updateLang(:43, ללא assert בכלל)`.
+- `buildings.service.ts` — `updateBuilding(:516)`, `updateFloor/updateRestroom(:520)`, `deleteDevice(:575)`,
+  `updateProperty/deleteProperty/assignBuildingToProperty(:52)`, kiosk-templates `update/delete/assign(:213)`,
+  `createFloor/createRestroom/registerDevice(:101)` (הצמדת ילד ל־parent של ארגון אחר).
+- `incidents.service.ts` — `adminUpdate(:295)` (עדכון/שיוך אירוע של ארגון אחר; גם `assignedCleanerId` לא מסונן).
+- `sensors.service.ts` — `updateConfig(:97)` (כיוונון סנסור זר), `restroomSummary(:195)` (קריאת נתוני סנסור זר).
+**תיקון:** אותו דפוס כמו §3.4 — helper בעלות אחיד + `where` מסונן־org בכל מוטציה/קריאה לפי id.
 
-#### 4.6 כל endpoints ה־Push ציבוריים (`@Public()`)
-**איפה:** `push.controller.ts` — `subscribe`, `unsubscribe`, `diagnose`, `test`, `rotate`, כולם `@Public()`.
-**החשיפה:**
-- `GET /api/push/test` — כל אחד יכול לשגר notification אמיתי **לכל המכשירים הרשומים** (spam/abuse).
-- `GET /api/push/diagnose` — חושף רשימת subscriptions (endpoints/מטא) — מיפוי משתמשים.
-- `POST /api/push/subscribe` — מקבל `userId`+`orgId` **מהגוף**, בלי אימות שהם שייכים לקורא —
-  אפשר לרשום/לזייף subscriptions לכל userId.
-**התיקון:**
-- `test` ו־`diagnose` → הסר `@Public()`, הוסף `@UseGuards(JwtAuthGuard)` + `@Roles('ORG_ADMIN')`.
-- `subscribe`/`rotate` — אם חייבים להישאר נגישים ל־PWA, גזור `userId`/`orgId` מה־JWT
-  (`@CurrentUser()`) ולא מהגוף; לפחות הגבל ב־rate-limit.
-- `unsubscribe` יכול להישאר ציבורי (מבוסס endpoint שהלקוח כבר מחזיק), אך שקול הגבלה.
+#### 3.9 דליפת roster ומפת תשתית חוצת־ארגון (אנונימית)
+**קוד:** `push.service.ts:148 diagnose` (`@Public`, push.controller.ts:33) → כל המשתמשים הפעילים
+**בכל הארגונים**: שם, role, בניין, פלטפורמת מכשיר, זמני subscription. `buildings.service.ts:377
+kioskDiagnose` (`@Public`, controller:174) → כל Device עם השרשרת restroom→floor→building + orgId
++ templates + host/heartbeat. `auth.service.ts:490 default-org` + `public-structure/:orgId` +
+`issue-types/:orgId` → כל עץ המתקן.
+**תיקון:** הסר `@Public` מ־diagnose/kiosk-diagnose, הוסף `JwtAuthGuard` + `@Roles('ORG_ADMIN')`, וסנן
+`where:{ orgId: user.orgId }`. את endpoints הקיוסק האנונימיים כרוך ב־device/kiosk token במקום orgId חשוף.
 
-#### 4.7 אין Rate Limiting בכלל
-**איפה:** אין `@nestjs/throttler` בקוד (בדוק: `grep -rn Throttler apps/server` → 0).
-**החשיפה:** endpoints ציבוריים פתוחים ל־brute-force ו־DoS:
-- `POST /api/auth/admin/login` — brute-force סיסמאות.
-- `POST /api/auth/cleaner/login` + `verify-cleaner`/`verify-admin` — enumeration של ת"ז.
-- `POST /api/incidents` + `/incidents/sync` (§4.9) — הצפת DB באירועים מזויפים.
-**התיקון:** הוסף `ThrottlerModule` גלובלי (`pnpm add @nestjs/throttler`, ואז ודא
-`deploy.sh` מריץ `pnpm install`). הגדרה בסיסית ~ 60 req/min, והדק במיוחד על login/verify
-(`@Throttle({ default: { limit: 5, ttl: 60000 } })`).
+#### 3.10 `GET /push/test` — התראה אמיתית לכל המכשירים בכל הארגונים
+**קוד:** `push.controller.ts:41` (`@Public`) → `push.service.ts:179 sendTestToAll()` שולח web-push
+אמיתי לכל ה־subscriptions בכל ה־tenants, ומחזיר שם+role לכל מכשיר.
+**Exploit:** `curl` בלולאה → spam לכל טלפון + שריפת מכסת VAPID/FCM/APNs.
+**תיקון:** `@UseGuards(JwtAuthGuard)` + `@Roles('ORG_ADMIN')`, שנה ל־POST, סנן ל־orgId, throttle.
 
-### 🟡 MEDIUM
+#### 3.11 IDOR ב־analytics — פרמטרי מיקום מפילים את סינון ה־org
+**קוד:** `analytics.service.ts:54 restroomScope` — כשמגיע `buildingId/floorId/restroomId`, מוחזר
+filter **בלי** `orgId`. `AnalyticsController.scoped()` מגביל רק PROPERTY_MANAGER ולא מאמת שהמזהה שייך
+ל־org. חל על issue-frequency, hourly, cleaners, sla, day-of-week, patterns, restroom-scores, overview,
+וגם `getSummary(:62)`.
+**Exploit:** משתמש מאומת שולח `?buildingId=<foreign>` → קורא ספירות אירועים, ביצועי מנקים, SLA של ארגון אחר.
+**תיקון:** תמיד AND את `orgId` לתוך ה־filter המצומצם, למשל
+`{ floor:{ buildingId: scope.buildingId, building:{ orgId } } }`.
 
-#### 4.8 Enumeration/דליפת מידע ב־verify + הודעות login
-- `users.service.ts:156 verifyCleaner` ו־`:174 verifyAdminByIdNumber` — endpoints ציבוריים
-  שמחזירים `{found:true, name, role, orgId}` לפי ת"ז. מאפשר מיפוי עובדים והצלבת ת"ז↔שם.
-- `auth.service.ts:33-34 loginCleaner` מבחין בין `NOT_FOUND` ל־`INACTIVE` — מדליף קיום משתמש.
-**התיקון:** צמצם את התשובה למינימום הדרוש ל־UI (למשל בוליאני `found` בלבד), אחד את הודעות
-השגיאה (`Invalid credentials` גנרי), והחל rate-limit (§4.7). ה־login של מנקה מבוסס ת"ז
-בלבד ללא סיסמה — שקול הוספת PIN/גורם שני אם ה־UX מאפשר.
+#### 3.12 אין Rate Limiting בכלל
+**קוד:** אין `@nestjs/throttler` (grep→0). אין body-size limit מפורש ב־`main.ts`.
+**Exploit:** brute-force על `admin/login` (+ bcrypt CPU amplification על תהליך PM2 יחיד),
+`cleaner/login`, `verify-*`; הצפת DB דרך `POST /incidents`, `/incidents/sync`, `/sensors/:code/report`;
+push abuse. הכל מ־IP יחיד, ללא הגבלה.
+**תיקון:** `ThrottlerModule.forRoot([{ ttl:60000, limit:60 }])` + `APP_GUARD: ThrottlerGuard`; `@Throttle
+5/min` על login/verify; `app.use(json({ limit:'32kb' }))`. ודא `deploy.sh` מריץ `pnpm install`.
 
-#### 4.9 `POST /api/incidents` ו־`/sync` ציבוריים ולא מוגבלים
-**איפה:** `incidents.controller.ts:24-42` — `create` ו־`syncBatch` שניהם `@Public()`.
-נדרש כי הקיוסק אנונימי, אבל ללא הגבלה זו הצפה אפשרית. `syncBatch(@Body() body: any)` —
-מקבל payload שרירותי (ראו §4.10).
-**התיקון:** rate-limit לפי IP/deviceCode, ולידציית DTO קשיחה (מספר פריטים מקסימלי ב־sync,
-בדיקת קיום `deviceId`/`restroomId` תואמים), והחזרת 400 על payload לא תקין.
+#### 3.13 `ValidationPipe.whitelist` חסר־שיניים — אין DTO אמיתי
+**קוד:** `main.ts:18` מפעיל `whitelist:true, transform:true` אבל **אף `@Body` אינו class עם
+class-validator** — כולם interface/inline (grep ל־`@IsString`/`*.dto.ts`→0). ה־metatype נמחק ב־runtime,
+אז ה־pipe לא מסנן/ממיר/מאמת כלום. `class-validator` כבר תלות (`package.json:43`).
+**Exploit:** כל צורת payload עוברת (טיפוסים שגויים, מפתחות עודפים, מערכים ענקיים) ישר לשירותים —
+זהו הגורם המאפשר של §3.2, §3.18, §3.19.
+**תיקון:** DTO classes אמיתיים לכל `@Body`, ואז `forbidNonWhitelisted:true`. התחל מהמסלולים הציבוריים
+(`auth`, `incidents`, `sensors`, `push`).
 
-#### 4.10 `ValidationPipe.whitelist` חסר־שיניים — אין DTO אמיתי
-**איפה:** `main.ts:19-25` מפעיל `whitelist:true, forbidNonWhitelisted:false`, אבל כמעט
-כל ה־`@Body()` מוקלד כאובייקט inline (`@Body() body: { … }` / `dto: any`), **לא** class עם
-דקורטורים של `class-validator`. `whitelist` פועל רק על class-instances — כאן הוא לא מסנן כלום.
-**החשיפה:** payloads שרירותיים עוברים; אין ולידציית טיפוס/אורך/פורמט; `sync(@Body() body:any)`
-פתוח לגמרי. גם mass-assignment אפשרי אם שדות מועברים ישירות ל־Prisma.
-**התיקון:** הגדר DTO classes אמיתיים עם `class-validator`/`class-transformer` (כבר תלות קיימת,
-`package.json:43`), ושנה ל־`forbidNonWhitelisted:true`. ראו §6.2. עדיפות למסלולים ציבוריים תחילה.
+#### 3.14 אין fail-fast על env
+**קוד:** `app.module.ts:20 ConfigModule.forRoot()` ללא `validationSchema`. בשילוב `deploy.sh` הסלחני
+(`set +e`, awk מפיל שורות, "continuing anyway") — סוד חסר לא מפיל את השרת.
+**Exploit:** rotation שמפיל `JWT_SECRET`/`CRON_SECRET` → שרת רץ־אך־פרוץ (§3.6) עם deploy ירוק ו־smoke עובר.
+**תיקון:** Joi/zod schema ב־`forRoot` שדורש נוכחות+אורך מינימלי של `JWT_SECRET`, `JWT_REFRESH_SECRET`,
+`DATABASE_URL`, `CRON_SECRET`, `VAPID_*` (`abortEarly:false`) → Nest יסרב לעלות.
 
-#### 4.11 `reassignDevice` ציבורי מבטל חסימות מכשיר
-**איפה:** `auth.controller.ts:54 PATCH kiosk/:deviceCode/restroom` → `auth.service.ts:116`
-מוחק `blockedDeviceCode` ומשייך מחדש מכשיר לכל restroom — הכל `@Public()`.
-**החשיפה:** תוקף יכול לשייך מחדש קיוסקים ולעקוף מחיקות אדמין. הקוד מתאר זאת כ"admin-verified"
-אבל אין שום אימות בפועל.
-**התיקון:** דרוש אימות (JWT אדמין) לפעולת reassign, או צמצם ל־deviceCode עם token חד־פעמי.
-
-#### 4.12 היגיינת סביבה ולוגים
-- `main.ts` — אין `helmet` (security headers), אין `app.setGlobalPrefix('api')` גלוי (ודא
-  שה־prefix מוגדר אי־שם, אחרת ה־curl-ים ב־§3.5 עם `/api` לא תואמים).
-- `events.gateway.ts` מלוגג כל connect/disconnect — רועש; הורד ל־debug.
-- ודא ש־`.env.production` **לעולם** לא נכנס ל־git (`git ls-files | grep -i env`).
-- `deploy.sh` מזריק סודות ל־`.env.production` — ודא הרשאות קובץ מוקשחות (`chmod 600`) ושה־backups
-  (`/var/log/toilet/backups/`) לא נגישים ל־web root.
+#### 3.15 ✅ Frontend מפעיל את ה־backdoor אוטומטית
+**קוד:** `AdminLayout.tsx:85-100` — ב־mount על כל route `/admin`, אם אין `accessToken`, קורא
+`GET /api/auth/admin-bypass` ושומר את ה־token.
+**Exploit:** גלישה ל־`/admin` אנונימית → דשבורד אדמין מלא (§3.1).
+**תיקון:** מחק את ה־`useEffect` הזה **וגם** את ה־endpoint בשרת; הסתמך רק על `/admin/login`.
 
 ---
 
-## 5. חלק ג׳ — קוד למחיקה / לא רלוונטי
+### 🟡 MEDIUM (תקציר + תיקון)
 
-| פריט | איפה | למה למחוק |
-|------|------|-----------|
-| `admin-bypass` endpoint + `getAdminBypassToken()` | `auth.controller.ts:48`, `auth.service.ts:49` | backdoor (§4.1) — אין לו מקום legitי |
-| קוד web שקורא ל־`admin-bypass` | `grep -rn admin-bypass apps/web/src` | להסיר יחד עם ה־endpoint |
-| מסמכי שיווק/PDF בתיקיית `docs/` | `PRICING.*`, `ANALYTICS_COMPARISON.*`, `ECHO_SHOW_*`, `HARDWARE_*` | לא קוד; לשקול העברה ל־repo/Drive נפרד כדי להקטין את ה־repo |
-| `prisma/purge-building-stats.ts` | one-off script | אם חד־פעמי — למחוק או להעביר ל־`scripts/oneoff/` עם הערה |
-| `app.controller.spec.ts` דמו | `apps/server/src` | להחליף בבדיקות אמיתיות (§7.6), לא להשאיר placeholder |
-| הודעות `console`/`Logger.log` רועשות | `events.gateway.ts:24,28` | להוריד ל־`debug` |
-| טיפוסי `any` מיותרים | פרוס | לא "מחיקה" אלא החלפה (§6.1) |
+- **3.16 `reassignDevice` ציבורי** (`auth.controller.ts:54`) — `PATCH /auth/kiosk/:code/restroom` מוחק
+  `blockedDeviceCode` ומשייך מכשיר לכל restroom, ללא אימות (למרות הערת "admin-verified"). → דרוש JWT אדמין.
+- **3.17 פעולות incident ציבוריות** (`incidents.controller.ts:126-149`) — acknowledge/resolve/return
+  מזוהות רק ע"י `cleanerIdNumber` מהגוף → impersonation. → דרוש session מנקה מאומת לפעולות state-changing.
+- **3.18 `POST /incidents/sync`** (`incidents.service.ts:127`) — `@Public`, `body:any`, לולאה ללא cap
+  → DB flood + הזרקת `notes`/`performedAt` מזויפים. → DTO עם `@ArrayMaxSize`, device token, throttle.
+- **3.19 mass-assignment דרך spread** — `updateOrgSettings(:28)` פורש גוף ל־settings JSON;
+  `updateTemplate(:215)` פורש גוף ל־Prisma (אפשר `orgId` → re-parent טמפלט לארגון אחר). → בנה `data`
+  מפורש מ־allowlist, אל תפרוש גוף לתוך Prisma, וסנן org.
+- **3.20 `CRON_SECRET` ב־query** (`email.controller.ts:124`) — `?secret=` נכתב ל־nginx access.log. →
+  header בלבד (`x-cron-secret`), `crypto.timingSafeEqual`.
+- **3.21 אין security headers** (`main.ts:9`) — אין helmet/HSTS/CSP/X-Frame-Options (app+nginx). →
+  `app.use(helmet({ hsts:{...} }))` + `add_header` בבלוקי 443 ב־`deploy.sh` (clickjacking/TLS-strip).
+- **3.22 קבצי סוד לא מוקשחים** (`deploy.sh:57`) — `.env.production.bak.*` נוצרים 0644 ולא נמחקים;
+  `pg_dump` plaintext ב־`/var/log/toilet/backups/`. → `umask 077`, `chmod 600`, pruning, תיקיית 0700.
+- **3.23 `POST /push/subscribe` ציבורי** (`push.controller.ts:17`) — `userId`/`orgId` מהגוף → אפשר
+  לצרף endpoint של תוקף ל־userId של קורבן ולקבל את ההתראות שלו. → גזור מ־JWT, לא מהגוף.
+- **3.24 auto-create ציבורי** — `auth.service.ts:90` יוצר Device לכל `ROOM-<restroomId>` קיים;
+  `sensors.service.ts:52` יוצר SENSOR ומכניס SensorEvent ללא הגבלה. → provisioning מאומת/token חתום + throttle.
+- **3.25 Tokens ב־localStorage** (`api.ts:18` + 3 דפי login) — access **ו־refresh** ב־localStorage,
+  קריאים לכל script (XSS/תלות זדונית/extension). → refresh ב־cookie httpOnly+Secure+SameSite; access
+  בזיכרון בלבד; CSP `script-src 'self'`; אל תסמוך על `user` מ־localStorage להחלטות הרשאה.
+- **3.26 CSV/Formula injection** (`export.ts:50`) — שמות מ־DB (מנקה/issue) נכתבים ל־xlsx בלי נטרול;
+  ערך שמתחיל ב־`= + - @` מריץ נוסחה בפתיחה (HYPERLINK/WEBSERVICE/DDE). → prefix `'` לערכים כאלה בכל תא.
 
-> לפני מחיקה של כל קובץ — `grep` לשימושים. אל תמחק migrations קיימים לעולם.
+### 🟢 LOW
 
----
-
-## 6. חלק ד׳ — ניקוי, פישוט וסידור הקוד
-
-### 6.1 להיפטר מ־`any` — טיפוס אמיתי ל־`user` המאומת
-`@CurrentUser() user: any` חוזר בכל controller. ה־`JwtStrategy.validate` (`jwt.strategy.ts:19`)
-כבר מחזיר צורה ידועה. הגדר טיפוס משותף:
-```ts
-// common/types/authenticated-user.ts
-export interface AuthUser {
-  id: string; orgId: string; role: Role;
-  name: string; buildingId: string | null;
-  propertyId: string | null; propertyIds: string[];
-}
-```
-והשתמש `@CurrentUser() user: AuthUser` בכל מקום. זה יחשוף באגי scoping בזמן קומפילציה.
-
-### 6.2 DTOs אמיתיים במקום אובייקטים inline
-לכל `@Body()` — class עם `class-validator`:
-```ts
-export class AdminLoginDto {
-  @IsEmail() email!: string;
-  @IsString() @MinLength(6) password!: string;
-}
-```
-מרוויחים: ולידציה אמיתית, `whitelist` פועל, טיפוסים חזקים, תיעוד עצמי. התחל מ־`auth`,
-`incidents` (ציבוריים) ואז השאר. אחר כך `forbidNonWhitelisted:true` ב־`main.ts`.
-
-### 6.3 לרכז את לוגיקת ה־Property Manager scoping (כפילות משולשת)
-אותה תבנית מופיעה ב־`users.controller.ts:16`, `buildings.controller.ts:17,27`,
-`incidents.controller.ts:65-68,108-111`:
-```ts
-const scope = user.role === 'PROPERTY_MANAGER'
-  ? (user.propertyIds?.length ? user.propertyIds : ['__none__']) : undefined;
-```
-חלץ ל־helper יחיד `propertyScope(user): string[] | undefined` (או decorator `@PropertyScope()`),
-כולל את הלוגיקה של `pmNarrowed` באירועים. מקום אחד לתקן = פחות באגי scoping (שהם גם באגי אבטחה).
-
-### 6.4 לרכז את ה־Prisma `include` המקונן
-הצירוף `restroom → floor → building → organization` חוזר עשרות פעמים (auth.service, sensors,
-incidents, buildings). הגדר קבועים משותפים:
-```ts
-export const DEVICE_LOCATION_INCLUDE = {
-  restroom: { include: { floor: { include: { building: { include: { organization: true } } } } } },
-} satisfies Prisma.DeviceInclude;
-```
-`incidents.service.ts` כבר עושה זאת עם `INCIDENT_INCLUDE` — הרחב את הדפוס לכל השאר.
-
-### 6.5 שגיאות HTTP נכונות במקום `throw new Error`
-`users.service.ts:187,203` — `throw new Error('Cleaner not found')` → יוצא כ־500 ללקוח.
-החלף ב־`NotFoundException`/`BadRequestException`. עבור על השירותים ווודא שכל זריקה היא
-Nest HTTP exception. הוסף `ExceptionFilter` גלובלי שממפה שגיאות לא־צפויות ל־500 עם
-מזהה־בקשה, בלי לדלוף stack ללקוח.
-
-### 6.6 פיצול שירותים ענקיים
-- `analytics.service.ts` (790 שורות) → פצל לפי נושא (issue-frequency, hourly, heatmap,
-  cleaner-performance) לקבצים/מחלקות נפרדות.
-- `buildings.service.ts` (619) → הפרד Properties / Buildings / Kiosk-templates / Devices.
-- `incidents.service.ts` (505) → הפרד queue-lifecycle מ־admin/analytics.
-פיצול = בדיקות ממוקדות יותר וקל יותר לאתר את גבולות ה־scoping.
-
-### 6.7 אחידות ב־auth של controllers
-היום מעורבב: guard גלובלי (`APP_GUARD`) **וגם** `@UseGuards(JwtAuthGuard)` מקומי חוזר
-(למשל `users.controller.ts:63,69,75` — מיותר, ה־guard כבר גלובלי). הסר את הכפולים והשאר
-`@Public()` רק היכן שבאמת ציבורי. פחות רעש = פחות סיכוי לפספס endpoint לא מוגן.
+- **3.27 אין rotation/revocation ל־refresh** (`auth.service.ts:189`) — token דלוף תקף 7 ימים; אין logout. →
+  jti + rotation + טבלת ביטול + endpoint logout.
+- **3.28 `JWT_REFRESH_SECRET` חסר → נופל ל־`JWT_SECRET`** (`auth.service.ts:167`) — access ו־refresh
+  הופכים בני־החלפה (אותו סוד, רק 7d). → fail-fast על שני הסודות (§3.6/§3.14).
+- **3.29 דליפת מטא־מפתח SSH** (`deploy.yml:61`) — fingerprint/גודל/armor + `ssh -v` ל־STEP_SUMMARY. →
+  הסר אחרי ייצוב, השאר רק pass/fail.
 
 ---
 
-## 7. חלק ה׳ — שכתוב "נכון" + מקרי קצה לא טריוויאליים
+## 4. חלק ג׳ — קוד למחיקה / לא רלוונטי
 
-### 7.1 מטריצת הרשאות מפורשת (source of truth יחיד)
-במקום בדיקות role מפוזרות, הגדר טבלה אחת role→resource→action, ומ־RolesGuard (§4.5) אכוף
-אותה. דוגמה חלקית:
-| Resource / Action | SUPER_ADMIN | ORG_ADMIN | MANAGER | PROPERTY_MANAGER | SHIFT_SUPERVISOR | CLEANER |
+| פריט | איפה | למה |
+|------|------|-----|
+| `admin-bypass` endpoint + `getAdminBypassToken()` + קריאת ה־frontend | `auth.controller.ts:48`, `auth.service.ts:49`, `AdminLayout.tsx:85` | backdoor (§3.1/§3.15) |
+| ענף role `'PROPERTY_MANAGER'` ב־`loginAdmin` שלא תואם את שאר הרשימות | `auth.service.ts:17` | דיס-אינפורמציה/ענף מת (רשימות ה־role לא עקביות) |
+| `trigger-daily-report` + `generate-report` + `generateReport()` | `email.controller.ts:88,122`, `daily-report.service.ts:79` | מפנים ל־workflow `daily-report.yml` שלא קיים; הדוח היומי רץ in-app (@Cron). נתיב מת + חשיפת מידע |
+| בלוק הזרקת SMTP + scrubbing | `deploy.sh:144,64-66`, `deploy.yml:43` | DigitalOcean חוסם SMTP; עברנו ל־Gmail API. סודות SMTP מיוצאים ולא נצרכים |
+| `propertyBuildingIds()` | `buildings.service.ts:68` | אין קוראים (orphaned) |
+| `broadcastToAll()` | `events.gateway.ts:67` | אין קוראים |
+| `device:heartbeat` handler | `events.gateway.ts:49` | no-op — שום דבר לא צורך את `client.data.deviceId` |
+| listener ריק `incident:resolved` בקיוסק | `KioskPage.tsx:113` | no-op שגם מדליף socket listener בכל mount |
+| `getKioskStats(restroomId)` שמעביר restroomId לנתיב שמסנן `buildingId` | `analytics.service.ts:325` | תמיד 0 — endpoint שבור למעשה |
+| `SensorReportDto.firmware` | `sensors.service.ts:9` | מתקבל ולא נשמר/מוצג — מטעה |
+| קסט `(device as any).sensorConfig` | `sensors.service.ts:93` | מיותר; מדכא type-checking |
+| dead imports `BadRequestException` | `incidents.controller.ts:1`, `incidents.service.ts:1` | לא בשימוש |
+| מחיקת IncidentAction ידנית לפני incident | `incidents.service.ts:340` | `onDelete:Cascade` כבר קיים (`schema.prisma:291`) — 2 round-trips מיותרים |
+| הערת self-reference ב־`translate-name.ts` | `apps/web/src/lib/translate-name.ts:3` | copy-paste artifact |
+| מסמכי שיווק/PDF | `docs/PRICING.*`, `ANALYTICS_COMPARISON.*`, `ECHO_SHOW_*`, `HARDWARE_*` | לא קוד; לשקול העברה ל־repo/Drive נפרד |
+| `prisma/purge-building-stats.ts` | script חד־פעמי | להעביר ל־`scripts/oneoff/` או למחוק |
+| `kioskTheme` בשירות ללא שדה מקביל ב־controller DTO | `users.service.ts:23` מול `users.controller.ts:59` | param מת בפועל |
+
+> לפני מחיקה — `grep` לשימושים. **אל תמחק migrations.** לוגי connect/disconnect ב־`events.gateway.ts:24,28`
+> → הורד ל־`debug` (רועש).
+
+---
+
+## 5. חלק ד׳ — ניקוי, פישוט וסידור הקוד
+
+### 5.1 שכבת הרשאות תפקיד + טיפוס `AuthUser` (הבסיס לכל השאר)
+בנה `RolesGuard` + `@Roles()` (§3.2) והגדר **מטריצת הרשאות** אחת כמקור אמת:
+
+| Resource/Action | SUPER_ADMIN | ORG_ADMIN | MANAGER | PROPERTY_MANAGER | SHIFT_SUPERVISOR | CLEANER |
 |---|---|---|---|---|---|---|
 | org-settings write | ✓ | ✓ | – | – | – | – |
 | buildings CRUD | ✓ | ✓ | ✓ | scoped | – | – |
-| users create admin | ✓ | ✓ | – | SHIFT only | – | – |
+| create admin (role ≤ שלי) | ✓ | ✓ | – | SHIFT only | – | – |
 | incidents bulk-delete | ✓ | ✓ | ✓ | – | – | – |
-| incidents resolve | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-כתוב בדיקות שמכריחות את המטריצה (§7.6).
+| incident resolve/ack | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-### 7.2 מקרי קצה שכדאי לכסות בשכתוב
-- **`resolveUrgentRange`/טווחי תאריכים** (`incidents.controller.ts:9`) — קלט לא תקין,
-  `to` לפני `from`, timezone (הכל Asia/Jerusalem אבל `new Date(s)` הוא UTC — ראו §7.3).
-- **Refresh token** (`auth.service.ts:189`) — כרגע אין ביטול/rotation. אם refresh נגנב הוא
-  תקף 7 ימים. שקול jti + blocklist, או rotation עם zero-reuse.
-- **`checkout` ללא shift פתוח** (`users.service.ts:214`) — יוצר רשומת checkout מלאכותית;
-  ודא שזה לא מזהם analytics (משך שהייה = 0).
-- **Auto-create של `ROOM-*` devices** (`auth.service.ts:90`) — endpoint ציבורי שיוצר Device.
-  אם `restroomId` שרירותי → יצירת רשומות זבל. הגבל ל־restroom קיים (כבר נבדק) + rate-limit.
-- **`upsert` על deviceCode** — מרוצי־תנאים בין reassign למחיקה; עטוף בטרנזקציה.
-- **push `rotate`/subscribe** — endpoint ישן שכבר לא קיים; טפל ב־410 Gone וניקוי subscriptions מתים.
-
-### 7.3 טיפול נכון ב־Timezone
-כל המערכת עובדת ב־`Asia/Jerusalem` אבל הקוד משתמש ב־`new Date()` / `setHours(0,0,0,0)`
-(למשל `users.service.ts:165,207`) — זה חותך יום לפי timezone של **השרת**, לא ירושלים.
-ב־VPS ב־UTC "תחילת היום" תהיה 03:00 מקומי. עבור ל־חישוב מפורש מול timezone (למשל
-`date-fns-tz` או `Intl`) לכל חיתוכי היום (arrivals, visitCounts, daily-report).
-
-### 7.4 עקביות טרנזקציונית במחיקות מדורגות
-`deleteBuilding` מוחק restrooms/incidents/devices בכמה שלבים לא־אטומיים (`buildings.service.ts:541`).
-כשל באמצע = מצב חלקי. עטוף ב־`prisma.$transaction([...])`, או הגדר `onDelete: Cascade`
-ב־schema והשאר ל־DB. אותו דבר ל־`deleteFloor`/`deleteRestroom`.
-
-### 7.5 ולידציית סביבה ב־bootstrap (fail-fast)
-הוסף בדיקה ש־`JWT_SECRET`, `JWT_REFRESH_SECRET`, `DATABASE_URL`, `VAPID_*` קיימים —
-אחרת `process.exit(1)` עם הודעה ברורה. מונע את התרחיש של §4.3 (fallback secret שקט).
-שקול `@nestjs/config` עם Joi schema.
-
-### 7.6 בדיקות אוטומטיות ל־regressions של אבטחה
-כתוב e2e שמכשילים כל exploit מ־§4:
+והחלף את `@CurrentUser() user: any` בטיפוס משותף (מה־`JwtStrategy.validate`):
+```ts
+export interface AuthUser {
+  id: string; orgId: string; role: Role; name: string;
+  buildingId: string | null; propertyId: string | null; propertyIds: string[];
+}
 ```
-✗ GET  /api/auth/admin-bypass            → 404 (הוסר)
-✗ DELETE /api/buildings/:foreignId       → 404/403 עם token של org אחר
-✗ PATCH /api/users/org-settings          → 403 עם token של CLEANER
-✗ GET  /api/push/test                    → 401 ללא token
-✗ WS join:org עם orgId זר                → אין broadcasts
-✓ כל ה-happy-path (קיוסק/מנקה/אדמין)     → עדיין עובד
-```
-אלו הם גם ה־smoke של §3.5 — הפוך אותם לאוטומטיים כדי שלא ייסגרו ואז ייפתחו שוב.
+זה יחשוף באגי scoping בזמן קומפילציה.
 
-### 7.7 הקשחת CORS ו־headers
-`main.ts:9` — רשימת origin מפורשת (טוב). הוסף `helmet()`, הגדר `credentials` בזהירות,
-והתאם את `events.gateway` (§4.4) לאותה רשימה. ודא שאין `*` בשום מקום ב־production.
+### 5.2 DTOs אמיתיים במקום inline (§3.13)
+לכל `@Body` — class עם `class-validator`; ואז `forbidNonWhitelisted:true`. עדיפות למסלולים ציבוריים.
 
----
+### 5.3 ריכוז לוגיקת ה־scoping הכפולה (מקור לבאגי אבטחה)
+- **PROPERTY_MANAGER scope** (`user.role==='PROPERTY_MANAGER' ? (...) : undefined`) משוכפל מילה־במילה ב־
+  `users.controller.ts:16`, `buildings.controller.ts:17,27`, `incidents.controller.ts:65,108`. → helper אחד `propertyScope(user)`.
+- **בלוק scoping של incidents** (effectiveBuildingId + pmNarrowed) מועתק verbatim בין `findAll` ל־`getUrgent`.
+  → `resolveScopeForUser(user, query)`.
+- **buildIncidentScopeWhere / withOrgSettingsDefaults / escalation-defaults** — ראה §5 של המפות; לרכז כל אחד.
 
-## 8. חלק ו׳ — סדר עבודה מומלץ (Roadmap)
+### 5.4 ריכוז ה־Prisma `include` המקונן
+`restroom→floor→building→organization` חוזר עשרות פעמים (auth ×4, sensors, incidents, buildings).
+`incidents.service.ts` כבר עושה `INCIDENT_INCLUDE` — הרחב לדפוס משותף `DEVICE_LOCATION_INCLUDE`.
+כמו כן: `getMe` מול payload של `generateTokens` בונים DTO משתמש כמעט זהה ידנית (וכבר נבדלים) → mapper אחד.
 
-עבוד בגלים קטנים; כל גל = PR משלו + בדיקות + אימות deploy. **אל תערבב אבטחה עם refactor
-באותו PR** (קשה לבדוק, קשה ל־revert).
+### 5.5 שגיאות HTTP נכונות במקום `throw new Error`
+`users.service.ts:187,203` (checkin/checkout) → `NotFoundException`. `adminUpdate` מקבל `status`
+לא־מאומת → `BadRequestException`. הוסף `ExceptionFilter` גלובלי שממפה שגיאות לא־צפויות ל־500 בלי stack ללקוח.
 
-**גל 0 — עצירת דימום (CRITICAL, דחוף):**
-1. מחק `admin-bypass` (§4.1) + הסר שימוש ב־web.
-2. תקן JWT fallback secret → fail-fast (§4.3).
-3. סגור את ה־IDOR הגרועים: `deleteBuilding`, `adminUpdate`, `updateConfig` (§4.2).
-> אחרי הגל הזה — הרץ §3.5, ודא ש־3 הראשונים נכשלים וש־happy-path עובד, ואמת deploy.
+### 5.6 פיצול קבצים ענקיים
+Backend: `analytics.service.ts` (790, `getOverview` לבד 260 שורות עם recompute כבד — §6),
+`buildings.service.ts` (619 → KioskTemplateService/DeviceHeartbeatService), `incidents.service.ts:resolve`
+(מערבב arrival tracking עם resolution), `daily-report.service.ts:gatherYesterdayData` (~170 שורות).
+Frontend: `AdminSettings.tsx` (1286!), `AdminCleaners.tsx` (1205), `AdminDashboard.tsx` (831),
+`CleanerCheckIn.tsx` (483, state machine בן 10 מצבים).
 
-**גל 1 — הרשאות (HIGH):**
-4. בנה `RolesGuard` + `@Roles` + מטריצת §7.1, החל על כל ה־controllers.
-5. אמת WebSocket ב־handshake + הסר `origin:'*'` (§4.4).
-6. הקשח push endpoints (§4.6).
+### 5.7 כפילות ענקית ב־frontend (חיסכון אמיתי)
+- **ליבת הקיוסק** (load device/issues, online/offline+409, heartbeat 60s, wake-lock, auto-reload 6h,
+  poll org-settings 5min) **מועתקת לכל 5 תבניות ה־theme** (~63 מופעים). → `useKioskCore()`/`KioskContainer`
+  שמחזיק דאטה+דיווח+heartbeat+offline, והתבניות נשארות presentational.
+- `CleanerPage` ו־`SupervisorPage` ~90% זהים → קומפוננטה אחת עם `canResolve`.
+- `CleanerLoginPage` ו־`SupervisorLoginPage` כמעט byte-identical → `IdNumberLoginPage` עם `redirectTo`/icon.
+- בלוק שמירת session (setItem tokens/user, queryClient.clear) ×3 → `persistSession(data)`.
+- `useClock()`/`timeAgo()` ממומשים ב־4+ קבצים → ל־`lib/`. `IncidentCard` → shared. מפתח VAPID קשיח בשני מקומות → מקור יחיד.
 
-**גל 2 — עמידות (HIGH/MEDIUM):**
-7. הוסף `@nestjs/throttler` (§4.7) — ודא `deploy.sh` install.
-8. DTOs + `forbidNonWhitelisted:true` למסלולים ציבוריים (§6.2, §4.10).
-9. צמצם enumeration ב־verify/login (§4.8).
-
-**גל 3 — ניקוי וסידור (לא־אבטחה):**
-10. טיפוס `AuthUser`, ריכוז scoping (§6.1, §6.3).
-11. ריכוז `include`, שגיאות HTTP, פיצול שירותים (§6.4-6.6).
-12. Timezone + טרנזקציות במחיקות (§7.3, §7.4).
-
-**גל 4 — רשת ביטחון:**
-13. בדיקות e2e ל־regressions (§7.6) — שיהיו ב־CI לפני כל deploy.
-14. helmet + env validation (§7.5, §7.7).
+### 5.8 עקביות guards
+הסר `@UseGuards(JwtAuthGuard)` הכפולים (ה־guard כבר גלובלי) — למשל `users.controller.ts:63,69,75,138,144`.
+משאירים `@Public()` רק היכן שבאמת ציבורי. פחות רעש = פחות סיכוי לפספס endpoint לא מוגן.
 
 ---
 
-## 9. נספח — Checklist מהיר
+## 6. חלק ה׳ — תקינות ומקרי קצה לא טריוויאליים
 
-**לפני כל push:**
-- [ ] `cd apps/server && npx tsc --noEmit`
-- [ ] `cd apps/web && npx tsc -b`
-- [ ] חבילה חדשה? `deploy.sh` מריץ `pnpm install --frozen-lockfile` לפני build
-- [ ] שינוי schema? רק `prisma migrate` — אף פעם `db push --accept-data-loss`
-- [ ] שינוי endpoint/אבטחה? הרצתי את exploits §3.5, נכשלים כמצופה
-- [ ] happy-path (קיוסק/מנקה/אדמין) עדיין עובד
+> אלו באגים אמיתיים (לא אבטחה) שהסוכנים איתרו עם קובץ:שורה. **הבעיה הגדולה ביותר: timezone** —
+> production רץ ב־UTC (אין `TZ`), ו־`daily-report.service` כבר עוקף זאת ידנית עם `toLocaleString`,
+> אבל שאר הקוד משתמש ב־`new Date()`/`setHours(0,0,0,0)` הגולמיים.
 
-**אחרי merge ל־main:**
-- [ ] המתן ~30ש, WebFetch ל־`deploy.yml` runs — הריצה האחרונה ✓
-- [ ] אם נכשל — אבחן לפי duration (CLAUDE.md), תקן, אמת שוב
+### 6.1 באגי Timezone (UTC במקום Asia/Jerusalem)
+- **Analytics לפי שעה/יום** (`analytics.service.ts:211,270`) — `getHours()`/`getDay()` על UTC. אירוע ב־01:30
+  ירושלים (=22:30 UTC אתמול) נספר בשעה 22 וביום הקודם. → חשב wall-clock ב־tz הארגון.
+- **גבול "היום"** (`analytics.service.ts:341,92`; `sensors.service.ts:118,165,197`; `incidents.getPositiveFeedback:347`)
+  — `setHours(0,0,0,0)` = חצות UTC. בין חצות ירושלים לחצות UTC (2-3 שעות ראשונות של היום המקומי) "היום"
+  עדיין לא נפתח → מציג 0/זנב של אתמול. → helper משותף `startOfDayInTz('Asia/Jerusalem')`.
+- **checkout במשמרת לילה** (`users.service.ts:207`) — צ'ק־אין ב־20:00 וצ'ק־אאוט ב־02:30 ירושלים: ה־arrival
+  לא נמצא (הוא לפני `todayStart` שכבר התגלגל ל־UTC חדש) → נוצרת רשומת checkout רפאים וה־arrival האמיתי
+  נשאר `leftAt=null` לנצח. → חפש open shift לפי `leftAt:null` בחלון ~18ש, לא לפי civil-day.
 
-**סטטוס אבטחה (עדכן תוך כדי טיפול):**
-- [ ] 🔴 admin-bypass הוסר
-- [ ] 🔴 IDOR (buildings/incidents/sensors) — org-ownership נאכף
-- [ ] 🔴 JWT fallback secret → fail-fast
-- [ ] 🟠 RolesGuard + מטריצת הרשאות
-- [ ] 🟠 WebSocket מאומת + CORS מוקשח
-- [ ] 🟠 push endpoints מוגנים
-- [ ] 🟠 rate limiting
-- [ ] 🟡 DTO validation + forbidNonWhitelisted
-- [ ] 🟡 enumeration/login messages
-- [ ] 🟡 helmet + env validation
+### 6.2 מרוצי־תנאים וכפילויות
+- **`checkin()` בלי dedup** (`users.service.ts:189`) — מכניס arrival בכל קריאה; מנקה/קיוסק חוזר יוצר 3 רשומות
+  פתוחות. `getSummary` סופר **שורות** ולא מנקים ייחודיים (`analytics.service.ts:96`). → refresh open arrival
+  קיים; `count distinct userId`.
+- **`create()` dedup הוא TOCTOU** (`incidents.service.ts:52-71`) — read-then-write; שני דיווחים במקביל עם
+  clientId שונה עוברים את בדיקת 2־הדקות ושניהם יוצרים OPEN. → partial unique index על `(restroomId, issueTypeId)
+  WHERE status='OPEN'` או check+create בטרנזקציה.
+- **`resolve()` sibling loop לא אטומי** (`incidents.service.ts:472`) — N updates רצופים; restart/נפילת DB באמצע
+  → חלק OPEN בעוד ה־UI מציג "סגור". → `updateMany` + פעולות ב־`$transaction`.
+
+### 6.3 מחיקות מדורגות לא־אטומיות + FK חסרים
+`deleteBuilding/Floor/Restroom` (`buildings.service.ts:541+`) מוחקים אירועים ואז parent — לא בטרנזקציה →
+מצב חלקי. בנוסף `CleanerArrival.restroomId/buildingId` הם עמודות String ללא `@relation`/index
+(`schema.prisma:179-180`) → רשומות יתומות אחרי מחיקה. → עטוף ב־`$transaction`; שקול `onDelete:SetNull`/`Cascade` ב־schema.
+
+### 6.4 ולידציית מספרים/תאריכים
+`incidents.controller.ts:80` — `+limit`/`+offset` ללא גבולות: `?limit=abc` → `take:NaN` → 500;
+`?limit=-1` → התנהגות שקטה. `create` עושה `new Date(reportedAt)` ללא ולידציה. → `@Query` DTO עם
+`@Type(()=>Number) @IsInt() @Min @Max`, `@IsISO8601` לתאריכים.
+
+### 6.5 אחרים
+- **`adminUpdate` תמיד רושם `ACKNOWLEDGED`** (`incidents.service.ts:304`) — גם ל־RESOLVED; ו־`status` לא־מאומת
+  ל־Prisma → 500. → גזור actionType מהסטטוס + ולידציית enum.
+- **refresh interceptor בלי single-flight** (`api.ts:21`) — כמה 401 מקבילים → כמה refresh → rotation מבטל זה
+  את זה → logout ספוראדי. → cache של ה־refresh promise; redirect לפי role.
+- **N+1**: `getMismatches` (`users.service.ts:308`, count-per-arrival בלולאה), `kioskDiagnose`
+  (`buildings.service.ts` findMany×2 per building), `scheduler.runEscalation` (טוען כל incident פתוח בכל org כל 60ש),
+  `analytics.getOverview` (`computeRoomScores` ~180× על אותו דאטה ל־90 יום). → groupBy/aggregate + memoize.
+- **`computeRoomScores` נרמול תלוי־קבוצה** (`analytics.service.ts:389`) — כשנקרא per-day הבסיס משתנה כל יום →
+  ציונים יומיים לא ברי־השוואה; ימים ריקים מקבלים 100 → מנפח ממוצעים.
 
 ---
 
-> **תזכורת אחרונה לעצמי:** המסמך הזה הוא *מפה*, לא *הרשאה*. אל תבצע שינוי אבטחה מבלי
-> לבדוק אותו מול production flows אמיתיים, ואל תדחוף ל־main בלי אימות deploy. עדיף
-> חמישה PR-ים קטנים ובטוחים על פני refactor ענק אחד.
+## 7. חלק ו׳ — סדר עבודה מומלץ (Roadmap)
+
+גלים קטנים; כל גל = PR משלו + בדיקות (§2.6) + אימות deploy. **אל תערבב אבטחה עם refactor באותו PR.**
+
+**גל 0 — עצירת דימום (CRITICAL, דחוף):** 3.1 (מחק backdoor + §3.15) · 3.6 (JWT fail-fast) ·
+3.4 (+3.8 core IDOR) · 3.3 (`assertCanManageUser` אוכף org לכל תפקיד).
+→ הרץ §2.5, ודא ש־1-4 נכשלים ו־happy-path עובד, אמת deploy.
+
+**גל 1 — הרשאות (CRITICAL/HIGH):** 3.2 (RolesGuard + מטריצת §5.1) · 3.5 (WebSocket handshake auth) ·
+3.9+3.10 (הקשח push/diagnose) · 3.11 (analytics org-scope).
+
+**גל 2 — עמידות (HIGH):** 3.12 (throttler + body limit) · 3.13 (DTOs + forbidNonWhitelisted) ·
+3.14 (env validation) · 3.7 (cleaner login: orgId חובה + 2FA + lockout).
+
+**גל 3 — MEDIUM/LOW:** 3.16-3.29 לפי סדר — reassign, incident-actions auth, sync caps, mass-assign,
+CRON header, helmet, file perms, localStorage→cookie, CSV neutralize, refresh rotation.
+
+**גל 4 — תקינות (§6):** timezone helper משותף → החל בכל מקום · טרנזקציות במחיקות/resolve ·
+dedup ב־checkin/create · ולידציית limit/date · N+1.
+
+**גל 5 — ניקוי (§4,§5):** מחק קוד מת · טיפוס `AuthUser` · ריכוז scoping/include/defaults ·
+פיצול קבצים ענקיים · `useKioskCore` וכפילויות frontend.
+
+**גל 6 — רשת ביטחון:** בדיקות e2e (§2.6) ב־CI לפני כל deploy.
+
+---
+
+## 8. נספח — Checklist מהיר
+
+**לפני כל push:** `tsc --noEmit` (server) · `tsc -b` (web) · חבילה חדשה→`deploy.sh` install ·
+schema→`prisma migrate` בלבד · נגעת ב־endpoint→הרץ §2.5 · happy-path עובד.
+
+**אחרי merge ל־main:** המתן ~30ש · WebFetch ל־`deploy.yml` runs → האחרונה ✓ · נכשל→אבחן לפי duration (CLAUDE.md).
+
+**סטטוס אבטחה (עדכן תוך כדי):**
+- [ ] 🔴 3.1 admin-bypass הוסר (endpoint + frontend)
+- [ ] 🔴 3.2 RolesGuard + מטריצת הרשאות + ולידציית role
+- [ ] 🔴 3.3 `assertCanManageUser` אוכף org לכל תפקיד
+- [ ] 🔴 3.4/3.8 IDOR — org-ownership בכל מוטציה/קריאה לפי id
+- [ ] 🔴 3.5 WebSocket handshake auth + CORS מוקשח
+- [ ] 🟠 3.6/3.14/3.28 JWT/env fail-fast
+- [ ] 🟠 3.7 cleaner login: orgId חובה + 2FA + lockout
+- [ ] 🟠 3.9/3.10 push/diagnose/kiosk-diagnose מוגנים+scoped
+- [ ] 🟠 3.11 analytics org-scope
+- [ ] 🟠 3.12 rate limiting + body limit
+- [ ] 🟠 3.13 DTO validation + forbidNonWhitelisted
+- [ ] 🟡 3.16-3.26 (reassign/incident-auth/sync/mass-assign/CRON/helmet/perms/localStorage/CSV)
+- [ ] 🟢 3.27/3.29 refresh rotation + SSH log hygiene
+- [ ] 🧪 §2.6 בדיקות רגרסיה ב־CI
+
+---
+
+> **תזכורת אחרונה לעצמי:** המסמך הוא *מפה*, לא *הרשאה*. חלק מהממצאים לא עברו אימות אדוורסרי מלא
+> (ההרצה נקטעה) — אמת כל אחד מול הקוד לפני שינוי. אל תבצע תיקון אבטחה בלי לבדוק אותו מול production
+> flows אמיתיים, ואל תדחוף ל־main בלי אימות deploy. עדיף גלים קטנים ובטוחים על refactor ענק אחד.
