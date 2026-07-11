@@ -20,38 +20,17 @@ import KioskRemoved from './KioskRemoved';
  * Listens for `kiosk:config-changed` over Socket.IO so that admin theme
  * changes propagate to the kiosk in real time without requiring a manual
  * refresh on the device.
+ *
+ * The radar presence-sensor status ("חיישן פעיל/מנותק") is deliberately NOT
+ * shown on the public kiosk screen — it used to be a fixed badge in the bottom
+ * corner, but it overlapped the "🧹 צוות" team button and blocked taps on it.
+ * The status now lives inside the team interface, on the manager screen (see
+ * CleanerCheckIn), where only staff see it.
  */
-/** Tiny fixed badge overlaid on every kiosk template: is a radar presence
- *  sensor paired to this restroom, and is it alive. */
-function SensorBadge({ online }: { online: boolean }) {
-  return (
-    <div
-      style={{
-        position: 'fixed', bottom: 8, insetInlineStart: 8, zIndex: 50,
-        display: 'flex', alignItems: 'center', gap: 5,
-        padding: '3px 8px', borderRadius: 999,
-        background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
-        fontSize: 10, color: online ? '#4ade80' : '#f87171',
-        pointerEvents: 'none',
-      }}
-    >
-      <span
-        style={{
-          width: 6, height: 6, borderRadius: '50%',
-          background: online ? '#4ade80' : '#f87171',
-          boxShadow: online ? '0 0 6px rgba(74,222,128,0.8)' : 'none',
-        }}
-      />
-      📡 {online ? 'חיישן פעיל' : 'חיישן מנותק'}
-    </div>
-  );
-}
-
 export default function KioskDispatcher() {
   useScrollLock(); // wall tablets must never bounce/pan
   const { deviceCode } = useParams<{ deviceCode: string }>();
   const [theme, setTheme] = useState<string | null>(null);
-  const [sensor, setSensor] = useState<{ present: boolean; online: boolean } | null>(null);
 
   useEffect(() => {
     if (!deviceCode) {
@@ -63,7 +42,6 @@ export default function KioskDispatcher() {
       .then(r => {
         if (cancelled) return;
         setTheme(r.data?.theme ?? 'default');
-        if (r.data?.sensor?.present) setSensor(r.data.sensor);
       })
       .catch(err => {
         if (cancelled) return;
@@ -73,15 +51,6 @@ export default function KioskDispatcher() {
       });
     return () => { cancelled = true; };
   }, [deviceCode]);
-
-  // Radar reports flow through the restroom WS room this kiosk already joins —
-  // any report means the sensor is alive right now.
-  useEffect(() => {
-    const socket = getSocket();
-    const onPresence = () => setSensor(s => (s ? { ...s, online: true } : { present: true, online: true }));
-    socket.on('sensor:presence', onPresence);
-    return () => { socket.off('sensor:presence', onPresence); };
-  }, []);
 
   // React to admin template changes pushed from the server.
   useEffect(() => {
@@ -108,17 +77,11 @@ export default function KioskDispatcher() {
   }
   if (theme === 'removed') return <KioskRemoved />;
 
-  const page =
+  return (
     theme === 'neon' ? <KioskPageNeon /> :
     theme === 'neon-pro' ? <KioskPageNeonPro /> :
     theme === 'neon-image' ? <KioskPageNeonImage /> :
     theme === 'neon-video' ? <KioskPageNeonVideo /> :
-    <KioskPage />;
-
-  return (
-    <>
-      {page}
-      {sensor?.present && <SensorBadge online={sensor.online} />}
-    </>
+    <KioskPage />
   );
 }
