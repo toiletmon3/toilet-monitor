@@ -3,6 +3,7 @@ import { AnalyticsService, AnalyticsScope } from './analytics.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles, ADMIN_PM_ROLES } from '../../common/decorators/roles.decorator';
 
 /**
  * Resolves a `[from, to]` date range from query params.
@@ -28,6 +29,7 @@ function resolveRange(days: string | undefined, from: string | undefined, to: st
   return { from: new Date(Date.now() - d * 24 * 60 * 60 * 1000), to: new Date() };
 }
 
+@Roles(...ADMIN_PM_ROLES)
 @UseGuards(JwtAuthGuard)
 @Controller('analytics')
 export class AnalyticsController {

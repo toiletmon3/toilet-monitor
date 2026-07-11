@@ -376,8 +376,9 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
    * for quick copy-paste-a-link diagnosis (same spirit as /api/email/diagnose).
    * Shows the full resolution chain: device → building → org default.
    */
-  async kioskDiagnose() {
+  async kioskDiagnose(orgId: string) {
     const devices = await this.prisma.device.findMany({
+      where: { restroom: { floor: { building: { orgId } } } },
       include: {
         kioskTemplate: { select: { name: true, theme: true, buttons: true } },
         restroom: {
@@ -393,7 +394,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
       orderBy: { deviceCode: 'asc' },
     });
     const orgDefaults = await this.prisma.kioskTemplate.findMany({
-      where: { isDefault: true },
+      where: { isDefault: true, orgId },
       select: { orgId: true, name: true, theme: true, buttons: true },
     });
 

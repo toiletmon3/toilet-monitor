@@ -3,7 +3,13 @@ import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles, ADMIN_PM_ROLES } from '../../common/decorators/roles.decorator';
 
+// Every guarded route here is an admin/staff-management surface; only the
+// @Public() routes (verify-*/checkin/checkout, used by the anonymous kiosk) are
+// reachable without a staff role. This blocks a CLEANER/SHIFT_SUPERVISOR token
+// (obtained via ID-only login) from creating admins or managing other users.
+@Roles(...ADMIN_PM_ROLES)
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {

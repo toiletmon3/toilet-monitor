@@ -14,6 +14,7 @@ import { PushModule } from './modules/push/push.module';
 import { EmailModule } from './modules/email/email.module';
 import { SensorsModule } from './modules/sensors/sensors.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
   imports: [
@@ -39,7 +40,10 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     SensorsModule,
   ],
   providers: [
+    // Order matters: JwtAuthGuard runs first and populates request.user,
+    // then RolesGuard enforces @Roles() against the verified user.role.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}

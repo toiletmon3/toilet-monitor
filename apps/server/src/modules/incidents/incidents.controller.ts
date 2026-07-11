@@ -3,6 +3,7 @@ import { IncidentsService } from './incidents.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles, ADMIN_PM_ROLES } from '../../common/decorators/roles.decorator';
 import { IncidentStatus } from '@prisma/client';
 
 /** Resolve a { from?, to? } window from the dashboard range params (days=N OR from+to). */
@@ -150,6 +151,7 @@ export class IncidentsController {
     return this.incidentsService.resolve(id, body.cleanerIdNumber, body.notes);
   }
 
+  @Roles(...ADMIN_PM_ROLES)
   @UseGuards(JwtAuthGuard)
   @Delete('bulk')
   deleteBulk(
@@ -160,6 +162,7 @@ export class IncidentsController {
     return this.incidentsService.deleteBulk(user.orgId, scope, olderThanDays ? +olderThanDays : undefined);
   }
 
+  @Roles(...ADMIN_PM_ROLES)
   @UseGuards(JwtAuthGuard)
   @Patch(':id/admin-update')
   adminUpdate(

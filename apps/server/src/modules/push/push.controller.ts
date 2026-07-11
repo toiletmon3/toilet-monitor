@@ -1,6 +1,9 @@
-import { Controller, Post, Delete, Body, Get } from '@nestjs/common';
+import { Controller, Post, Delete, Body, Get, UseGuards } from '@nestjs/common';
 import { PushService } from './push.service';
 import { Public } from '../../common/decorators/public.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Roles, ADMIN_ROLES } from '../../common/decorators/roles.decorator';
 
 @Controller('push')
 export class PushController {
@@ -29,18 +32,22 @@ export class PushController {
     return this.pushService.unsubscribe(body.endpoint);
   }
 
-  /** Push readiness overview — VAPID status + per-user subscriptions (redacted) */
-  @Public()
+  /** Push readiness overview — VAPID status + per-user subscriptions (redacted).
+   *  Admin-only and scoped to the caller's org (was a public cross-tenant roster leak). */
+  @Roles(...ADMIN_ROLES)
+  @UseGuards(JwtAuthGuard)
   @Get('diagnose')
-  diagnose() {
-    return this.pushService.diagnose();
+  diagnose(@CurrentUser() user: any) {
+    return this.pushService.diagnose(user.orgId);
   }
 
-  /** Send a real test notification to every subscribed device and report per-device results */
-  @Public()
+  /** Send a real test notification to this org's subscribed devices and report per-device results.
+   *  Admin-only and org-scoped (was public: anyone could blast every device in every org). */
+  @Roles(...ADMIN_ROLES)
+  @UseGuards(JwtAuthGuard)
   @Get('test')
-  test() {
-    return this.pushService.sendTestToAll();
+  test(@CurrentUser() user: any) {
+    return this.pushService.sendTestToAll(user.orgId);
   }
 
   /**
