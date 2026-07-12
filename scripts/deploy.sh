@@ -280,13 +280,8 @@ NGINX_ROOT="/var/www/toilet"
 
 mkdir -p "$NGINX_ROOT"
 
-# Legacy duckdns cert paths — used ONLY as a transition fallback while the
-# cleanco.ai cert has not been issued yet. The duckdns domain itself was
-# decommissioned (07/2026) and is never served once cleanco.ai is live.
-SSL_CERT="/etc/letsencrypt/live/toiletcleanpro.duckdns.org/fullchain.pem"
-SSL_KEY="/etc/letsencrypt/live/toiletcleanpro.duckdns.org/privkey.pem"
-
-# cleanco.ai — the ONLY production domain.
+# cleanco.ai — the ONLY production domain. (The legacy duckdns domain was
+# decommissioned 07/2026 and its DNS record deleted — no fallback exists.)
 CLEANCO_CERT="/etc/letsencrypt/live/cleanco.ai/fullchain.pem"
 CLEANCO_KEY="/etc/letsencrypt/live/cleanco.ai/privkey.pem"
 ACME_WEBROOT="/var/www/certbot"
@@ -423,65 +418,6 @@ server {
     }
 }
 NGINXEOF
-elif [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
-  # TRANSITION ONLY: cleanco.ai cert not issued yet — keep the site alive on
-  # the legacy cert so the certbot webroot issuance below can succeed; the
-  # next deploy after issuance switches to the locked-down config above.
-  echo "WARNING: cleanco.ai cert missing — serving transition config on legacy cert"
-  cat > "$NGINX_CONF_DIR/toilet" << NGINXEOF
-server {
-    listen 80;
-    server_name toiletcleanpro.duckdns.org cleanco.ai www.cleanco.ai;
-
-    # Let's Encrypt HTTP-01 challenges must be served, not redirected
-    location ^~ /.well-known/acme-challenge/ {
-        root $ACME_WEBROOT;
-    }
-
-    location / {
-        return 301 https://\$host\$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl http2;
-    server_name toiletcleanpro.duckdns.org;
-
-    ssl_certificate $SSL_CERT;
-    ssl_certificate_key $SSL_KEY;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    root /var/www/toilet;
-    index index.html;
-
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-
-    location /api/ {
-        proxy_pass http://localhost:3001/;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-
-    location /socket.io/ {
-        proxy_pass http://localhost:3001/socket.io/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-    }
-
-    location ~* \.(js|css|png|svg|ico|woff2)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
-NGINXEOF
 else
   echo "No SSL certs found — writing HTTP-only nginx config"
   cat > "$NGINX_CONF_DIR/toilet" << 'NGINXEOF'
@@ -576,6 +512,24 @@ if [ ! -f "$CLEANCO_CERT" ]; then
   else
     echo "WARNING: cleanco.ai cert issuance failed (DNS not propagated yet?) — will retry on next deploy"
   fi
+fi
+
+# --- One-time cleanup of decommissioned duckdns leftovers (idempotent) ---
+# The DNS record was deleted from the DuckDNS account (12.07.2026): remove the
+# IP-update cron + script, and the legacy certificate so certbot stops trying
+# to renew a domain that no longer resolves.
+if crontab -l 2>/dev/null | grep -q "duck.sh"; then
+  crontab -l 2>/dev/null | grep -v "duck.sh" | crontab -
+  echo "duckdns cleanup: removed duck.sh IP-update cron"
+fi
+if [ -d "/root/duckdns" ]; then
+  rm -rf /root/duckdns
+  echo "duckdns cleanup: removed /root/duckdns"
+fi
+if [ -d "/etc/letsencrypt/live/toiletcleanpro.duckdns.org" ]; then
+  certbot delete --cert-name toiletcleanpro.duckdns.org --non-interactive \
+    && echo "duckdns cleanup: deleted legacy certificate" \
+    || echo "duckdns cleanup: certbot delete failed (will retry next deploy)"
 fi
 
 # --- Install nginx watchdog cron (runs every 5 min) ---
