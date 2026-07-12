@@ -125,7 +125,7 @@ export class IncidentsService {
   }
 
   async syncBatch(dto: {
-    deviceId: string;
+    deviceId?: string;
     incidents: Array<{ restroomId: string; issueTypeId: string; deviceId: string; reportedAt: string; clientId: string }>;
     actions: Array<{ clientId?: string; incidentClientId: string; actionType: string; cleanerIdNumber?: string; notes?: string; performedAt: string }>;
   }) {
