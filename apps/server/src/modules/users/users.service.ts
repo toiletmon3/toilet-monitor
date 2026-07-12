@@ -59,8 +59,14 @@ export class UsersService {
     const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
     const current = (org?.settings ?? {}) as any;
     // `name` is a top-level column on Organization, not part of the settings JSON.
-    const { name, ...settingsPatch } = patch;
-    const updated = { ...current, ...settingsPatch };
+    // Merge ONLY known settings keys (never spread the raw body) so a client
+    // can't inject arbitrary keys/values into the persisted settings blob.
+    const { name } = patch;
+    const ALLOWED_SETTINGS = ['kioskLang', 'cleanerLang', 'kioskTheme', 'timezone', 'dailyReportHour', 'dailyReportEnabled'] as const;
+    const updated: any = { ...current };
+    for (const key of ALLOWED_SETTINGS) {
+      if ((patch as any)[key] !== undefined) updated[key] = (patch as any)[key];
+    }
     const data: any = { settings: updated };
     if (typeof name === 'string' && name.trim()) data.name = name.trim();
     const saved = await this.prisma.organization.update({ where: { id: orgId }, data, select: { name: true } });

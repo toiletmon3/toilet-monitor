@@ -241,10 +241,18 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async updateTemplate(templateId: string, dto: { name?: string; buttons?: any[]; theme?: string; iconScale?: number; ledSnake?: boolean; statsLayout?: any }) {
+    // Build an explicit update payload with only the allowed columns — never
+    // spread the raw request body into Prisma (would let a caller set e.g. orgId
+    // and re-parent the template to another organization).
+    const data: any = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.buttons !== undefined) data.buttons = dto.buttons;
+    if (dto.theme !== undefined) data.theme = dto.theme;
+    if (dto.ledSnake !== undefined) data.ledSnake = dto.ledSnake;
+    if (dto.statsLayout !== undefined) data.statsLayout = dto.statsLayout;
     // Clamp the icon scale to a sane range so the kiosk can never be made unusable.
-    const data: typeof dto = { ...dto };
-    if (typeof data.iconScale === 'number') {
-      data.iconScale = Math.min(2.5, Math.max(0.5, data.iconScale));
+    if (typeof dto.iconScale === 'number') {
+      data.iconScale = Math.min(2.5, Math.max(0.5, dto.iconScale));
     }
     const template = await this.prisma.kioskTemplate.update({ where: { id: templateId }, data });
     await this.notifyKiosksOfTemplate(templateId);

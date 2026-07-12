@@ -56,30 +56,11 @@ jobs:
           HOST=$(printf '%s' "${{ secrets.SSH_HOST }}" | tr -d '\r\n' | xargs)
           USER=$(printf '%s' "${{ secrets.SSH_USER }}" | tr -d '\r\n' | xargs)
 
-          # === Surface every secret length and key fingerprint to step summary ===
+          # === Basic sanity only — never surface key material/fingerprint ===
+          # (KEY_BYTES is kept solely for the length sanity-check below.)
           KEY_BYTES=$(stat -c%s ~/.ssh/deploy_key 2>/dev/null || echo 0)
-          KEY_FIRST=$(head -1 ~/.ssh/deploy_key)
-          KEY_LAST=$(tail -1 ~/.ssh/deploy_key)
-          KEY_FPR=$(ssh-keygen -l -f ~/.ssh/deploy_key 2>&1 || echo "fingerprint-failed")
-
-          {
-            echo "## SSH connection diagnostics"
-            echo ""
-            echo "| field | value |"
-            echo "|---|---|"
-            echo "| SSH_HOST len | ${#HOST} (\`$HOST\`) |"
-            echo "| SSH_USER len | ${#USER} (\`$USER\`) |"
-            echo "| SSH_PRIVATE_KEY bytes | $KEY_BYTES |"
-            echo "| key first line | \`$KEY_FIRST\` |"
-            echo "| key last line | \`$KEY_LAST\` |"
-            echo "| key fingerprint | \`$KEY_FPR\` |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
           echo "=== Diagnostics ==="
-          echo "HOST='$HOST' (len=${#HOST})"
-          echo "USER='$USER' (len=${#USER})"
-          echo "KEY bytes=$KEY_BYTES first='$KEY_FIRST' last='$KEY_LAST'"
-          echo "KEY fingerprint: $KEY_FPR"
+          echo "HOST len=${#HOST}  USER len=${#USER}  KEY bytes=$KEY_BYTES"
 
           if [ -z "$USER" ]; then
             echo "::error::SSH_USER secret is empty — set it in repo Settings → Secrets → Actions"
