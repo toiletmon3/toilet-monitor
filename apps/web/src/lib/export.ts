@@ -37,6 +37,20 @@ export interface ExportSection {
   rows: (string | number)[][];
 }
 
+/**
+ * Neutralize CSV/formula injection: a spreadsheet treats a cell starting with
+ * = + - @ (or tab/CR) as a formula and executes it on open (e.g.
+ * =HYPERLINK(...) exfiltration, legacy =cmd|... RCE). DB-sourced strings
+ * (names, issue types) are user-controllable, so prefix an apostrophe to force
+ * the value to be treated as literal text.
+ */
+function csvSafe(value: string | number): string | number {
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(value)) {
+    return `'${value}`;
+  }
+  return value;
+}
+
 function buildFilename(prefix: string, ext: string): string {
   const date = new Date().toISOString().slice(0, 10);
   return `${prefix}_${date}.${ext}`;
@@ -46,7 +60,8 @@ export function exportToExcel(sections: ExportSection[], filenamePrefix = 'analy
   const wb = XLSX.utils.book_new();
 
   for (const section of sections) {
-    const data = [section.headers, ...section.rows];
+    // Sanitize every cell (headers + body) against formula injection.
+    const data = [section.headers.map(csvSafe), ...section.rows.map(r => r.map(csvSafe))];
     const ws = XLSX.utils.aoa_to_sheet(data);
 
     const colWidths = section.headers.map((h, i) => {

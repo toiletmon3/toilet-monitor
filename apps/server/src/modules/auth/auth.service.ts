@@ -2,7 +2,10 @@ import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+
+const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
@@ -48,7 +51,7 @@ export class AuthService {
     });
     if (!user) throw new UnauthorizedException('NOT_FOUND');
 
-    const tokens = this.generateTokens(user);
+    const tokens = await this.generateTokens(user);
     const orgSettings = (user.organization?.settings ?? {}) as any;
     const effectiveLang = orgSettings.cleanerLang ?? user.preferredLang ?? 'he';
     const effectiveTimezone = orgSettings.timezone ?? 'Asia/Jerusalem';
@@ -161,12 +164,19 @@ export class AuthService {
     };
   }
 
-  private generateTokens(user: any) {
+  private async generateTokens(user: any) {
+    const jti = randomUUID();
     const payload = { sub: user.id, orgId: user.orgId, role: user.role, buildingId: user.buildingId ?? null };
     const accessToken = this.jwt.sign(payload);
-    const refreshToken = this.jwt.sign(payload, {
+    const refreshToken = this.jwt.sign({ ...payload, jti }, {
       secret: this.config.get('JWT_REFRESH_SECRET'),
       expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN', '7d'),
+    });
+    // Track this refresh session so it can be rotated on refresh and revoked on
+    // logout. The stored expiry is only used for later cleanup — the JWT's own
+    // exp is the authoritative lifetime.
+    await this.prisma.refreshToken.create({
+      data: { jti, userId: user.id, expiresAt: new Date(Date.now() + REFRESH_TTL_MS) },
     });
     return {
       accessToken,
@@ -187,15 +197,39 @@ export class AuthService {
   }
 
   async refreshToken(token: string) {
+    let payload: any;
     try {
-      const payload = this.jwt.verify(token, {
-        secret: this.config.get('JWT_REFRESH_SECRET'),
-      });
-      const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
-      if (!user || !user.isActive) throw new UnauthorizedException();
-      return this.generateTokens(user);
+      payload = this.jwt.verify(token, { secret: this.config.get('JWT_REFRESH_SECRET') });
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
+
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user || !user.isActive) throw new UnauthorizedException('Invalid refresh token');
+
+    if (payload.jti) {
+      // New-format token: it must still map to a live session. Deleting it here
+      // ROTATES the session — a replayed (already-used) token then finds no row
+      // and is rejected. deleteMany is atomic, so two concurrent refreshes with
+      // the same jti can't both succeed.
+      const { count } = await this.prisma.refreshToken.deleteMany({ where: { jti: payload.jti } });
+      if (count === 0) throw new UnauthorizedException('Refresh token already used or revoked');
+    }
+    // Tokens issued before this change carry no jti — grandfather them once and
+    // upgrade to a tracked, rotating session on this refresh.
+    return this.generateTokens(user);
+  }
+
+  /** Revoke the presented refresh session (logout). No-op for an unknown/expired token. */
+  async logout(token: string) {
+    try {
+      const payload: any = this.jwt.verify(token, { secret: this.config.get('JWT_REFRESH_SECRET') });
+      if (payload?.jti) {
+        await this.prisma.refreshToken.deleteMany({ where: { jti: payload.jti } });
+      }
+    } catch {
+      // logging out with an invalid/expired token is a successful no-op
+    }
+    return { ok: true };
   }
 }
