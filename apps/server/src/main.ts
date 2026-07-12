@@ -19,9 +19,9 @@ async function bootstrap() {
   }
 
   app.enableCors({
+    // duckdns (the legacy domain) was decommissioned 07/2026 — cleanco.ai only
     origin: [
       process.env.FRONTEND_URL ?? 'http://localhost:5173',
-      'https://toiletcleanpro.duckdns.org',
       'https://cleanco.ai',
       'https://www.cleanco.ai',
     ],

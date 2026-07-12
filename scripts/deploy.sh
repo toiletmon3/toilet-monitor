@@ -280,13 +280,13 @@ NGINX_ROOT="/var/www/toilet"
 
 mkdir -p "$NGINX_ROOT"
 
-# Detect SSL cert paths (Let's Encrypt via certbot)
+# Legacy duckdns cert paths — used ONLY as a transition fallback while the
+# cleanco.ai cert has not been issued yet. The duckdns domain itself was
+# decommissioned (07/2026) and is never served once cleanco.ai is live.
 SSL_CERT="/etc/letsencrypt/live/toiletcleanpro.duckdns.org/fullchain.pem"
 SSL_KEY="/etc/letsencrypt/live/toiletcleanpro.duckdns.org/privkey.pem"
 
-# cleanco.ai — the new primary domain. Its cert is issued below (webroot
-# challenge) on the first deploy after the DNS A records point here; until
-# then the site keeps serving on the duckdns domain only.
+# cleanco.ai — the ONLY production domain.
 CLEANCO_CERT="/etc/letsencrypt/live/cleanco.ai/fullchain.pem"
 CLEANCO_KEY="/etc/letsencrypt/live/cleanco.ai/privkey.pem"
 ACME_WEBROOT="/var/www/certbot"
@@ -342,8 +342,92 @@ NGINXEOF
   fi
 }
 
-if [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
-  echo "SSL certs found — writing HTTPS nginx config"
+if [ -f "$CLEANCO_CERT" ] && [ -f "$CLEANCO_KEY" ]; then
+  echo "cleanco.ai certs found — writing locked-down nginx config (cleanco.ai ONLY)"
+  cat > "$NGINX_CONF_DIR/toilet" << NGINXEOF
+# cleanco.ai is the ONLY served domain. The legacy duckdns domain was
+# decommissioned (07/2026): any request that is not for cleanco.ai —
+# toiletcleanpro.duckdns.org, raw-IP hits, anything else — is dropped (444)
+# so old links give attackers no surface at all.
+
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
+}
+
+server {
+    listen 80;
+    server_name cleanco.ai www.cleanco.ai;
+
+    # Let's Encrypt HTTP-01 challenges must be served, not redirected
+    location ^~ /.well-known/acme-challenge/ {
+        root $ACME_WEBROOT;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+server {
+    # Non-cleanco HTTPS (old duckdns links, raw IP): complete the TLS
+    # handshake with whatever cert we have, then drop the connection.
+    listen 443 ssl http2 default_server;
+    server_name _;
+
+    ssl_certificate $CLEANCO_CERT;
+    ssl_certificate_key $CLEANCO_KEY;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    return 444;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name cleanco.ai www.cleanco.ai;
+
+    ssl_certificate $CLEANCO_CERT;
+    ssl_certificate_key $CLEANCO_KEY;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    root /var/www/toilet;
+    index index.html;
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:3001/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /socket.io/ {
+        proxy_pass http://localhost:3001/socket.io/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+    }
+
+    location ~* \.(js|css|png|svg|ico|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+NGINXEOF
+elif [ -f "$SSL_CERT" ] && [ -f "$SSL_KEY" ]; then
+  # TRANSITION ONLY: cleanco.ai cert not issued yet — keep the site alive on
+  # the legacy cert so the certbot webroot issuance below can succeed; the
+  # next deploy after issuance switches to the locked-down config above.
+  echo "WARNING: cleanco.ai cert missing — serving transition config on legacy cert"
   cat > "$NGINX_CONF_DIR/toilet" << NGINXEOF
 server {
     listen 80;
@@ -452,10 +536,12 @@ cp -r apps/web/dist/. "$NGINX_ROOT/"
 nginx -s reload 2>/dev/null || systemctl reload nginx 2>/dev/null || true
 
 # --- Post-deploy health check: verify nginx is NOT serving the default page ---
+# Host header matters: requests without the cleanco.ai host are dropped (444)
+# by design, so probe as the real domain.
 sleep 2
 HEALTH_URL="http://localhost"
-RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$HEALTH_URL" 2>/dev/null || echo "000")
-BODY=$(curl -s --max-time 5 "$HEALTH_URL" 2>/dev/null || echo "")
+RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -H "Host: cleanco.ai" "$HEALTH_URL" 2>/dev/null || echo "000")
+BODY=$(curl -s --max-time 5 -H "Host: cleanco.ai" "$HEALTH_URL" 2>/dev/null || echo "")
 
 if echo "$BODY" | grep -qi "welcome to nginx"; then
   echo "FATAL: nginx is still serving the default page after deploy!"
@@ -466,7 +552,7 @@ if echo "$BODY" | grep -qi "welcome to nginx"; then
   nginx -t && (nginx -s reload 2>/dev/null || systemctl reload nginx 2>/dev/null || true)
   sleep 2
 
-  BODY_RETRY=$(curl -s --max-time 5 "$HEALTH_URL" 2>/dev/null || echo "")
+  BODY_RETRY=$(curl -s --max-time 5 -H "Host: cleanco.ai" "$HEALTH_URL" 2>/dev/null || echo "")
   if echo "$BODY_RETRY" | grep -qi "welcome to nginx"; then
     echo "FATAL: Recovery failed — site is still showing default nginx page!"
     exit 1

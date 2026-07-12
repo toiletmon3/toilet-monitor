@@ -474,7 +474,6 @@
       "staffInterfaces": "ממשקי צוות",
       "adminInterface": "ממשק מנהל",
       "adminInterfaceSub": "כניסה עם אימייל וסיסמה",
-      "oldAddress": "כתובת ישנה — עדיין עובדת",
       "workerInterface": "ממשק עובד",
       "workerInterfaceSub": "כניסה עם תעודת זהות",
       "supervisorInterface": "ממשק אחראי משמרת",

@@ -19,7 +19,7 @@ jobs:
         run: |
           fail=0
           for path in / /flash /firmware/manifest.json /firmware/toiletmon-sensor.bin /api/buildings/kiosk-diagnose; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://toiletcleanpro.duckdns.org$path")
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://cleanco.ai$path")
             echo "$path -> $code"
             if [ "$code" != "200" ]; then fail=1; fi
           done

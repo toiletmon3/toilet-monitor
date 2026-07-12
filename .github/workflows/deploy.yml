@@ -131,7 +131,7 @@ jobs:
 
           HTTP_CODE=$(curl -s -o /tmp/smoke-body.txt -w "%{http_code}" \
             --max-time 15 -L -k \
-            "https://toiletcleanpro.duckdns.org" 2>/dev/null || echo "000")
+            "https://cleanco.ai" 2>/dev/null || echo "000")
 
           echo "HTTP status: $HTTP_CODE"
 

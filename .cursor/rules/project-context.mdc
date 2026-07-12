@@ -30,7 +30,7 @@ Smart restroom monitoring system with 4 interfaces: kiosk tablet, worker app, sh
 | PWA | vite-plugin-pwa (injectManifest strategy), Workbox, Web Push (VAPID) |
 | Process | **PM2** (production), **nginx** reverse proxy |
 | Hosting | **DigitalOcean** droplet (Ubuntu 22.04), IP `188.166.163.75` |
-| Domain | **toiletcleanpro.duckdns.org** (DuckDNS), Let's Encrypt SSL |
+| Domain | **cleanco.ai**, Let's Encrypt SSL (duckdns decommissioned) |
 
 ---
 
@@ -132,7 +132,7 @@ Server loads env from: `/opt/toilet-monitor/.env.production` → `.env.productio
 
 - **VPS:** DigitalOcean Ubuntu 22.04, ~2 vCPU / 2GB
 - **IP:** 188.166.163.75
-- **Domain:** toiletcleanpro.duckdns.org (DuckDNS)
+- **Domain:** cleanco.ai (duckdns decommissioned)
 - **SSL:** Let's Encrypt (auto-renew via certbot)
 - **App path on server:** `/opt/toilet-monitor`
 - **PM2 process name:** `toilet-server`

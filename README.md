@@ -9,24 +9,19 @@
 
 ## 🌐 גישה מהירה — Production
 
-### DuckDNS (HTTPS + SSL — מומלץ)
+### cleanco.ai (הדומיין היחיד)
 | ממשק | קישור |
 |------|-------|
-| 🖥️ **Admin** | [https://toiletcleanpro.duckdns.org/admin](https://toiletcleanpro.duckdns.org/admin) |
-| 👷 **Worker** | [https://toiletcleanpro.duckdns.org/cleaner](https://toiletcleanpro.duckdns.org/cleaner) |
-| 🛡️ **Supervisor** | [https://toiletcleanpro.duckdns.org/supervisor](https://toiletcleanpro.duckdns.org/supervisor) |
-| 🔌 **API** | [https://toiletcleanpro.duckdns.org/api](https://toiletcleanpro.duckdns.org/api) |
+| 🖥️ **Admin** | [https://cleanco.ai/admin](https://cleanco.ai/admin) |
+| 👷 **Worker** | [https://cleanco.ai/cleaner](https://cleanco.ai/cleaner) |
+| 🛡️ **Supervisor** | [https://cleanco.ai/supervisor](https://cleanco.ai/supervisor) |
+| 🔌 **API** | [https://cleanco.ai/api](https://cleanco.ai/api) |
 
 > **Kiosk** — כל טאבלט עובד עם URL ייחודי לפי קוד המכשיר: `/kiosk/{deviceCode}`
 > ניתן לראות את כל כתובות הקיוסקים תחת **Admin → Settings → Kiosks**
 
-### IP ישיר (DigitalOcean)
-| ממשק | קישור |
-|------|-------|
-| 🖥️ **Admin** | [http://188.166.163.75/admin](http://188.166.163.75/admin) |
-| 👷 **Worker** | [http://188.166.163.75/cleaner](http://188.166.163.75/cleaner) |
-| 🛡️ **Supervisor** | [http://188.166.163.75/supervisor](http://188.166.163.75/supervisor) |
-| 🔌 **API** | [http://188.166.163.75/api](http://188.166.163.75/api) |
+> ⛔ **הדומיין הישן `toiletcleanpro.duckdns.org` הוצא משימוש (07/2026)** — כל בקשה
+> אליו (וגם ל-IP הישיר) נחסמת ברמת ה-nginx‏ (444). אין להפיץ לינקים ישנים.
 
 > **Admin** — כניסה עם מייל + סיסמה
 > **Worker / Supervisor** — כניסה עם ת.ז בלבד
@@ -257,8 +252,8 @@ push → GitHub Actions → SSH לשרת → git pull → prisma db push → bui
 | פרט | ערך |
 |-----|-----|
 | שרת | DigitalOcean (Ubuntu 22.04) |
-| IP | [`188.166.163.75`](http://188.166.163.75) |
-| דומיין | [`toiletcleanpro.duckdns.org`](https://toiletcleanpro.duckdns.org) |
+| IP | `188.166.163.75` (גישה ישירה חסומה — רק דרך הדומיין) |
+| דומיין | [`cleanco.ai`](https://cleanco.ai) (הישן `toiletcleanpro.duckdns.org` חסום) |
 | SSL | Let's Encrypt (auto-renew) |
 | Process manager | PM2 |
 | Web server | Nginx |
@@ -304,7 +299,7 @@ pm2 logs           # לוגים
 ## 📱 הגדרת טאבלט Kiosk
 
 ### שלב 1 — הגדרת מיקום הטאבלט
-1. פתח `https://toiletcleanpro.duckdns.org/kiosk/{deviceCode}` בטאבלט
+1. פתח `https://cleanco.ai/kiosk/{deviceCode}` בטאבלט
 2. לחץ **"צוות"** → הכנס ת.ז של מנהל → בחר "הגדר שירותים לטאבלט זה"
 3. בחר בניין / קומה / שירותים → שמור
 
@@ -314,7 +309,7 @@ pm2 logs           # לוגים
 
 **Android — Fully Kiosk Browser (מומלץ):**
 1. הורד מ-Play Store: **Fully Kiosk Browser & App Lockdown**
-2. הגדר URL: `https://toiletcleanpro.duckdns.org/kiosk/{deviceCode}`
+2. הגדר URL: `https://cleanco.ai/kiosk/{deviceCode}`
 3. הפעל `Kiosk Mode` — נועל את המכשיר לאפליקציה בלבד
 4. הגדר `Motion Detection` לכיבוי מסך בחוסר פעילות
 
