@@ -103,6 +103,14 @@ export class UsersController {
     return this.usersService.updateEscalationConfig(user.orgId, dto);
   }
 
+  // Visibility of internal accounts in property-manager views — general
+  // admins only. A property manager must never learn this flag even exists.
+  @Roles(...ADMIN_ROLES)
+  @Patch(':id/hidden')
+  setHidden(@Param('id') id: string, @Body() dto: { hiddenFromPm: boolean }) {
+    return this.usersService.setHiddenFromPm(id, !!dto.hiddenFromPm);
+  }
+
   @Patch(':id')
   async updateWorker(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: { name?: string; idNumber?: string; phone?: string }) {
     await this.usersService.assertCanManageUser(user, id);

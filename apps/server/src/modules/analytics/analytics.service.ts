@@ -39,7 +39,15 @@ function classifyIssue(code: string | null | undefined): 'like' | 'maintenance' 
   return 'cleaning';
 }
 
-export type AnalyticsScope = { propertyId?: string; propertyIds?: string[]; buildingId?: string; floorId?: string; restroomId?: string };
+export type AnalyticsScope = {
+  propertyId?: string;
+  propertyIds?: string[];
+  buildingId?: string;
+  floorId?: string;
+  restroomId?: string;
+  /** Set for PROPERTY_MANAGER callers: exclude hiddenFromPm (internal) accounts from user-based stats. */
+  hideHidden?: boolean;
+};
 
 @Injectable()
 export class AnalyticsService {
@@ -69,9 +77,10 @@ export class AnalyticsService {
   /** User-level property filter matching the same scope (direct or via building). */
   private userPropertyScope(scope?: AnalyticsScope) {
     const ids = scope?.propertyId ? [scope.propertyId] : scope?.propertyIds;
+    const hidden = scope?.hideHidden ? { hiddenFromPm: false } : {};
     return ids
-      ? { OR: [{ propertyId: { in: ids } }, { building: { propertyId: { in: ids } } }] }
-      : {};
+      ? { ...hidden, OR: [{ propertyId: { in: ids } }, { building: { propertyId: { in: ids } } }] }
+      : hidden;
   }
 
   async getSummary(orgId: string, scope?: AnalyticsScope) {

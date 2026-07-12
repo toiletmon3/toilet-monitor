@@ -225,7 +225,33 @@ export class IncidentsService {
       this.prisma.incident.count({ where }),
     ]);
 
+    // propertyIds is only set for PROPERTY_MANAGER callers — internal accounts
+    // must not surface on their incident timelines either.
+    if (filters.propertyIds) await this.scrubHiddenUsers(orgId, items);
+
     return { items, total };
+  }
+
+  /**
+   * Property-manager reads: blank out internal (hiddenFromPm) accounts from
+   * incident payloads — assigned cleaner and action authors — so their names
+   * never surface anywhere in a property manager's view. Mirrors what the UI
+   * already renders for deleted users (null user).
+   */
+  private async scrubHiddenUsers(orgId: string, items: Array<{ assignedCleaner?: any; assignedCleanerId?: string | null; actions?: any[] }>) {
+    const hidden = await this.prisma.user.findMany({ where: { orgId, hiddenFromPm: true }, select: { id: true } });
+    if (hidden.length === 0) return items;
+    const ids = new Set(hidden.map(h => h.id));
+    for (const inc of items) {
+      if (inc.assignedCleaner && ids.has(inc.assignedCleaner.id)) {
+        inc.assignedCleaner = null;
+        inc.assignedCleanerId = null;
+      }
+      for (const a of inc.actions ?? []) {
+        if (a.user && ids.has(a.user.id)) { a.user = null; a.userId = null; }
+      }
+    }
+    return items;
   }
 
   async findByRestroom(restroomId: string) {
@@ -466,6 +492,8 @@ export class IncidentsService {
       include: INCIDENT_INCLUDE,
       orderBy: { reportedAt: 'asc' },
     });
+
+    if (filters.propertyIds) await this.scrubHiddenUsers(orgId, incidents);
 
     return incidents.map(inc => {
       const minutesOpen = Math.floor((Date.now() - inc.reportedAt.getTime()) / 60000);

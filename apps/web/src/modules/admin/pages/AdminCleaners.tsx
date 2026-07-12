@@ -436,6 +436,15 @@ export default function AdminCleaners() {
     toast.success(!isActive ? t('admin.cleaners.activateMsg') : t('admin.cleaners.deactivateMsg'));
   };
 
+  // General-admin only: hide/show an internal account in every property-manager view
+  const handleToggleHidden = async (id: string, hidden: boolean) => {
+    try {
+      await api.patch(`/users/${id}/hidden`, { hiddenFromPm: !hidden });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success(!hidden ? t('admin.cleaners.hiddenFromPmOn') : t('admin.cleaners.hiddenFromPmOff'));
+    } catch { toast.error(t('common.error')); }
+  };
+
   const handleAssignBuilding = async (id: string, buildingId: string) => {
     try {
       await api.patch(`/users/${id}/building`, { buildingId: buildingId || null });
@@ -728,6 +737,16 @@ export default function AdminCleaners() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {!isPropertyManager && (
+                    <button
+                      onClick={() => handleToggleHidden(c.id, !!c.hiddenFromPm)}
+                      className="p-1.5 rounded-lg hover:bg-white/10 transition-all"
+                      style={{ color: c.hiddenFromPm ? '#f59e0b' : 'rgba(255,255,255,0.25)' }}
+                      title={c.hiddenFromPm ? t('admin.cleaners.hiddenFromPmTitle') : t('admin.cleaners.visibleToPmTitle')}
+                    >
+                      {c.hiddenFromPm ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  )}
                   <button
                     onClick={() => setEditWorker({ id: c.id, name: c.name, idNumber: c.idNumber, phone: c.phone ?? '' })}
                     className="p-1.5 rounded-lg hover:bg-white/10 transition-all"
@@ -946,6 +965,16 @@ export default function AdminCleaners() {
                 )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
+                {!isPropertyManager && (
+                  <button
+                    onClick={() => handleToggleHidden(a.id, !!a.hiddenFromPm)}
+                    className="p-1.5 rounded-lg hover:bg-white/10 transition-all"
+                    style={{ color: a.hiddenFromPm ? '#f59e0b' : 'rgba(255,255,255,0.25)' }}
+                    title={a.hiddenFromPm ? t('admin.cleaners.hiddenFromPmTitle') : t('admin.cleaners.visibleToPmTitle')}
+                  >
+                    {a.hiddenFromPm ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                )}
                 <button
                   onClick={() => setEditAdmin(a)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
