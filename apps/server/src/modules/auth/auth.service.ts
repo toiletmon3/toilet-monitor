@@ -13,8 +13,17 @@ export class AuthService {
   ) {}
 
   async loginAdmin(email: string, password: string) {
+    // Email/username login is case-insensitive: an admin typing "Ori@x.com"
+    // or "ori@x.com" logs in regardless of how the value was stored. `equals`
+    // with mode:'insensitive' compares case-insensitively on the DB side
+    // (Postgres ILIKE), so it also covers mixed-case stored values. We trim
+    // stray whitespace (common when pasting) first.
     const user = await this.prisma.user.findFirst({
-      where: { email, isActive: true, role: { in: ['ORG_ADMIN', 'MANAGER', 'SUPER_ADMIN', 'PROPERTY_MANAGER'] } },
+      where: {
+        email: { equals: email.trim(), mode: 'insensitive' },
+        isActive: true,
+        role: { in: ['ORG_ADMIN', 'MANAGER', 'SUPER_ADMIN', 'PROPERTY_MANAGER'] },
+      },
       include: { organization: true },
     });
     if (!user || !user.passwordHash) throw new UnauthorizedException('Invalid credentials');
