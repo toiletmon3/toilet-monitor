@@ -715,8 +715,6 @@ function UrlGuide({ structure, onRefresh, propertyManagerMode = false }: { struc
     restroomName: string;
     isOnline: boolean;
     lastHeartbeat: string | null;
-    lastHost: string | null;
-    hostsSeen: Record<string, string> | null;
   };
 
   const allDevices: DeviceEntry[] = [];
@@ -732,8 +730,6 @@ function UrlGuide({ structure, onRefresh, propertyManagerMode = false }: { struc
             restroomName: r.name,
             isOnline: d.isOnline,
             lastHeartbeat: d.lastHeartbeat ?? null,
-            lastHost: d.lastHost ?? null,
-            hostsSeen: d.hostsSeen ?? null,
           });
         }
       }
@@ -821,21 +817,6 @@ function UrlGuide({ structure, onRefresh, propertyManagerMode = false }: { struc
                       ? `● ${t('admin.devices.online')}`
                       : `○ ${t('admin.devices.offline')} — ${fmtHeartbeat(d.lastHeartbeat)}`}
                   </div>
-                  {(() => {
-                    // All domains with a heartbeat in the last 5 min (heartbeats
-                    // fire every 60s, so this covers simultaneous connections);
-                    // fall back to the single last-known host when none are fresh.
-                    const activeHosts = Object.entries(d.hostsSeen ?? {})
-                      .filter(([, ts]) => Date.now() - new Date(ts).getTime() < 5 * 60_000)
-                      .map(([h]) => h);
-                    const hosts = activeHosts.length > 0 ? activeHosts : (d.lastHost ? [d.lastHost] : []);
-                    const fresh = activeHosts.length > 0;
-                    return hosts.map(h => (
-                      <div key={h} className="text-xs mt-0.5 ps-4" style={{ color: fresh && d.isOnline ? '#22c55e' : 'var(--color-text-secondary)' }}>
-                        ● {t('admin.devices.connectedVia')} <span className="font-mono">{h}</span>
-                      </div>
-                    ));
-                  })()}
                 </div>
                 <button
                   onClick={() => handleDeleteDevice(d.id, d.deviceCode)}
