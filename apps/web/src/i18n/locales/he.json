@@ -343,6 +343,8 @@
       "deactivateMsg": "העובד הושבת — לא יוכל להתחבר",
       "hiddenFromPmOn": "המשתמש הוסתר ממנהלי נכס",
       "hiddenFromPmOff": "המשתמש גלוי למנהלי נכס",
+      "hiddenFromPmLabel": "מוסתר ממנהל נכס",
+      "visibleToPmLabel": "גלוי למנהל נכס",
       "hiddenFromPmTitle": "מוסתר ממנהלי נכס — לחץ כדי להציג",
       "visibleToPmTitle": "גלוי למנהלי נכס — לחץ כדי להסתיר",
       "addedMsg": "עובד נוסף בהצלחה",

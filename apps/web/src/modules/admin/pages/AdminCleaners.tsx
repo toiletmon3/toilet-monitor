@@ -740,11 +740,16 @@ export default function AdminCleaners() {
                   {!isPropertyManager && (
                     <button
                       onClick={() => handleToggleHidden(c.id, !!c.hiddenFromPm)}
-                      className="p-1.5 rounded-lg hover:bg-white/10 transition-all"
-                      style={{ color: c.hiddenFromPm ? '#f59e0b' : 'rgba(255,255,255,0.25)' }}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      style={{
+                        background: c.hiddenFromPm ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${c.hiddenFromPm ? 'rgba(245,158,11,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                        color: c.hiddenFromPm ? '#f59e0b' : 'rgba(255,255,255,0.35)',
+                      }}
                       title={c.hiddenFromPm ? t('admin.cleaners.hiddenFromPmTitle') : t('admin.cleaners.visibleToPmTitle')}
                     >
-                      {c.hiddenFromPm ? <EyeOff size={14} /> : <Eye size={14} />}
+                      {c.hiddenFromPm ? <EyeOff size={13} /> : <Eye size={13} />}
+                      <span>{c.hiddenFromPm ? t('admin.cleaners.hiddenFromPmLabel') : t('admin.cleaners.visibleToPmLabel')}</span>
                     </button>
                   )}
                   <button
@@ -968,11 +973,16 @@ export default function AdminCleaners() {
                 {!isPropertyManager && (
                   <button
                     onClick={() => handleToggleHidden(a.id, !!a.hiddenFromPm)}
-                    className="p-1.5 rounded-lg hover:bg-white/10 transition-all"
-                    style={{ color: a.hiddenFromPm ? '#f59e0b' : 'rgba(255,255,255,0.25)' }}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                    style={{
+                      background: a.hiddenFromPm ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${a.hiddenFromPm ? 'rgba(245,158,11,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                      color: a.hiddenFromPm ? '#f59e0b' : 'rgba(255,255,255,0.35)',
+                    }}
                     title={a.hiddenFromPm ? t('admin.cleaners.hiddenFromPmTitle') : t('admin.cleaners.visibleToPmTitle')}
                   >
-                    {a.hiddenFromPm ? <EyeOff size={14} /> : <Eye size={14} />}
+                    {a.hiddenFromPm ? <EyeOff size={13} /> : <Eye size={13} />}
+                    <span>{a.hiddenFromPm ? t('admin.cleaners.hiddenFromPmLabel') : t('admin.cleaners.visibleToPmLabel')}</span>
                   </button>
                 )}
                 <button
