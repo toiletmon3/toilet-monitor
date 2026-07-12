@@ -40,6 +40,13 @@ export class AuthController {
     return this.authService.refreshToken(body.refreshToken);
   }
 
+  /** Revoke the refresh session server-side. Called on logout so a copied token dies. */
+  @Public()
+  @Post('logout')
+  logout(@Body() body: RefreshDto) {
+    return this.authService.logout(body.refreshToken);
+  }
+
   @Public()
   @Get('kiosk/:deviceCode')
   validateKiosk(@Param('deviceCode') deviceCode: string) {

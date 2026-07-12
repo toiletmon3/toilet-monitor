@@ -134,6 +134,10 @@ export default function AdminLayout() {
   }
 
   const handleLogout = () => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    // Best-effort server-side revocation of the refresh session so a copied
+    // token can't be reused after logout. Never block the UI logout on it.
+    if (refreshToken) api.post('/auth/logout', { refreshToken }).catch(() => {});
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');

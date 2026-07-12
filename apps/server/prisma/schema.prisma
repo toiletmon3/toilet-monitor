@@ -217,6 +217,20 @@ model User {
   @@map("users")
 }
 
+// One row per issued refresh token (session). The token's `jti` is stored so a
+// refresh can rotate it (delete old + issue new) and logout can revoke it — a
+// leaked/stolen refresh token can no longer be used for its full 7-day life.
+model RefreshToken {
+  id        String   @id @default(uuid())
+  jti       String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
 model PushSubscription {
   id        String   @id @default(uuid())
   userId    String
