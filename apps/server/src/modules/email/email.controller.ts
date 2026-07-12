@@ -1,5 +1,14 @@
-import { Controller, Post, Get, UseGuards, Headers, Query, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Get, UseGuards, Headers, UnauthorizedException } from '@nestjs/common';
+import { timingSafeEqual } from 'crypto';
 import { ConfigService } from '@nestjs/config';
+
+/** Constant-time string compare to avoid leaking the secret via timing. */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -126,12 +135,13 @@ export class EmailController {
     }
   }
 
+  // Header-only (never a query param, which would leak the secret into nginx /
+  // proxy access logs), compared in constant time.
   @Public()
   @Get('generate-report')
-  async generateReport(@Headers('x-cron-secret') cronSecretHeader: string, @Query('secret') cronSecretQuery: string) {
+  async generateReport(@Headers('x-cron-secret') cronSecretHeader: string) {
     const expectedSecret = this.config.get<string>('CRON_SECRET');
-    const provided = cronSecretHeader || cronSecretQuery;
-    if (!expectedSecret || provided !== expectedSecret) {
+    if (!expectedSecret || !cronSecretHeader || !safeEqual(cronSecretHeader, expectedSecret)) {
       throw new UnauthorizedException('Invalid cron secret');
     }
 

@@ -569,8 +569,10 @@ schema→`prisma migrate` בלבד · נגעת ב־endpoint→הרץ §2.5 · ha
 - [x] 🟠 3.11 analytics org-scope (restroomScope + getSummary תמיד כוללים orgId) — ✅ בוצע (גל 1)
 - [x] 🟠 3.12 rate limiting — ✅ בוצע (גל 2): RateLimitGuard פנימי, 20/5דק' על login, 60/5דק' על verify-*
 - [~] 🟠 3.13 DTO validation — ✅ נקודות הקצה הרגישות (auth login/refresh, incidents create/sync עם ArrayMaxSize) — גל 2; כיסוי מלא + forbidNonWhitelisted עדיין פתוח
-- [ ] 🟡 3.16-3.26 (reassign/incident-auth/sync/mass-assign/CRON/helmet/perms/localStorage/CSV)
-- [ ] 🟢 3.27/3.29 refresh rotation + SSH log hygiene
+- [~] 🟡 גל 3 (חלקי): ✅ 3.21 security headers · 3.19 mass-assignment (org-settings + template) · 3.20 CRON header-only+constant-time · 3.29 SSH log hygiene · 3.18 sync caps (גל 2)
+- [ ] ⏭️ 3.16/3.17/3.23/3.24 (reassign/incident-auth/push-subscribe/device-flood) — **דולג לבקשת המשתמש**
+- [ ] ⏭️ 3.25 tokens→cookie · 3.27 refresh rotation/logout — **דולג לבקשת המשתמש** (שינויים גדולים)
+- [ ] 🟢 3.26 CSV/Formula injection — ממתין להסבר/אישור
 - [ ] 🧪 §2.6 בדיקות רגרסיה ב־CI
 
 ---
