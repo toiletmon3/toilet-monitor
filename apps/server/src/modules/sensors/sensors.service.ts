@@ -93,10 +93,25 @@ export class SensorsService {
     return { ok: true, config: (device as any).sensorConfig ?? null };
   }
 
-  /** Admin tuning of the visit-counting behavior (values in seconds). */
-  async updateConfig(deviceId: string, dto: { occupiedAfterSec?: number; emptyAfterSec?: number }) {
+  /**
+   * Admin tuning of the visit-counting behavior (values in seconds).
+   * `caller` confines the write to the caller's org, and — for a property
+   * manager (propertyIds set) — to devices inside their own properties.
+   */
+  async updateConfig(deviceId: string, dto: { occupiedAfterSec?: number; emptyAfterSec?: number }, caller?: { orgId: string; propertyIds?: string[] }) {
     const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(v)));
-    const device = await this.prisma.device.findUnique({ where: { id: deviceId }, select: { sensorConfig: true } });
+    const device = await this.prisma.device.findFirst({
+      where: {
+        id: deviceId,
+        ...(caller ? {
+          restroom: { floor: { building: {
+            orgId: caller.orgId,
+            ...(caller.propertyIds ? { propertyId: { in: caller.propertyIds } } : {}),
+          } } },
+        } : {}),
+      },
+      select: { sensorConfig: true },
+    });
     if (!device) throw new NotFoundException('Device not found');
 
     const current = (device.sensorConfig as Record<string, number> | null) ?? {};
@@ -112,13 +127,19 @@ export class SensorsService {
     });
   }
 
-  /** Per-restroom sensor status for the whole org — powers the admin devices page. */
-  async orgSummary(orgId: string) {
+  /**
+   * Per-restroom sensor status — powers the admin devices page. `propertyIds`
+   * (property managers) narrows it to their own properties' sensors.
+   */
+  async orgSummary(orgId: string, propertyIds?: string[]) {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
     const sensors = await this.prisma.device.findMany({
-      where: { type: 'SENSOR', restroom: { floor: { building: { orgId } } } },
+      where: {
+        type: 'SENSOR',
+        restroom: { floor: { building: { orgId, ...(propertyIds ? { propertyId: { in: propertyIds } } : {}) } } },
+      },
       select: { restroomId: true },
     });
     const restroomIds = [...new Set(sensors.map((s) => s.restroomId))];
@@ -192,7 +213,23 @@ export class SensorsService {
   }
 
   /** Today's visit count + live status per restroom, for dashboards. */
-  async restroomSummary(restroomId: string) {
+  async restroomSummary(restroomId: string, caller?: { orgId: string; propertyIds?: string[] }) {
+    // Ownership check: the restroom must live in the caller's org (and, for a
+    // property manager, inside one of their properties).
+    if (caller) {
+      const owned = await this.prisma.restroom.findFirst({
+        where: {
+          id: restroomId,
+          floor: { building: {
+            orgId: caller.orgId,
+            ...(caller.propertyIds ? { propertyId: { in: caller.propertyIds } } : {}),
+          } },
+        },
+        select: { id: true },
+      });
+      if (!owned) throw new NotFoundException('Restroom not found');
+    }
+
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 

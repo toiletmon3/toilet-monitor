@@ -490,6 +490,7 @@
       "cleanerLangPerWorker": "👤 לכל עובד בנפרד",
       "dailyReportTitle": "📧 דוח יומי למנהלים",
       "dailyReportDesc": "כל בוקר יישלח מייל סיכום עם נתוני אתמול לכל המנהלים שיש להם כתובת מייל",
+      "dailyReportPropertyHint": "הדוח והשעה שנקבעת כאן חלים רק על הנכס שלך",
       "dailyReportHour": "שעת שליחה",
       "dailyReportOn": "✉️ פעיל",
       "dailyReportOff": "✉️ כבוי",

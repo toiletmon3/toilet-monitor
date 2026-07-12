@@ -3,7 +3,7 @@ import { IncidentsService } from './incidents.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
-import { Roles, ADMIN_PM_ROLES } from '../../common/decorators/roles.decorator';
+import { Roles, ADMIN_ROLES, ADMIN_PM_ROLES } from '../../common/decorators/roles.decorator';
 import { CreateIncidentDto, SyncBatchDto } from './incidents.dto';
 import { IncidentStatus } from '@prisma/client';
 
@@ -143,7 +143,8 @@ export class IncidentsController {
     return this.incidentsService.resolve(id, body.cleanerIdNumber, body.notes);
   }
 
-  @Roles(...ADMIN_PM_ROLES)
+  // Bulk deletion sweeps the WHOLE org — general admins only.
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Delete('bulk')
   deleteBulk(
@@ -162,6 +163,11 @@ export class IncidentsController {
     @CurrentUser() user: any,
     @Body() body: { status?: string; assignedCleanerId?: string; note?: string },
   ) {
-    return this.incidentsService.adminUpdate(id, user.id, body);
+    // Ownership is enforced in the service: caller's org, and for a property
+    // manager also one of their own properties.
+    const propertyIds: string[] | undefined = user.role === 'PROPERTY_MANAGER'
+      ? (user.propertyIds?.length ? user.propertyIds : ['__none__'])
+      : undefined;
+    return this.incidentsService.adminUpdate(id, user.id, body, { orgId: user.orgId, propertyIds });
   }
 }

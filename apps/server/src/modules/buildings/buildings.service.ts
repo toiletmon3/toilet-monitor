@@ -72,6 +72,31 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     return buildings.map(b => b.id);
   }
 
+  /**
+   * Assert the target entity lives inside the caller's org — and, when
+   * `propertyIds` is set (PROPERTY_MANAGER), inside one of their properties.
+   * Throws NotFound otherwise so cross-property ids are indistinguishable
+   * from nonexistent ones.
+   */
+  async assertScope(
+    orgId: string,
+    propertyIds: string[] | undefined,
+    target: { buildingId?: string; floorId?: string; restroomId?: string; deviceId?: string },
+  ) {
+    const building = { orgId, ...(propertyIds ? { propertyId: { in: propertyIds } } : {}) };
+    let found: { id: string } | null = null;
+    if (target.buildingId) {
+      found = await this.prisma.building.findFirst({ where: { id: target.buildingId, ...building }, select: { id: true } });
+    } else if (target.floorId) {
+      found = await this.prisma.floor.findFirst({ where: { id: target.floorId, building }, select: { id: true } });
+    } else if (target.restroomId) {
+      found = await this.prisma.restroom.findFirst({ where: { id: target.restroomId, floor: { building } }, select: { id: true } });
+    } else if (target.deviceId) {
+      found = await this.prisma.device.findFirst({ where: { id: target.deviceId, restroom: { floor: { building } } }, select: { id: true } });
+    }
+    if (!found) throw new NotFoundException('Not found');
+  }
+
   async getStructure(orgId: string, propertyIds?: string[]) {
     return this.prisma.building.findMany({
       where: { orgId, ...(propertyIds ? { propertyId: { in: propertyIds } } : {}) },
@@ -96,8 +121,10 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  async createBuilding(orgId: string, dto: { name: string; address?: string }) {
-    return this.prisma.building.create({ data: { orgId, name: dto.name, address: dto.address ?? '' } });
+  async createBuilding(orgId: string, dto: { name: string; address?: string }, propertyId?: string | null) {
+    return this.prisma.building.create({
+      data: { orgId, name: dto.name, address: dto.address ?? '', ...(propertyId !== undefined ? { propertyId } : {}) },
+    });
   }
 
   async createFloor(buildingId: string, dto: { floorNumber: number; name: string }) {

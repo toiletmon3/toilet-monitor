@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Plus, Minus, Trash2, Pencil, Check, X, LayoutTemplate, Palette, Tablet, Scaling } from 'lucide-react';
@@ -500,9 +501,15 @@ export default function AdminKiosk() {
   const [newName, setNewName] = useState('');
   const [showNew, setShowNew] = useState(false);
 
+  // Kiosk templates are org-wide — property managers are redirected out even
+  // if they type the URL directly (the nav tab is already hidden for them).
+  const currentUser: { role?: string } = JSON.parse(localStorage.getItem('user') ?? '{}');
+  const isPropertyManager = currentUser.role === 'PROPERTY_MANAGER';
+
   const { data: templates = [], refetch } = useQuery({
     queryKey: ['kiosk-templates'],
     queryFn: async () => (await api.get('/buildings/kiosk-templates')).data,
+    enabled: !isPropertyManager,
   });
 
   const { data: structure = [] } = useQuery({
@@ -539,6 +546,8 @@ export default function AdminKiosk() {
       }
     }
   }
+
+  if (isPropertyManager) return <Navigate to="/admin" replace />;
 
   return (
     <div className="flex flex-col gap-5">

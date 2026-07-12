@@ -54,18 +54,29 @@ export class AnalyticsService {
     // The orgId constraint is ALWAYS included so a client that passes another
     // org's restroom/floor/building id gets an empty result set (never a
     // cross-tenant read), matching a restroom only if it also lives in this org.
-    if (scope?.restroomId) return { id: scope.restroomId, floor: { building: { orgId } } };
-    if (scope?.floorId) return { floorId: scope.floorId, floor: { building: { orgId } } };
-    if (scope?.buildingId) return { floor: { buildingId: scope.buildingId, building: { orgId } } };
-    if (scope?.propertyId) return { floor: { building: { orgId, propertyId: scope.propertyId } } };
-    if (scope?.propertyIds) return { floor: { building: { orgId, propertyId: { in: scope.propertyIds } } } };
-    return { floor: { building: { orgId } } };
+    // The property constraint likewise ALWAYS composes with the narrower
+    // filters — a property manager passing a foreign building/floor/restroom id
+    // gets an empty set, never another property's data.
+    const building: any = { orgId };
+    if (scope?.propertyId) building.propertyId = scope.propertyId;
+    else if (scope?.propertyIds) building.propertyId = { in: scope.propertyIds };
+    if (scope?.restroomId) return { id: scope.restroomId, floor: { building } };
+    if (scope?.floorId) return { floorId: scope.floorId, floor: { building } };
+    if (scope?.buildingId) return { floor: { buildingId: scope.buildingId, building } };
+    return { floor: { building } };
   }
 
-  async getSummary(orgId: string, buildingId?: string) {
-    const buildingFilter = buildingId
-      ? { floor: { buildingId, building: { orgId } } }
-      : { floor: { building: { orgId } } };
+  /** User-level property filter matching the same scope (direct or via building). */
+  private userPropertyScope(scope?: AnalyticsScope) {
+    const ids = scope?.propertyId ? [scope.propertyId] : scope?.propertyIds;
+    return ids
+      ? { OR: [{ propertyId: { in: ids } }, { building: { propertyId: { in: ids } } }] }
+      : {};
+  }
+
+  async getSummary(orgId: string, scope?: AnalyticsScope) {
+    const buildingId = scope?.buildingId;
+    const buildingFilter = this.restroomScope(orgId, scope);
     const incidentWhere = { restroom: buildingFilter };
 
     const [total, resolved, open, inProgress] = await Promise.all([
@@ -98,7 +109,7 @@ export class AnalyticsService {
       // Count cleaners currently on shift (checked in today, not yet checked out)
       this.prisma.cleanerArrival.count({
         where: {
-          user: { orgId },
+          user: { orgId, ...this.userPropertyScope(scope) },
           arrivedAt: { gte: todayStart },
           leftAt: null,
           ...(buildingId ? { buildingId } : {}),
@@ -216,11 +227,11 @@ export class AnalyticsService {
     return hours;
   }
 
-  async getFloorHeatmap(orgId: string, from: Date, to: Date = new Date()) {
+  async getFloorHeatmap(orgId: string, from: Date, to: Date = new Date(), scope?: AnalyticsScope) {
     return this.prisma.incident.groupBy({
       by: ['restroomId'],
       where: {
-        restroom: { floor: { building: { orgId } } },
+        restroom: this.restroomScope(orgId, scope),
         reportedAt: { gte: from, lte: to },
       },
       _count: { id: true },
@@ -500,10 +511,10 @@ export class AnalyticsService {
    * three donut breakdowns, and a per-restroom table with score + arrival + status.
    * `floorId` / `restroomId` further narrow the scope below the building.
    */
-  async getOverview(orgId: string, from: Date, to: Date = new Date(), buildingId?: string, floorId?: string, restroomId?: string, propertyId?: string) {
+  async getOverview(orgId: string, from: Date, to: Date = new Date(), scope?: AnalyticsScope) {
     const periodMs = Math.max(1, to.getTime() - from.getTime());
     const prevFrom = new Date(from.getTime() - periodMs);
-    const restroomFilter = this.restroomScope(orgId, { propertyId, buildingId, floorId, restroomId });
+    const restroomFilter = this.restroomScope(orgId, scope);
 
     // Fetch everything reported since the previous window opened (covers both periods).
     const all = (await this.prisma.incident.findMany({
@@ -649,7 +660,7 @@ export class AnalyticsService {
         _count: { id: true },
       }),
       this.prisma.cleanerArrival.findMany({
-        where: { restroomId: { not: null }, user: { orgId }, arrivedAt: { gte: from, lte: to } },
+        where: { restroomId: { not: null }, user: { orgId, ...this.userPropertyScope(scope) }, arrivedAt: { gte: from, lte: to } },
         select: { restroomId: true, arrivedAt: true, user: { select: { role: true } } },
         orderBy: { arrivedAt: 'desc' },
       }),
@@ -763,8 +774,10 @@ export class AnalyticsService {
 
   async getCleanerPerformance(orgId: string, from: Date, to: Date = new Date(), scope?: AnalyticsScope) {
     const restroom = this.restroomScope(orgId, scope);
+    // The cleaner LIST itself is property-scoped too — a property manager must
+    // not learn about cleaners of other properties (or unassigned/global ones).
     const cleaners = await this.prisma.user.findMany({
-      where: { orgId, role: 'CLEANER', isActive: true },
+      where: { orgId, role: 'CLEANER', isActive: true, ...this.userPropertyScope(scope) },
       select: {
         id: true, name: true, idNumber: true,
         incidentActions: {

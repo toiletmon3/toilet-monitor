@@ -24,34 +24,45 @@ export class BuildingsController {
     return this.buildingsService.getStructure(user.orgId, scope);
   }
 
+  /** PM scope: their property ids, or a never-matching sentinel when unassigned. */
+  private pmScope(user: any): string[] | undefined {
+    if (user.role !== 'PROPERTY_MANAGER') return undefined;
+    return user.propertyIds?.length ? user.propertyIds : ['__none__'];
+  }
+
   // ── Properties (נכסים) ───────────────────────────────────────────────────────
 
   @UseGuards(JwtAuthGuard)
   @Get('properties')
   getProperties(@CurrentUser() user: any) {
     // A property manager only sees their own properties (or nothing if unassigned)
-    const scope = user.role === 'PROPERTY_MANAGER' ? (user.propertyIds?.length ? user.propertyIds : ['__none__']) : undefined;
-    return this.buildingsService.getProperties(user.orgId, scope);
+    return this.buildingsService.getProperties(user.orgId, this.pmScope(user));
   }
 
+  // Creating/renaming/deleting properties and re-assigning buildings between
+  // properties reshapes the whole org — general admins only.
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Post('properties')
   createProperty(@CurrentUser() user: any, @Body() dto: { name: string }) {
     return this.buildingsService.createProperty(user.orgId, dto.name);
   }
 
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Patch('properties/:id')
   updateProperty(@Param('id') id: string, @Body() dto: { name: string }) {
     return this.buildingsService.updateProperty(id, dto.name);
   }
 
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Delete('properties/:id')
   deleteProperty(@CurrentUser() user: any, @Param('id') id: string) {
     return this.buildingsService.deleteProperty(id, user.orgId);
   }
 
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Patch(':buildingId/property')
   assignBuildingToProperty(@Param('buildingId') buildingId: string, @Body() dto: { propertyId: string | null }) {
@@ -61,104 +72,124 @@ export class BuildingsController {
   @UseGuards(JwtAuthGuard)
   @Post()
   createBuilding(@CurrentUser() user: any, @Body() dto: { name: string; address?: string }) {
-    return this.buildingsService.createBuilding(user.orgId, dto);
+    // A building a property manager creates lands inside their own property —
+    // otherwise it would fall outside their scope and vanish from their view.
+    const propertyId = user.role === 'PROPERTY_MANAGER' ? (user.propertyIds?.[0] ?? null) : undefined;
+    return this.buildingsService.createBuilding(user.orgId, dto, propertyId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post(':buildingId/floors')
-  createFloor(@Param('buildingId') buildingId: string, @Body() dto: { floorNumber: number; name: string }) {
+  async createFloor(@CurrentUser() user: any, @Param('buildingId') buildingId: string, @Body() dto: { floorNumber: number; name: string }) {
+    await this.buildingsService.assertScope(user.orgId, this.pmScope(user), { buildingId });
     return this.buildingsService.createFloor(buildingId, dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('floors/:floorId/restrooms')
-  createRestroom(
+  async createRestroom(
+    @CurrentUser() user: any,
     @Param('floorId') floorId: string,
     @Body() dto: { name: string; gender?: 'MALE' | 'FEMALE' | 'UNISEX' },
   ) {
+    await this.buildingsService.assertScope(user.orgId, this.pmScope(user), { floorId });
     return this.buildingsService.createRestroom(floorId, dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('restrooms/:restroomId/devices')
-  registerDevice(@Param('restroomId') restroomId: string, @Body() dto: { deviceCode: string }) {
+  async registerDevice(@CurrentUser() user: any, @Param('restroomId') restroomId: string, @Body() dto: { deviceCode: string }) {
+    await this.buildingsService.assertScope(user.orgId, this.pmScope(user), { restroomId });
     return this.buildingsService.registerDevice(restroomId, dto.deviceCode);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch(':buildingId')
-  updateBuilding(@Param('buildingId') buildingId: string, @Body() dto: { name?: string; address?: string }) {
+  async updateBuilding(@CurrentUser() user: any, @Param('buildingId') buildingId: string, @Body() dto: { name?: string; address?: string }) {
+    await this.buildingsService.assertScope(user.orgId, this.pmScope(user), { buildingId });
     return this.buildingsService.updateBuilding(buildingId, dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('floors/:floorId')
-  updateFloor(@Param('floorId') floorId: string, @Body() dto: { name?: string; floorNumber?: number }) {
+  async updateFloor(@CurrentUser() user: any, @Param('floorId') floorId: string, @Body() dto: { name?: string; floorNumber?: number }) {
+    await this.buildingsService.assertScope(user.orgId, this.pmScope(user), { floorId });
     return this.buildingsService.updateFloor(floorId, dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('restrooms/:restroomId')
-  updateRestroom(@Param('restroomId') restroomId: string, @Body() dto: { name?: string; gender?: string }) {
+  async updateRestroom(@CurrentUser() user: any, @Param('restroomId') restroomId: string, @Body() dto: { name?: string; gender?: string }) {
+    await this.buildingsService.assertScope(user.orgId, this.pmScope(user), { restroomId });
     return this.buildingsService.updateRestroom(restroomId, dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':buildingId')
-  deleteBuilding(@CurrentUser() user: any, @Param('buildingId') buildingId: string) {
+  async deleteBuilding(@CurrentUser() user: any, @Param('buildingId') buildingId: string) {
+    await this.buildingsService.assertScope(user.orgId, this.pmScope(user), { buildingId });
     return this.buildingsService.deleteBuilding(buildingId, user.orgId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete('floors/:floorId')
-  deleteFloor(@CurrentUser() user: any, @Param('floorId') floorId: string) {
+  async deleteFloor(@CurrentUser() user: any, @Param('floorId') floorId: string) {
+    await this.buildingsService.assertScope(user.orgId, this.pmScope(user), { floorId });
     return this.buildingsService.deleteFloor(floorId, user.orgId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete('restrooms/:restroomId')
-  deleteRestroom(@CurrentUser() user: any, @Param('restroomId') restroomId: string) {
+  async deleteRestroom(@CurrentUser() user: any, @Param('restroomId') restroomId: string) {
+    await this.buildingsService.assertScope(user.orgId, this.pmScope(user), { restroomId });
     return this.buildingsService.deleteRestroom(restroomId, user.orgId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete('devices/:deviceId')
-  deleteDevice(@CurrentUser() user: any, @Param('deviceId') deviceId: string) {
+  async deleteDevice(@CurrentUser() user: any, @Param('deviceId') deviceId: string) {
+    await this.buildingsService.assertScope(user.orgId, this.pmScope(user), { deviceId });
     return this.buildingsService.deleteDevice(deviceId, user.orgId);
   }
 
-  // ── Kiosk templates ──────────────────────────────────────────────────────────
+  // ── Kiosk templates — org-wide kiosk look & feel, general admins only ────────
 
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Get('kiosk-templates')
   getTemplates(@CurrentUser() user: any) {
     return this.buildingsService.getTemplates(user.orgId);
   }
 
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Post('kiosk-templates')
   createTemplate(@CurrentUser() user: any, @Body() dto: { name: string }) {
     return this.buildingsService.createTemplate(user.orgId, dto.name);
   }
 
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Patch('kiosk-templates/:id')
   updateTemplate(@Param('id') id: string, @Body() dto: { name?: string; buttons?: any[]; theme?: string; iconScale?: number; ledSnake?: boolean; statsLayout?: any }) {
     return this.buildingsService.updateTemplate(id, dto);
   }
 
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Delete('kiosk-templates/:id')
   deleteTemplate(@Param('id') id: string) {
     return this.buildingsService.deleteTemplate(id);
   }
 
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Patch(':buildingId/kiosk-template')
   assignTemplate(@Param('buildingId') buildingId: string, @Body() dto: { templateId: string | null }) {
     return this.buildingsService.assignTemplate(buildingId, dto.templateId);
   }
 
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Patch('devices/:deviceId/kiosk-template')
   assignTemplateToDevice(@Param('deviceId') deviceId: string, @Body() dto: { templateId: string | null }) {
