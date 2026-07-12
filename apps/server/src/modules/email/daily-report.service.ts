@@ -5,6 +5,7 @@ import { EmailService } from './email.service';
 import { buildDailyReportHtml, buildMultiPropertyReportHtml, DailyReportData, OverviewData } from './daily-report.template';
 import { getReportStrings } from './daily-report.i18n';
 import { translateLocationPath } from '../../common/locale/translate-name';
+import { countsForResponseTime } from '../../common/response-time-reset';
 import { AnalyticsService } from '../analytics/analytics.service';
 
 const DEFAULT_REPORT_HOUR = 8;
@@ -300,16 +301,19 @@ export class DailyReportService {
       select: { reportedAt: true, resolvedAt: true },
     });
 
-    const avgMinutes = resolvedIncidents.length > 0
-      ? Math.round(resolvedIncidents.reduce((s, i) =>
-          s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / resolvedIncidents.length)
+    // Response-time figures only count incidents reported after the
+    // system-wide measurement reset (matters only for the first report).
+    const timedIncidents = resolvedIncidents.filter(countsForResponseTime);
+    const avgMinutes = timedIncidents.length > 0
+      ? Math.round(timedIncidents.reduce((s, i) =>
+          s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / timedIncidents.length)
       : 0;
 
     const slaTarget = 15;
-    const withinSla = resolvedIncidents.filter(i =>
+    const withinSla = timedIncidents.filter(i =>
       (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000 <= slaTarget).length;
-    const slaPercent = resolvedIncidents.length > 0
-      ? Math.round((withinSla / resolvedIncidents.length) * 100) : 0;
+    const slaPercent = timedIncidents.length > 0
+      ? Math.round((withinSla / timedIncidents.length) * 100) : 0;
 
     const issueIncidents = await this.prisma.incident.findMany({
       where: { ...orgFilter, ...dateFilter },
@@ -371,16 +375,18 @@ export class DailyReportService {
     });
 
     const cleanerData = cleaners
-      .map(c => ({
-        name: c.name,
-        resolved: c.incidentActions.length,
-        avgMinutes: c.assignedIncidents.filter(i => i.resolvedAt).length > 0
-          ? Math.round(c.assignedIncidents
-              .filter(i => i.resolvedAt)
-              .reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0)
-            / c.assignedIncidents.filter(i => i.resolvedAt).length)
-          : 0,
-      }))
+      .map(c => {
+        const timed = c.assignedIncidents.filter(countsForResponseTime);
+        return {
+          name: c.name,
+          resolved: c.incidentActions.length,
+          avgMinutes: timed.length > 0
+            ? Math.round(timed
+                .reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0)
+              / timed.length)
+            : 0,
+        };
+      })
       .filter(c => c.resolved > 0)
       .sort((a, b) => b.resolved - a.resolved);
 

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
+import { RESPONSE_TIME_RESET_AT } from '../../common/response-time-reset';
 
 const OFFLINE_AFTER_MS = 90_000; // mark offline if no heartbeat for 90s (1.5× the 60s interval)
 
@@ -443,12 +444,10 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    // Keep in sync with AnalyticsService.KIOSK_AVG_RESET_AT / KIOSK_AVG_BASELINE_MINUTES —
-    // the kiosk avg-response stat was reset on this date (old always-open incidents
-    // dragged the average to thousands of minutes).
-    const avgResetAt = new Date('2026-07-08T00:00:00Z');
+    // Keep in sync with AnalyticsService.KIOSK_AVG_BASELINE_MINUTES — until
+    // enough post-reset data accumulates the avg shows this baseline.
     const avgBaselineMinutes = 2;
-    const avgSince = monthAgo > avgResetAt ? monthAgo : avgResetAt;
+    const avgSince = monthAgo > RESPONSE_TIME_RESET_AT ? monthAgo : RESPONSE_TIME_RESET_AT;
     const statsByBuilding = new Map<string, {
       weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null;
       weeklyByType: Record<string, number>; todayByType: Record<string, number>;
