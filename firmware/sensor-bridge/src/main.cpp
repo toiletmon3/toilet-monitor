@@ -34,7 +34,7 @@ uint32_t emptyAfterMs = 15000;                 // continuous absence before "emp
 constexpr uint32_t HEARTBEAT_EVERY_MS = 60000; // status ping to the server
 
 constexpr const char *SETUP_AP_NAME = "ToiletMon-Setup";
-constexpr const char *DEFAULT_SERVER = "https://cleanco.ai"; // primary domain (duckdns still works)
+constexpr const char *DEFAULT_SERVER = "https://cleanco.ai"; // the ONLY domain — legacy duckdns is decommissioned/blocked
 constexpr const char *FIRMWARE_VERSION = "1.0.2";
 
 Preferences prefs;
@@ -70,6 +70,12 @@ void loadConfig() {
   wifiPass = prefs.getString("pass", "");
   deviceCode = prefs.getString("deviceCode", "");
   serverUrl = prefs.getString("serverUrl", DEFAULT_SERVER);
+  // Self-heal configs saved before the legacy duckdns domain was
+  // decommissioned — that host is blocked server-side and will never answer.
+  if (serverUrl.indexOf("duckdns") >= 0) {
+    serverUrl = DEFAULT_SERVER;
+    prefs.putString("serverUrl", serverUrl);
+  }
   occupiedAfterMs = prefs.getULong("occMs", occupiedAfterMs);
   emptyAfterMs = prefs.getULong("empMs", emptyAfterMs);
 }

@@ -100,7 +100,8 @@ Always run `git tag -l "v*"` first to confirm current latest tag. Never skip the
 ## Deployment
 
 - Push to `main` → `.github/workflows/deploy.yml` → SSH to VPS → `scripts/deploy.sh` → PM2 restart
-- Production URL: https://toiletcleanpro.duckdns.org (VPS `188.166.163.75`, app at `/opt/toilet-monitor`)
+- Production URL: https://cleanco.ai (VPS `188.166.163.75`, app at `/opt/toilet-monitor`)
+- **Legacy domain `toiletcleanpro.duckdns.org` is DECOMMISSIONED (07/2026)** — nginx drops (444) every request that isn't for cleanco.ai, including raw-IP hits. Never re-add duckdns links/origins.
 - PM2 process: `toilet-server` (logs at `/var/log/toilet/out.log`)
 - Concurrency group: `deploy-production`, `cancel-in-progress: true`
 - Failures auto-email via Gmail API (`notify-on-failure` job)
@@ -143,7 +144,7 @@ SSH (`SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`), VAPID (`VAPID_PUBLIC_KEY`, `VAP
 | Cache | Redis 7 (Docker, ioredis — partial) |
 | PWA | vite-plugin-pwa (injectManifest), Workbox, Web Push (VAPID) |
 | Process | PM2 + nginx reverse proxy |
-| Hosting | DigitalOcean Ubuntu 22.04, DuckDNS + Let's Encrypt |
+| Hosting | DigitalOcean Ubuntu 22.04, cleanco.ai + Let's Encrypt (duckdns decommissioned) |
 
 ### Repo structure
 ```

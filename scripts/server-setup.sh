@@ -25,7 +25,7 @@ mkdir -p /var/log/toilet
 cat > /etc/nginx/sites-available/toilet << 'EOF'
 server {
     listen 80;
-    server_name toiletcleanpro.duckdns.org;
+    server_name cleanco.ai www.cleanco.ai;
 
     root /var/www/toilet;
     index index.html;

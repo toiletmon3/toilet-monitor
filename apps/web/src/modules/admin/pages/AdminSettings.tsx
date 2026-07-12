@@ -703,11 +703,9 @@ function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url
 
 function UrlGuide({ structure, onRefresh, propertyManagerMode = false }: { structure: any[]; onRefresh: () => void; propertyManagerMode?: boolean }) {
   const { t } = useTranslation();
-  // Both domains serve the same system; the new primary always leads and the
-  // legacy address is always offered too, regardless of which one the admin
-  // is currently browsing from.
+  // cleanco.ai is the ONLY served domain — the legacy duckdns address was
+  // decommissioned (07/2026) and is blocked at the nginx level.
   const PRIMARY_ORIGIN = 'https://cleanco.ai';
-  const LEGACY_ORIGIN = 'https://toiletcleanpro.duckdns.org';
 
   type DeviceEntry = {
     id: string;
@@ -783,10 +781,6 @@ function UrlGuide({ structure, onRefresh, propertyManagerMode = false }: { struc
           ].map(iface => (
             <div key={iface.path} className="flex flex-col gap-1.5">
               <CopyRow label={iface.label} sub={iface.sub} url={`${PRIMARY_ORIGIN}${iface.path}`} accent={iface.accent} />
-              {/* Property managers only get the new primary domain — legacy address is org-admin info */}
-              {!propertyManagerMode && (
-                <CopyRow label={iface.label} sub={t('admin.settings.oldAddress')} url={`${LEGACY_ORIGIN}${iface.path}`} accent={iface.accent} />
-              )}
             </div>
           ))}
         </div>
@@ -857,14 +851,6 @@ function UrlGuide({ structure, onRefresh, propertyManagerMode = false }: { struc
                 url={`${PRIMARY_ORIGIN}/kiosk/${d.deviceCode}`}
                 accent="#f59e0b"
               />
-              {!propertyManagerMode && (
-                <CopyRow
-                  label={`${LEGACY_ORIGIN}/kiosk/${d.deviceCode}`}
-                  sub={t('admin.settings.oldAddress')}
-                  url={`${LEGACY_ORIGIN}/kiosk/${d.deviceCode}`}
-                  accent="#f59e0b"
-                />
-              )}
             </div>
           ))}
         </div>
