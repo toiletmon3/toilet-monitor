@@ -50,15 +50,32 @@ ENV_FILE="/opt/toilet-monitor/.env.production"
 
 # --- Sanitize .env.production before sourcing ---
 # Past deploys wrote secrets with embedded newlines, leaving lines like
-# `$'\n'` that bash tries to execute when sourcing → exit 127 → deploy fails.
-# We rebuild the file keeping only valid lines: comments, blanks, and
-# proper KEY=value (where KEY is uppercase / digits / underscore).
+# `$'\n'` that bash tries to execute when sourcing → exit 127 → deploy fails,
+# or `KEY="abc` (opening quote, value truncated at the newline) that makes
+# bash search for the closing quote until EOF — every var after that line
+# silently fails to load. We rebuild the file keeping only valid lines, and
+# repair unbalanced-quote lines: CI-managed secret keys are dropped (they are
+# rewritten from GitHub Secrets right below), anything else is kept but
+# reported by key name so it can be fixed manually.
 if [ -f "$ENV_FILE" ]; then
   cp "$ENV_FILE" "${ENV_FILE}.bak.$(date +%s)" 2>/dev/null || true
   awk '
     /^[[:space:]]*#/ { print; next }                                 # comment
     /^[[:space:]]*$/ { print; next }                                 # blank
-    /^[A-Za-z_][A-Za-z0-9_]*=/ { print; next }                       # KEY=value
+    /^[A-Za-z_][A-Za-z0-9_]*=/ {                                     # KEY=value
+      line = $0
+      q = gsub(/"/, "\"", line)                                      # count quotes
+      if (q % 2 == 1) {
+        eq = index($0, "=")
+        key = substr($0, 1, eq - 1)
+        if (key ~ /^(SMTP_PASS|SMTP_USER|SMTP_FROM|GMAIL_CLIENT_ID|GMAIL_CLIENT_SECRET|GMAIL_REFRESH_TOKEN|GMAIL_USER|CRON_SECRET|GITHUB_PAT|VAPID_PUBLIC_KEY|VAPID_PRIVATE_KEY)$/) {
+          print "env-sanitize: dropped malformed " key " line (rewritten from CI secrets)" > "/dev/stderr"
+          next
+        }
+        print "env-sanitize: WARNING — unbalanced quotes on " key " (kept, fix manually)" > "/dev/stderr"
+      }
+      print; next
+    }
     { next }                                                         # drop garbage
   ' "$ENV_FILE" > "${ENV_FILE}.clean" && mv "${ENV_FILE}.clean" "$ENV_FILE"
   # Also drop legacy broken SMTP_PASS lines
@@ -92,15 +109,18 @@ fi
 # Inject VAPID keys from CI environment into .env.production (idempotent)
 if [ -n "$VAPID_PUBLIC_KEY" ] && [ -n "$VAPID_PRIVATE_KEY" ]; then
   grep -q "VAPID_PUBLIC_KEY" "$ENV_FILE" 2>/dev/null \
-    || echo "VAPID_PUBLIC_KEY=$VAPID_PUBLIC_KEY" >> "$ENV_FILE"
+    || echo "VAPID_PUBLIC_KEY=$(echo -n "$VAPID_PUBLIC_KEY" | tr -d '\r\n\"')" >> "$ENV_FILE"
   grep -q "VAPID_PRIVATE_KEY" "$ENV_FILE" 2>/dev/null \
-    || echo "VAPID_PRIVATE_KEY=$VAPID_PRIVATE_KEY" >> "$ENV_FILE"
+    || echo "VAPID_PRIVATE_KEY=$(echo -n "$VAPID_PRIVATE_KEY" | tr -d '\r\n\"')" >> "$ENV_FILE"
   echo "VAPID keys ensured in $ENV_FILE"
 fi
 
-# Strip surrounding whitespace/newlines from secrets — GitHub Secrets sometimes
-# preserve trailing newlines from copy-paste, which corrupts OAuth requests.
-trim() { echo -n "$1" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
+# Strip whitespace/newlines AND double quotes from secrets — GitHub Secrets
+# sometimes preserve trailing newlines from copy-paste (corrupts OAuth
+# requests), and an embedded newline/quote written into a `KEY="..."` line
+# leaves an unbalanced quote that breaks sourcing the env file. None of these
+# token-type secrets legitimately contain quotes.
+trim() { echo -n "$1" | tr -d '\r\n"' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
 
 # Inject Gmail API credentials from CI environment (idempotent).
 # CRITICAL: also re-export the cleaned value into the current shell so that
@@ -144,26 +164,38 @@ fi
 # Legacy SMTP credentials (kept for backwards compat)
 if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASS" ]; then
   sed -i '/^SMTP_PASS=/d' "$ENV_FILE" 2>/dev/null || true
-  echo "SMTP_PASS=\"$SMTP_PASS\"" >> "$ENV_FILE"
+  echo "SMTP_PASS=\"$(trim "$SMTP_PASS")\"" >> "$ENV_FILE"
   grep -q "SMTP_USER" "$ENV_FILE" 2>/dev/null \
-    || echo "SMTP_USER=\"$SMTP_USER\"" >> "$ENV_FILE"
+    || echo "SMTP_USER=\"$(trim "$SMTP_USER")\"" >> "$ENV_FILE"
   grep -q "SMTP_FROM" "$ENV_FILE" 2>/dev/null \
-    || echo "SMTP_FROM=\"$SMTP_USER\"" >> "$ENV_FILE"
+    || echo "SMTP_FROM=\"$(trim "$SMTP_USER")\"" >> "$ENV_FILE"
   echo "SMTP credentials ensured in $ENV_FILE"
 fi
 
 # Inject CRON_SECRET from CI environment (idempotent)
 if [ -n "$CRON_SECRET" ]; then
+  CLEAN=$(trim "$CRON_SECRET")
   grep -q "CRON_SECRET" "$ENV_FILE" 2>/dev/null \
-    || echo "CRON_SECRET=\"$CRON_SECRET\"" >> "$ENV_FILE"
+    || echo "CRON_SECRET=\"$CLEAN\"" >> "$ENV_FILE"
+  export CRON_SECRET="$CLEAN"
   echo "CRON_SECRET ensured in $ENV_FILE"
 fi
 
 # Inject GITHUB_PAT from CI environment (idempotent)
 if [ -n "$GITHUB_PAT" ]; then
+  CLEAN=$(trim "$GITHUB_PAT")
   sed -i '/^GITHUB_PAT=/d' "$ENV_FILE" 2>/dev/null || true
-  echo "GITHUB_PAT=\"$GITHUB_PAT\"" >> "$ENV_FILE"
+  echo "GITHUB_PAT=\"$CLEAN\"" >> "$ENV_FILE"
+  export GITHUB_PAT="$CLEAN"
   echo "GITHUB_PAT ensured in $ENV_FILE"
+fi
+
+# Repair confirmation: the file must now source cleanly end-to-end (an
+# unbalanced quote anywhere silently drops every var declared after it).
+if (source "$ENV_FILE") >/dev/null 2>&1; then
+  echo "env file OK — sources cleanly"
+else
+  echo "WARNING: $ENV_FILE still fails to source — see env-sanitize warnings above"
 fi
 
 # Reconcile DB containers with docker-compose.databases.yml.
