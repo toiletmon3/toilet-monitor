@@ -1024,7 +1024,8 @@ export default function AdminSettings() {
       {/* ── Properties (נכסים) — org admins only ── */}
       {!isPropertyManager && <PropertiesPanel structure={structure} onRefresh={refresh} />}
 
-      {/* ── Language Settings ── */}
+      {/* ── Language Settings — org-wide config, org admins only ── */}
+      {!isPropertyManager && (
       <div className="rounded-2xl p-5 flex flex-col gap-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <h2 className="font-semibold text-white flex items-center gap-2">
           <Globe size={16} style={{ color: 'var(--color-accent)' }} />
@@ -1081,6 +1082,7 @@ export default function AdminSettings() {
           />
         </div>
       </div>
+      )}
 
       {/* ── Daily Report Settings ── */}
       <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: 'var(--color-card)', border: '1px solid rgba(139,92,246,0.15)' }}>
@@ -1100,7 +1102,14 @@ export default function AdminSettings() {
             {(orgSettings?.dailyReportEnabled ?? true) ? t('admin.settings.dailyReportOn') : t('admin.settings.dailyReportOff')}
           </button>
         </div>
-        <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.dailyReportDesc')}</div>
+        <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+          {t('admin.settings.dailyReportDesc')}
+          {isPropertyManager && (
+            <span className="block mt-1 font-medium" style={{ color: '#a78bfa' }}>
+              {t('admin.settings.dailyReportPropertyHint')}
+            </span>
+          )}
+        </div>
         {(orgSettings?.dailyReportEnabled ?? true) && (
           <div className="flex flex-col gap-2">
             <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.settings.dailyReportHour')}</div>

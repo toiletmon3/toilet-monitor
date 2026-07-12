@@ -6,10 +6,16 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async getOrgSettings(orgId: string) {
+  /**
+   * Org settings, as the caller should see them.
+   * `pmPropertyIds` (set for PROPERTY_MANAGER callers) overlays the daily-report
+   * hour/enabled of THEIR property (stored per property under
+   * `settings.propertyDailyReports[propertyId]`) over the org-wide values.
+   */
+  async getOrgSettings(orgId: string, pmPropertyIds?: string[]) {
     const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { name: true, settings: true } });
     const s = (org?.settings ?? {}) as any;
-    return {
+    const base = {
       name: org?.name ?? '',
       kioskLang: s.kioskLang ?? s.defaultLanguage ?? 'he',
       cleanerLang: s.cleanerLang ?? null,
@@ -18,9 +24,38 @@ export class UsersService {
       dailyReportHour: s.dailyReportHour ?? 7,
       dailyReportEnabled: s.dailyReportEnabled ?? true,
     };
+    if (pmPropertyIds?.length) {
+      const perProp = (s.propertyDailyReports ?? {})[pmPropertyIds[0]] ?? {};
+      return {
+        ...base,
+        dailyReportHour: perProp.hour ?? base.dailyReportHour,
+        dailyReportEnabled: perProp.enabled ?? base.dailyReportEnabled,
+      };
+    }
+    return base;
   }
 
-  async updateOrgSettings(orgId: string, patch: { name?: string; kioskLang?: string; cleanerLang?: string | null; kioskTheme?: string; timezone?: string; dailyReportHour?: number; dailyReportEnabled?: boolean }) {
+  async updateOrgSettings(orgId: string, patch: { name?: string; kioskLang?: string; cleanerLang?: string | null; kioskTheme?: string; timezone?: string; dailyReportHour?: number; dailyReportEnabled?: boolean }, pmPropertyIds?: string[]) {
+    // A property manager only ever writes the daily-report schedule of their
+    // OWN properties — every other org-wide field is silently dropped.
+    if (pmPropertyIds) {
+      if (pmPropertyIds.length === 0) return this.getOrgSettings(orgId, pmPropertyIds);
+      const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
+      const current = (org?.settings ?? {}) as any;
+      const reports = { ...(current.propertyDailyReports ?? {}) };
+      for (const pid of pmPropertyIds) {
+        const entry = { ...(reports[pid] ?? {}) };
+        if (patch.dailyReportHour !== undefined) entry.hour = patch.dailyReportHour;
+        if (patch.dailyReportEnabled !== undefined) entry.enabled = patch.dailyReportEnabled;
+        reports[pid] = entry;
+      }
+      await this.prisma.organization.update({
+        where: { id: orgId },
+        data: { settings: { ...current, propertyDailyReports: reports } },
+      });
+      return this.getOrgSettings(orgId, pmPropertyIds);
+    }
+
     const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
     const current = (org?.settings ?? {}) as any;
     // `name` is a top-level column on Organization, not part of the settings JSON.
@@ -44,14 +79,22 @@ export class UsersService {
     return this.prisma.user.update({ where: { id: userId }, data: { preferredLang }, select: { id: true, preferredLang: true } });
   }
 
-  async findAll(orgId: string, propertyIds?: string[]) {
-    // Property scope: users assigned to one of the properties directly, or via
-    // a building that belongs to one of them.
-    const propertyFilter = propertyIds
+  /** User "propertyId in ids" filter — direct assignment OR via the assigned building. */
+  private userPropertyFilter(propertyIds?: string[]) {
+    return propertyIds
       ? { OR: [{ propertyId: { in: propertyIds } }, { building: { propertyId: { in: propertyIds } } }] }
       : {};
+  }
+
+  async findAll(orgId: string, propertyIds?: string[], workersOnly = false) {
+    // Property scope: users assigned to one of the properties directly, or via
+    // a building that belongs to one of them. `workersOnly` (property managers)
+    // additionally hides every admin/manager account — as far as a property
+    // manager can tell, only the workers of their property exist.
+    const propertyFilter = this.userPropertyFilter(propertyIds);
+    const roleFilter = workersOnly ? { role: { in: ['CLEANER', 'SHIFT_SUPERVISOR'] as any[] } } : {};
     return this.prisma.user.findMany({
-      where: { orgId, ...propertyFilter },
+      where: { orgId, ...propertyFilter, ...roleFilter },
       select: {
         id: true, name: true, email: true, idNumber: true,
         role: true, phone: true, preferredLang: true, isActive: true, createdAt: true,
@@ -236,18 +279,18 @@ export class UsersService {
     return { cleaner: { name: cleaner.name }, arrivedAt: updated.arrivedAt, leftAt: updated.leftAt };
   }
 
-  async getActiveCleaners(orgId: string) {
+  async getActiveCleaners(orgId: string, propertyIds?: string[]) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     return this.prisma.cleanerArrival.findMany({
-      where: { user: { orgId }, arrivedAt: { gte: todayStart }, leftAt: null },
+      where: { user: { orgId, ...this.userPropertyFilter(propertyIds) }, arrivedAt: { gte: todayStart }, leftAt: null },
       include: { user: { select: { id: true, name: true, buildingId: true, building: { select: { name: true } } } } },
       orderBy: { arrivedAt: 'asc' },
     });
   }
 
-  async getArrivals(orgId: string, from?: string) {
-    const where: any = { user: { orgId } };
+  async getArrivals(orgId: string, from?: string, propertyIds?: string[]) {
+    const where: any = { user: { orgId, ...this.userPropertyFilter(propertyIds) } };
     if (from) where.arrivedAt = { gte: new Date(from) };
     return this.prisma.cleanerArrival.findMany({
       where,
@@ -315,7 +358,7 @@ export class UsersService {
     return this.prisma.user.delete({ where: { id: userId } });
   }
 
-  async getMismatches(orgId: string) {
+  async getMismatches(orgId: string, propertyIds?: string[]) {
     const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
     const s = (org?.settings ?? {}) as any;
     const thresholdMinutes = s.mismatchThresholdMinutes ?? 10;
@@ -326,7 +369,7 @@ export class UsersService {
 
     const activeArrivals = await this.prisma.cleanerArrival.findMany({
       where: {
-        user: { orgId },
+        user: { orgId, ...this.userPropertyFilter(propertyIds) },
         arrivedAt: { gte: todayStart, lte: cutoff },
         leftAt: null,
       },

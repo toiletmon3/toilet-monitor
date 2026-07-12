@@ -292,7 +292,23 @@ export class IncidentsService {
     return incident;
   }
 
-  async adminUpdate(incidentId: string, adminUserId: string, dto: { status?: string; assignedCleanerId?: string; note?: string }) {
+  async adminUpdate(incidentId: string, adminUserId: string, dto: { status?: string; assignedCleanerId?: string; note?: string }, caller?: { orgId: string; propertyIds?: string[] }) {
+    // Ownership check — the incident must belong to the caller's org, and for
+    // a property manager (propertyIds set) to one of their own properties.
+    if (caller) {
+      const owned = await this.prisma.incident.findFirst({
+        where: {
+          id: incidentId,
+          restroom: { floor: { building: {
+            orgId: caller.orgId,
+            ...(caller.propertyIds ? { propertyId: { in: caller.propertyIds } } : {}),
+          } } },
+        },
+        select: { id: true },
+      });
+      if (!owned) throw new NotFoundException('Incident not found');
+    }
+
     const data: any = {};
     if (dto.status) {
       data.status = dto.status;

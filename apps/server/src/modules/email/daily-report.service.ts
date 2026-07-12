@@ -36,12 +36,19 @@ export class DailyReportService {
     }
   }
 
-  async sendNow(orgId: string): Promise<{ sent: boolean; recipients: string[] }> {
+  async sendNow(orgId: string, requester?: { id: string; role: string }): Promise<{ sent: boolean; recipients: string[] }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },
       select: { id: true, name: true },
     });
     if (!org) return { sent: false, recipients: [] };
+
+    // A property manager's "send now" sends ONLY their own property digest to
+    // themselves — never the org-wide report to the org admins.
+    if (requester?.role === 'PROPERTY_MANAGER') {
+      const pmSentTo = await this.sendPropertyManagerReports(org.id, requester.id);
+      return { sent: pmSentTo.length > 0, recipients: pmSentTo };
+    }
 
     const admins = await this.prisma.user.findMany({
       where: {
@@ -106,54 +113,74 @@ export class DailyReportService {
 
   private async processOrg(org: { id: string; name: string; settings: any }) {
     const settings = (org.settings ?? {}) as Record<string, any>;
-    if (settings.dailyReportEnabled === false) return;
-    const reportHour = settings.dailyReportHour ?? DEFAULT_REPORT_HOUR;
+    const orgEnabled = settings.dailyReportEnabled !== false;
+    const orgHour = settings.dailyReportHour ?? DEFAULT_REPORT_HOUR;
 
     const now = new Date();
     const nowInTz = new Date(now.toLocaleString('en-US', { timeZone: DEFAULT_TZ }));
     const currentHour = nowInTz.getHours();
-
-    if (currentHour !== reportHour) return;
-
     const todayKey = nowInTz.toISOString().slice(0, 10);
-    const sentKey = `${org.id}:${todayKey}`;
-    if (this.sentDates.has(sentKey)) return;
 
-    const admins = await this.prisma.user.findMany({
-      where: {
-        orgId: org.id,
-        role: { in: ['ORG_ADMIN', 'SUPER_ADMIN', 'MANAGER'] },
-        isActive: true,
-        email: { not: null },
-      },
-      select: { email: true, preferredLang: true },
+    // ── Org-wide report to the general admins, at the ORG hour ──
+    if (orgEnabled && currentHour === orgHour && !this.sentDates.has(`${org.id}:${todayKey}`)) {
+      const sentKey = `${org.id}:${todayKey}`;
+
+      const admins = await this.prisma.user.findMany({
+        where: {
+          orgId: org.id,
+          role: { in: ['ORG_ADMIN', 'SUPER_ADMIN', 'MANAGER'] },
+          isActive: true,
+          email: { not: null },
+        },
+        select: { email: true, preferredLang: true },
+      });
+
+      const recipients = admins.filter(a => a.email);
+      if (recipients.length === 0) {
+        this.logger.warn(`Org ${org.name}: no admin emails, skipping daily report`);
+        this.sentDates.set(sentKey, 'skipped');
+      } else {
+        const displayName = await this.orgDisplayName(org.id, org.name);
+        const data = await this.gatherYesterdayData(org.id, displayName);
+
+        let sentCount = 0;
+        for (const r of recipients) {
+          const html = buildDailyReportHtml(this.localizeData(data, r.preferredLang), r.preferredLang);
+          const s = getReportStrings(r.preferredLang);
+          const subject = `${s.subjectPrefix} — ${displayName} — ${this.formatDate(data._yesterdayStart, s.dateLocale)}`;
+          const ok = await this.email.send([r.email!], subject, html);
+          if (ok) sentCount++;
+        }
+        if (sentCount > 0) {
+          this.sentDates.set(sentKey, 'sent');
+          this.logger.log(`Daily report sent for ${org.name} to ${sentCount} admin(s)`);
+        }
+      }
+    }
+
+    // ── Property-manager digests, each at THEIR property's hour ──
+    // A PM's settings page writes hour/enabled per property under
+    // settings.propertyDailyReports[propertyId]; missing values fall back to
+    // the org-wide schedule (which was the previous behaviour).
+    const perProp = (settings.propertyDailyReports ?? {}) as Record<string, { enabled?: boolean; hour?: number }>;
+    const pms = await this.prisma.user.findMany({
+      where: { orgId: org.id, role: 'PROPERTY_MANAGER', isActive: true, email: { not: null } },
+      select: { id: true, managedProperties: { select: { id: true }, orderBy: { name: 'asc' } } },
     });
-
-    const recipients = admins.filter(a => a.email);
-    if (recipients.length === 0) {
-      this.logger.warn(`Org ${org.name}: no admin emails, skipping daily report`);
-      this.sentDates.set(sentKey, 'skipped');
-      return;
-    }
-
-    const displayName = await this.orgDisplayName(org.id, org.name);
-    const data = await this.gatherYesterdayData(org.id, displayName);
-
-    let sentCount = 0;
-    for (const r of recipients) {
-      const html = buildDailyReportHtml(this.localizeData(data, r.preferredLang), r.preferredLang);
-      const s = getReportStrings(r.preferredLang);
-      const subject = `${s.subjectPrefix} — ${displayName} — ${this.formatDate(data._yesterdayStart, s.dateLocale)}`;
-      const ok = await this.email.send([r.email!], subject, html);
-      if (ok) sentCount++;
-    }
-    // Property managers get their own per-property digest in the same run
-    const pmSent = await this.sendPropertyManagerReports(org.id);
-    sentCount += pmSent.length;
-
-    if (sentCount > 0) {
-      this.sentDates.set(sentKey, 'sent');
-      this.logger.log(`Daily report sent for ${org.name} to ${sentCount} recipient(s) (${pmSent.length} property managers)`);
+    for (const pm of pms) {
+      const primary = pm.managedProperties[0];
+      if (!primary) continue;
+      const cfg = perProp[primary.id] ?? {};
+      const enabled = cfg.enabled ?? orgEnabled;
+      const hour = cfg.hour ?? orgHour;
+      if (!enabled || currentHour !== hour) continue;
+      const pmKey = `pm:${pm.id}:${todayKey}`;
+      if (this.sentDates.has(pmKey)) continue;
+      const sent = await this.sendPropertyManagerReports(org.id, pm.id);
+      if (sent.length > 0) {
+        this.sentDates.set(pmKey, 'sent');
+        this.logger.log(`Property-manager daily report sent for org ${org.name} (pm ${pm.id})`);
+      }
     }
   }
 
@@ -176,7 +203,7 @@ export class DailyReportService {
    */
   private async gatherOverview(orgId: string, from: Date, to: Date, propertyId?: string): Promise<OverviewData | undefined> {
     try {
-      const ov = await this.analytics.getOverview(orgId, from, to, undefined, undefined, undefined, propertyId);
+      const ov = await this.analytics.getOverview(orgId, from, to, propertyId ? { propertyId } : undefined);
       const cur = ov.kpis.current;
       return {
         avgScore: { value: cur.avgScore.value, trend: cur.avgScore.trend },
@@ -213,10 +240,12 @@ export class DailyReportService {
   /**
    * Property managers get ONE email with the full report repeated per property
    * they manage (each block gathered with that property's scope).
+   * `onlyUserId` narrows the send to a single property manager (self-service
+   * "send now" and the per-property cron schedule).
    */
-  private async sendPropertyManagerReports(orgId: string): Promise<string[]> {
+  private async sendPropertyManagerReports(orgId: string, onlyUserId?: string): Promise<string[]> {
     const pms = await this.prisma.user.findMany({
-      where: { orgId, role: 'PROPERTY_MANAGER', isActive: true, email: { not: null } },
+      where: { orgId, role: 'PROPERTY_MANAGER', isActive: true, email: { not: null }, ...(onlyUserId ? { id: onlyUserId } : {}) },
       select: {
         email: true,
         preferredLang: true,

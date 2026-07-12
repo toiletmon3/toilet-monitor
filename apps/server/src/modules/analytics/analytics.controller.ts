@@ -47,7 +47,7 @@ export class AnalyticsController {
 
   @Get('summary')
   getSummary(@CurrentUser() user: any, @Query('buildingId') buildingId?: string) {
-    return this.analyticsService.getSummary(user.orgId, buildingId);
+    return this.analyticsService.getSummary(user.orgId, this.scoped(user, { buildingId }));
   }
 
   @Get('issue-frequency')
@@ -65,7 +65,7 @@ export class AnalyticsController {
   @Get('heatmap')
   getHeatmap(@CurrentUser() user: any, @Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string) {
     const r = resolveRange(days, from, to, 30);
-    return this.analyticsService.getFloorHeatmap(user.orgId, r.from, r.to);
+    return this.analyticsService.getFloorHeatmap(user.orgId, r.from, r.to, this.scoped(user, {}));
   }
 
   @Get('cleaners')
@@ -120,8 +120,10 @@ export class AnalyticsController {
     @Query('restroomId') restroomId?: string,
   ) {
     const r = resolveRange(days, from, to, 30);
-    const scope = this.scoped(user, { propertyId, buildingId, floorId, restroomId });
-    return this.analyticsService.getOverview(user.orgId, r.from, r.to, scope.buildingId, scope.floorId, scope.restroomId, scope.propertyId);
+    // Pass the FULL scope object — for a property manager the confinement lives
+    // in scope.propertyIds, which positional propertyId-only plumbing dropped
+    // (that bug showed PMs the whole org's restrooms on the dashboard).
+    return this.analyticsService.getOverview(user.orgId, r.from, r.to, this.scoped(user, { propertyId, buildingId, floorId, restroomId }));
   }
 
   @Public()

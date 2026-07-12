@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles, ADMIN_ROLES, ADMIN_PM_ROLES } from '../../common/decorators/roles.decorator';
 import { DailyReportService } from './daily-report.service';
 import { EmailService } from './email.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -16,6 +17,7 @@ export class EmailController {
     private prisma: PrismaService,
   ) {}
 
+  @Roles(...ADMIN_PM_ROLES)
   @UseGuards(JwtAuthGuard)
   @Get('status')
   async getStatus() {
@@ -27,6 +29,8 @@ export class EmailController {
     };
   }
 
+  // Exposes org-wide recipients and every org's schedule — general admins only.
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Get('diagnose')
   async diagnose(@CurrentUser() user: any) {
@@ -72,19 +76,22 @@ export class EmailController {
     };
   }
 
+  @Roles(...ADMIN_PM_ROLES)
   @UseGuards(JwtAuthGuard)
   @Post('send-daily-report')
   async sendDailyReport(@CurrentUser() user: any) {
     if (!this.emailService.isConfigured()) {
       return { sent: false, error: 'Gmail API not configured (GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN missing)', recipients: [] };
     }
-    const result = await this.dailyReport.sendNow(user.orgId);
+    // A property manager triggers only their own property digest (see sendNow)
+    const result = await this.dailyReport.sendNow(user.orgId, { id: user.id, role: user.role });
     if (!result.sent) {
       return { ...result, error: this.emailService.getLastError() || 'No admin recipients found with email' };
     }
     return result;
   }
 
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Post('trigger-daily-report')
   async triggerDailyReport(@CurrentUser() user: any) {

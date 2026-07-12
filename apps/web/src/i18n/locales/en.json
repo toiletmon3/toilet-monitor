@@ -490,6 +490,7 @@
       "cleanerLangPerWorker": "👤 Per Worker",
       "dailyReportTitle": "📧 Daily Report for Admins",
       "dailyReportDesc": "Every morning, a summary email with yesterday's data will be sent to all admins with an email address",
+      "dailyReportPropertyHint": "The report and the hour set here apply only to your property",
       "dailyReportHour": "Send time",
       "dailyReportOn": "✉️ Active",
       "dailyReportOff": "✉️ Disabled",

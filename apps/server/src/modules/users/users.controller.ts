@@ -3,7 +3,7 @@ import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
-import { Roles, ADMIN_PM_ROLES } from '../../common/decorators/roles.decorator';
+import { Roles, ADMIN_ROLES, ADMIN_PM_ROLES } from '../../common/decorators/roles.decorator';
 import { RateLimit } from '../../common/decorators/rate-limit.decorator';
 
 // Every guarded route here is an admin/staff-management surface; only the
@@ -19,9 +19,11 @@ export class UsersController {
   @Get()
   findAll(@CurrentUser() user: any) {
     // Property managers only see the workers of their own properties
-    // (or nothing until a property is assigned)
-    const scope = user.role === 'PROPERTY_MANAGER' ? (user.propertyIds?.length ? user.propertyIds : ['__none__']) : undefined;
-    return this.usersService.findAll(user.orgId, scope);
+    // (or nothing until a property is assigned). They also never see
+    // admin/manager accounts — those exist only for the org admins.
+    const isPm = user.role === 'PROPERTY_MANAGER';
+    const scope = isPm ? (user.propertyIds?.length ? user.propertyIds : ['__none__']) : undefined;
+    return this.usersService.findAll(user.orgId, scope, isPm);
   }
 
   @Post('cleaners')
@@ -56,29 +58,42 @@ export class UsersController {
     return this.usersService.setManagedProperties(id, dto.propertyIds ?? []);
   }
 
+  /** PM scope helper: their property ids, or a never-matching sentinel when unassigned. */
+  private pmScope(user: any): string[] | undefined {
+    if (user.role !== 'PROPERTY_MANAGER') return undefined;
+    return user.propertyIds?.length ? user.propertyIds : ['__none__'];
+  }
+
   // Literal routes MUST come before parameterized ':id' routes in NestJS
   @Get('org-settings')
   getOrgSettings(@CurrentUser() user: any) {
-    return this.usersService.getOrgSettings(user.orgId);
+    // A property manager reads the daily-report settings of their own property
+    return this.usersService.getOrgSettings(user.orgId, user.role === 'PROPERTY_MANAGER' ? (user.propertyIds ?? []) : undefined);
   }
 
   @Patch('org-settings')
   updateOrgSettings(@CurrentUser() user: any, @Body() dto: { name?: string; kioskLang?: string; cleanerLang?: string | null; timezone?: string; dailyReportHour?: number; dailyReportEnabled?: boolean }) {
-    return this.usersService.updateOrgSettings(user.orgId, dto);
+    // A property manager may only tune the daily report of their own property —
+    // never org-wide settings (name, languages, timezone).
+    return this.usersService.updateOrgSettings(user.orgId, dto, user.role === 'PROPERTY_MANAGER' ? (user.propertyIds ?? []) : undefined);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('mismatches')
   getMismatches(@CurrentUser() user: any) {
-    return this.usersService.getMismatches(user.orgId);
+    return this.usersService.getMismatches(user.orgId, this.pmScope(user));
   }
 
+  // Escalation & notification policy is org-wide — general admins only,
+  // never property managers.
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Get('escalation-config')
   getEscalationConfig(@CurrentUser() user: any) {
     return this.usersService.getEscalationConfig(user.orgId);
   }
 
+  @Roles(...ADMIN_ROLES)
   @UseGuards(JwtAuthGuard)
   @Patch('escalation-config')
   updateEscalationConfig(
@@ -149,13 +164,13 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Get('active-cleaners')
   getActiveCleaners(@CurrentUser() user: any) {
-    return this.usersService.getActiveCleaners(user.orgId);
+    return this.usersService.getActiveCleaners(user.orgId, this.pmScope(user));
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('arrivals')
   getArrivals(@CurrentUser() user: any, @Query('from') from?: string) {
-    return this.usersService.getArrivals(user.orgId, from);
+    return this.usersService.getArrivals(user.orgId, from, this.pmScope(user));
   }
 
   @Delete(':id')
@@ -165,7 +180,8 @@ export class UsersController {
   }
 
   @Patch(':id/lang')
-  updateLang(@Param('id') id: string, @Body() dto: { preferredLang: string }) {
+  async updateLang(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: { preferredLang: string }) {
+    await this.usersService.assertCanManageUser(user, id);
     return this.usersService.updateLang(id, dto.preferredLang);
   }
 
