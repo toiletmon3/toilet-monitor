@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles, ADMIN_PM_ROLES } from '../../common/decorators/roles.decorator';
+import { CreateIncidentDto, SyncBatchDto } from './incidents.dto';
 import { IncidentStatus } from '@prisma/client';
 
 /** Resolve a { from?, to? } window from the dashboard range params (days=N OR from+to). */
@@ -24,22 +25,13 @@ export class IncidentsController {
 
   @Public()
   @Post()
-  create(
-    @Body()
-    body: {
-      restroomId: string;
-      issueTypeId: string;
-      deviceId: string;
-      reportedAt: string;
-      clientId: string;
-    },
-  ) {
+  create(@Body() body: CreateIncidentDto) {
     return this.incidentsService.create(body);
   }
 
   @Public()
   @Post('sync')
-  syncBatch(@Body() body: any) {
+  syncBatch(@Body() body: SyncBatchDto) {
     return this.incidentsService.syncBatch(body);
   }
 

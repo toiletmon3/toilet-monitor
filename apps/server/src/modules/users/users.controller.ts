@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles, ADMIN_PM_ROLES } from '../../common/decorators/roles.decorator';
+import { RateLimit } from '../../common/decorators/rate-limit.decorator';
 
 // Every guarded route here is an admin/staff-management surface; only the
 // @Public() routes (verify-*/checkin/checkout, used by the anonymous kiosk) are
@@ -105,7 +106,10 @@ export class UsersController {
     return this.usersService.updateAdmin(id, dto);
   }
 
+  // Higher cap than the login routes: these are called from the shared-IP kiosk
+  // during check-in, but still tight enough to stop rapid ID enumeration.
   @Public()
+  @RateLimit({ limit: 60, windowMs: 5 * 60 * 1000 })
   @Post('verify-admin')
   verifyAdmin(@Body() dto: { idNumber: string }) {
     return this.usersService.verifyAdminByIdNumber(dto.idNumber);
@@ -124,6 +128,7 @@ export class UsersController {
   }
 
   @Public()
+  @RateLimit({ limit: 60, windowMs: 5 * 60 * 1000 })
   @Post('verify-cleaner')
   verifyCleaner(@Body() dto: { idNumber: string }) {
     return this.usersService.verifyCleaner(dto.idNumber);

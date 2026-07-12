@@ -15,6 +15,7 @@ import { EmailModule } from './modules/email/email.module';
 import { SensorsModule } from './modules/sensors/sensors.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { RateLimitGuard } from './common/guards/rate-limit.guard';
 
 @Module({
   imports: [
@@ -40,8 +41,10 @@ import { RolesGuard } from './common/guards/roles.guard';
     SensorsModule,
   ],
   providers: [
-    // Order matters: JwtAuthGuard runs first and populates request.user,
+    // Order matters. RateLimitGuard runs first so floods are rejected (429)
+    // before any expensive work; then JwtAuthGuard populates request.user;
     // then RolesGuard enforces @Roles() against the verified user.role.
+    { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
