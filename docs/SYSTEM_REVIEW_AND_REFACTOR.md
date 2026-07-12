@@ -563,12 +563,12 @@ schema→`prisma migrate` בלבד · נגעת ב־endpoint→הרץ §2.5 · ha
 - [ ] ⏭️ 3.3 `assertCanManageUser` אוכף org לכל תפקיד — **דולג לבקשת המשתמש** (עדיין פתוח!)
 - [~] 🔴 3.4/3.8 IDOR — ✅ מחיקות (building/floor/restroom/device/property) org-scoped; שאר המוטציות עדיין פתוחות
 - [ ] ⏭️ 3.5 WebSocket handshake auth — **דולג לבקשת המשתמש** (מנהלים ממשיכים לראות ת"ז של עובדיהם; הפיד עדיין לא מאומת)
-- [x] 🟠 3.6 JWT fail-fast (הוסר fallback-secret) — ✅ בוצע (גל 0); 3.14/3.28 (env validation מלא) עדיין פתוח
-- [ ] 🟠 3.7 cleaner login: orgId חובה + 2FA + lockout
+- [x] 🟠 3.6/3.14 JWT+env fail-fast — ✅ בוצע (גל 0: JWT; גל 2: main.ts חוסם עלייה בלי DATABASE_URL, מזהיר על סודות חסרים)
+- [~] 🟠 3.7 cleaner login — ✅ rate-limit/lockout (20/5דק') בוצע (גל 2); חיוב orgId + 2FA **דולג לבקשת המשתמש**
 - [x] 🟠 3.9/3.10 push/diagnose + push/test + kiosk-diagnose — מוגנים (admin) + org-scoped — ✅ בוצע (גל 1)
 - [x] 🟠 3.11 analytics org-scope (restroomScope + getSummary תמיד כוללים orgId) — ✅ בוצע (גל 1)
-- [ ] 🟠 3.12 rate limiting + body limit
-- [ ] 🟠 3.13 DTO validation + forbidNonWhitelisted
+- [x] 🟠 3.12 rate limiting — ✅ בוצע (גל 2): RateLimitGuard פנימי, 20/5דק' על login, 60/5דק' על verify-*
+- [~] 🟠 3.13 DTO validation — ✅ נקודות הקצה הרגישות (auth login/refresh, incidents create/sync עם ArrayMaxSize) — גל 2; כיסוי מלא + forbidNonWhitelisted עדיין פתוח
 - [ ] 🟡 3.16-3.26 (reassign/incident-auth/sync/mass-assign/CRON/helmet/perms/localStorage/CSV)
 - [ ] 🟢 3.27/3.29 refresh rotation + SSH log hygiene
 - [ ] 🧪 §2.6 בדיקות רגרסיה ב־CI

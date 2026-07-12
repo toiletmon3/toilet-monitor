@@ -3,6 +3,11 @@ import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RateLimit } from '../../common/decorators/rate-limit.decorator';
+import { AdminLoginDto, CleanerLoginDto, RefreshDto } from './auth.dto';
+
+/** 20 attempts per 5 minutes per IP on credential endpoints (brute-force cap). */
+const LOGIN_RATE_LIMIT = { limit: 20, windowMs: 5 * 60 * 1000 };
 
 @Controller('auth')
 export class AuthController {
@@ -16,20 +21,22 @@ export class AuthController {
   }
 
   @Public()
+  @RateLimit(LOGIN_RATE_LIMIT)
   @Post('admin/login')
-  loginAdmin(@Body() body: { email: string; password: string }) {
+  loginAdmin(@Body() body: AdminLoginDto) {
     return this.authService.loginAdmin(body.email, body.password);
   }
 
   @Public()
+  @RateLimit(LOGIN_RATE_LIMIT)
   @Post('cleaner/login')
-  loginCleaner(@Body() body: { orgId: string; idNumber: string }) {
+  loginCleaner(@Body() body: CleanerLoginDto) {
     return this.authService.loginCleaner(body.orgId, body.idNumber);
   }
 
   @Public()
   @Post('refresh')
-  refresh(@Body() body: { refreshToken: string }) {
+  refresh(@Body() body: RefreshDto) {
     return this.authService.refreshToken(body.refreshToken);
   }
 
