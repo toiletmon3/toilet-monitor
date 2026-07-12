@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RESPONSE_TIME_RESET_AT, countsForResponseTime } from '../../common/response-time-reset';
 
 /**
  * Assumed minutes a routine patrol would take to detect/handle an issue.
@@ -100,6 +101,8 @@ export class AnalyticsService {
         ...incidentWhere,
         status: 'RESOLVED',
         resolvedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        // response-time measurement restarted system-wide on this date
+        reportedAt: { gte: RESPONSE_TIME_RESET_AT },
       },
       select: { reportedAt: true, resolvedAt: true },
     });
@@ -198,16 +201,20 @@ export class AnalyticsService {
       select: { issueTypeId: true, issueType: true, reportedAt: true, resolvedAt: true },
     });
 
-    const map = new Map<string, { name: string; count: number; totalMinutes: number }>();
+    const map = new Map<string, { name: string; count: number; totalMinutes: number; timedCount: number }>();
     for (const inc of incidents) {
       const existing = map.get(inc.issueTypeId) ?? {
         name: (inc.issueType as any).nameI18n,
         count: 0,
         totalMinutes: 0,
+        timedCount: 0,
       };
       existing.count++;
-      if ((inc as any).resolvedAt) {
+      // only incidents reported after the system-wide response-time reset
+      // contribute a duration; older ones still count in the frequency
+      if (countsForResponseTime(inc as any)) {
         existing.totalMinutes += ((inc as any).resolvedAt.getTime() - inc.reportedAt.getTime()) / 60000;
+        existing.timedCount++;
       }
       map.set(inc.issueTypeId, existing);
     }
@@ -216,7 +223,7 @@ export class AnalyticsService {
       issueTypeId: id,
       nameI18n: data.name,
       count: data.count,
-      avgResolutionMinutes: data.count > 0 ? Math.round(data.totalMinutes / data.count) : 0,
+      avgResolutionMinutes: data.timedCount > 0 ? Math.round(data.totalMinutes / data.timedCount) : 0,
     })).sort((a, b) => b.count - a.count);
   }
 
@@ -249,12 +256,14 @@ export class AnalyticsService {
   }
 
   async getSlaStats(orgId: string, from: Date, to: Date = new Date(), targetMinutes = 15, scope?: AnalyticsScope) {
+    // SLA is a pure response-time panel — measured only from the system-wide reset onwards
+    const since = from > RESPONSE_TIME_RESET_AT ? from : RESPONSE_TIME_RESET_AT;
     const resolved = await this.prisma.incident.findMany({
       where: {
         restroom: this.restroomScope(orgId, scope),
         status: 'RESOLVED',
         resolvedAt: { not: null },
-        reportedAt: { gte: from, lte: to },
+        reportedAt: { gte: since, lte: to },
       },
       select: { reportedAt: true, resolvedAt: true, acknowledgedAt: true },
     });
@@ -350,13 +359,11 @@ export class AnalyticsService {
   }
 
   /**
-   * The kiosk-facing avg-response stat was reset on this date: incidents
-   * resolved before it (some sat open for days and dragged the 30-day average
-   * to thousands of minutes) are excluded from the kiosk display. Until enough
-   * post-reset data accumulates, the kiosk shows KIOSK_AVG_BASELINE_MINUTES.
-   * Internal analytics (SLA dashboard etc.) are NOT affected by this reset.
+   * Until enough post-reset data accumulates, the kiosk avg-response stat
+   * shows this baseline. The reset itself is now the SYSTEM-WIDE
+   * RESPONSE_TIME_RESET_AT (which superseded the original kiosk-only reset
+   * of 08.07).
    */
-  private static readonly KIOSK_AVG_RESET_AT = new Date('2026-07-08T00:00:00Z');
   private static readonly KIOSK_AVG_BASELINE_MINUTES = 2;
 
   async getKioskStatsByBuilding(buildingId: string) {
@@ -367,7 +374,7 @@ export class AnalyticsService {
     const buildingFilter = { restroom: { floor: { buildingId } } };
 
     const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const avgSince = monthAgo > AnalyticsService.KIOSK_AVG_RESET_AT ? monthAgo : AnalyticsService.KIOSK_AVG_RESET_AT;
+    const avgSince = monthAgo > RESPONSE_TIME_RESET_AT ? monthAgo : RESPONSE_TIME_RESET_AT;
 
     const [weeklyCount, dailyCount, resolvedWithTimes] = await Promise.all([
       this.prisma.incident.count({
@@ -439,7 +446,8 @@ export class AnalyticsService {
       }, 0) / count) * 25;
 
       // 3) response 20% — avg resolution minutes, clamped to 60
-      const resolved = b.incidents.filter(i => i.resolvedAt);
+      // (measured only from the system-wide response-time reset onwards)
+      const resolved = b.incidents.filter(countsForResponseTime);
       const avgMin = resolved.length
         ? resolved.reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / resolved.length
         : 0;
@@ -554,7 +562,7 @@ export class AnalyticsService {
     const periodKpis = (complaints: ScoredIncident[]) => {
       const scores = [...this.computeRoomScores(complaints).values()];
       const avgScore = scores.length ? Math.round(scores.reduce((s, r) => s + r.score, 0) / scores.length) : 100;
-      const resolved = complaints.filter(i => i.resolvedAt);
+      const resolved = complaints.filter(countsForResponseTime);
       const avgResponse = resolved.length
         ? Math.round(resolved.reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / resolved.length)
         : 0;
@@ -583,7 +591,7 @@ export class AnalyticsService {
         const dayScores = [...this.computeRoomScores(day).values()];
         out.avgScore.push(dayScores.length ? Math.round(dayScores.reduce((s, r) => s + r.score, 0) / dayScores.length) : 100);
         out.complaints.push(day.length);
-        const dayResolved = day.filter(i => i.resolvedAt);
+        const dayResolved = day.filter(countsForResponseTime);
         out.avgResponse.push(dayResolved.length
           ? Math.round(dayResolved.reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / dayResolved.length)
           : 0);
@@ -806,7 +814,7 @@ export class AnalyticsService {
       idNumber: c.idNumber,
       totalResolved: c.incidentActions.length,
       avgResolutionMinutes: c.assignedIncidents
-        .filter((i) => i.resolvedAt)
+        .filter(countsForResponseTime)
         .reduce((sum, i, _, arr) => {
           return sum + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000 / arr.length;
         }, 0),
