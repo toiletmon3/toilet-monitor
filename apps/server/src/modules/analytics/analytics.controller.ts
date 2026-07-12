@@ -40,9 +40,10 @@ export class AnalyticsController {
     if (user.role !== 'PROPERTY_MANAGER') return scope;
     const mine: string[] = user.propertyIds?.length ? user.propertyIds : ['__none__'];
     // A PM may narrow to ONE of their own properties via the filter; anything
-    // else collapses to the full set they manage.
-    if (scope.propertyId && mine.includes(scope.propertyId)) return scope;
-    return { ...scope, propertyId: undefined, propertyIds: mine };
+    // else collapses to the full set they manage. Either way internal
+    // (hiddenFromPm) accounts are excluded from their stats.
+    if (scope.propertyId && mine.includes(scope.propertyId)) return { ...scope, hideHidden: true };
+    return { ...scope, propertyId: undefined, propertyIds: mine, hideHidden: true };
   }
 
   @Get('summary')

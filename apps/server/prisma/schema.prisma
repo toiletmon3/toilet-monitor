@@ -200,6 +200,7 @@ model User {
   passwordHash  String?
   preferredLang String   @default("he")
   isActive      Boolean  @default(true)
+  hiddenFromPm  Boolean  @default(false) // internal/company account — invisible in every property-manager view; org admins toggle this
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

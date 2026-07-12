@@ -79,10 +79,18 @@ export class UsersService {
     return this.prisma.user.update({ where: { id: userId }, data: { preferredLang }, select: { id: true, preferredLang: true } });
   }
 
-  /** User "propertyId in ids" filter — direct assignment OR via the assigned building. */
+  /**
+   * User "propertyId in ids" filter — direct assignment OR via the assigned
+   * building. `propertyIds` is only ever set for PROPERTY_MANAGER callers, so
+   * it also hides internal/company accounts (`hiddenFromPm`) — as far as a
+   * property manager can tell, those users do not exist.
+   */
   private userPropertyFilter(propertyIds?: string[]) {
     return propertyIds
-      ? { OR: [{ propertyId: { in: propertyIds } }, { building: { propertyId: { in: propertyIds } } }] }
+      ? {
+          hiddenFromPm: false,
+          OR: [{ propertyId: { in: propertyIds } }, { building: { propertyId: { in: propertyIds } } }],
+        }
       : {};
   }
 
@@ -97,7 +105,7 @@ export class UsersService {
       where: { orgId, ...propertyFilter, ...roleFilter },
       select: {
         id: true, name: true, email: true, idNumber: true,
-        role: true, phone: true, preferredLang: true, isActive: true, createdAt: true,
+        role: true, phone: true, preferredLang: true, isActive: true, hiddenFromPm: true, createdAt: true,
         buildingId: true,
         building: { select: { id: true, name: true, propertyId: true } },
         propertyId: true,
@@ -180,7 +188,7 @@ export class UsersService {
     if (requester.id === targetUserId) return; // self-service is fine
     const target = await this.prisma.user.findUnique({
       where: { id: targetUserId },
-      select: { role: true, propertyId: true, building: { select: { propertyId: true } } },
+      select: { role: true, propertyId: true, hiddenFromPm: true, building: { select: { propertyId: true } } },
     });
     if (!target) throw new ForbiddenException();
     const mine = requester.propertyIds ?? [];
@@ -188,9 +196,19 @@ export class UsersService {
     const inProperty =
       (!!target.propertyId && mine.includes(target.propertyId)) ||
       (!!target.building?.propertyId && mine.includes(target.building.propertyId));
-    if (!isWorker || !inProperty) {
+    // hiddenFromPm accounts are invisible to property managers — also unmanageable
+    if (!isWorker || !inProperty || target.hiddenFromPm) {
       throw new ForbiddenException('Property managers can only manage workers of their own properties');
     }
+  }
+
+  /** Org-admin toggle: hide/show an internal account in every property-manager view. */
+  async setHiddenFromPm(userId: string, hiddenFromPm: boolean) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { hiddenFromPm },
+      select: { id: true, name: true, hiddenFromPm: true },
+    });
   }
 
   /** Replace the full set of properties a property manager manages (checkbox assignment). */
