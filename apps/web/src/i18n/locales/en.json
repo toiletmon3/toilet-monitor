@@ -343,6 +343,8 @@
       "deactivateMsg": "Worker deactivated — login blocked",
       "hiddenFromPmOn": "User hidden from property managers",
       "hiddenFromPmOff": "User visible to property managers",
+      "hiddenFromPmLabel": "Hidden from property manager",
+      "visibleToPmLabel": "Visible to property manager",
       "hiddenFromPmTitle": "Hidden from property managers — click to show",
       "visibleToPmTitle": "Visible to property managers — click to hide",
       "addedMsg": "Worker added",
