@@ -783,7 +783,10 @@ function UrlGuide({ structure, onRefresh, propertyManagerMode = false }: { struc
           ].map(iface => (
             <div key={iface.path} className="flex flex-col gap-1.5">
               <CopyRow label={iface.label} sub={iface.sub} url={`${PRIMARY_ORIGIN}${iface.path}`} accent={iface.accent} />
-              <CopyRow label={iface.label} sub={t('admin.settings.oldAddress')} url={`${LEGACY_ORIGIN}${iface.path}`} accent={iface.accent} />
+              {/* Property managers only get the new primary domain — legacy address is org-admin info */}
+              {!propertyManagerMode && (
+                <CopyRow label={iface.label} sub={t('admin.settings.oldAddress')} url={`${LEGACY_ORIGIN}${iface.path}`} accent={iface.accent} />
+              )}
             </div>
           ))}
         </div>
@@ -854,12 +857,14 @@ function UrlGuide({ structure, onRefresh, propertyManagerMode = false }: { struc
                 url={`${PRIMARY_ORIGIN}/kiosk/${d.deviceCode}`}
                 accent="#f59e0b"
               />
-              <CopyRow
-                label={`${LEGACY_ORIGIN}/kiosk/${d.deviceCode}`}
-                sub={t('admin.settings.oldAddress')}
-                url={`${LEGACY_ORIGIN}/kiosk/${d.deviceCode}`}
-                accent="#f59e0b"
-              />
+              {!propertyManagerMode && (
+                <CopyRow
+                  label={`${LEGACY_ORIGIN}/kiosk/${d.deviceCode}`}
+                  sub={t('admin.settings.oldAddress')}
+                  url={`${LEGACY_ORIGIN}/kiosk/${d.deviceCode}`}
+                  accent="#f59e0b"
+                />
+              )}
             </div>
           ))}
         </div>
@@ -873,6 +878,9 @@ export default function AdminSettings() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showBuildingModal, setShowBuildingModal] = useState(false);
+
+  const currentUser: { id?: string; name?: string; role?: string; propertyId?: string } = JSON.parse(localStorage.getItem('user') ?? '{}');
+  const isPropertyManager = currentUser.role === 'PROPERTY_MANAGER';
 
   const { data: structure = [], isLoading } = useQuery({
     queryKey: ['building-structure'],
@@ -888,6 +896,7 @@ export default function AdminSettings() {
   const { data: escConfig } = useQuery({
     queryKey: ['escalation-config'],
     queryFn: async () => (await api.get('/users/escalation-config')).data,
+    enabled: !isPropertyManager, // escalation config is org-admin only
   });
 
   const updateEscalation = async (patch: { escalationEnabled?: boolean; cleanerReminderMinutes?: number; supervisorEscalationMinutes?: number; mismatchThresholdMinutes?: number }) => {
@@ -908,8 +917,6 @@ export default function AdminSettings() {
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['building-structure'] });
 
-  const currentUser: { id?: string; name?: string; role?: string; propertyId?: string } = JSON.parse(localStorage.getItem('user') ?? '{}');
-  const isPropertyManager = currentUser.role === 'PROPERTY_MANAGER';
   const [pwOpen, setPwOpen] = useState(false);
   const [pwNew, setPwNew] = useState('');
   const [pwConfirm, setPwConfirm] = useState('');
@@ -1148,7 +1155,8 @@ export default function AdminSettings() {
         </div>
       </div>
 
-      {/* ── Escalation & Mismatch Settings ── */}
+      {/* ── Escalation & Mismatch Settings — org admins only, never property managers ── */}
+      {!isPropertyManager && (
       <div className="rounded-2xl p-5 flex flex-col gap-5" style={{ background: 'var(--color-card)', border: '1px solid rgba(239,68,68,0.15)' }}>
         <h2 className="font-semibold text-white flex items-center gap-2">
           <AlertCircle size={16} style={{ color: '#ef4444' }} />
@@ -1230,6 +1238,7 @@ export default function AdminSettings() {
           <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.escalationToggleHint')}</span>
         </div>
       </div>
+      )}
 
       {/* page header */}
       <div className="flex items-center justify-between">
