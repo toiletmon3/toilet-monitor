@@ -45,6 +45,20 @@ else
   echo "Change detection: install=$RUN_INSTALL migrate=$RUN_MIGRATE server=$BUILD_SERVER web=$BUILD_WEB"
 fi
 
+# CI build accelerator: if the workflow already compiled and rsync'd artefacts
+# for EXACTLY this commit, skip the slow on-VPS build. This is a pure
+# accelerator — any mismatch (flag unset, wrong sha, missing/empty artefact)
+# falls through to a normal local build, so a CI hiccup never ships stale code.
+# Runtime deps (install) and migrations are unaffected and still run as computed.
+if [ -n "$PREBUILT_SHA" ] && [ "$PREBUILT_SHA" = "$NEW_SHA" ] \
+   && [ -s /opt/toilet-monitor/apps/web/dist/index.html ] \
+   && [ -s /opt/toilet-monitor/apps/server/dist/src/main.js ]; then
+  BUILD_SERVER=0; BUILD_WEB=0
+  echo "CI-prebuilt artefacts present for $NEW_SHA — skipping on-VPS build"
+elif [ -n "$PREBUILT_SHA" ]; then
+  echo "PREBUILT_SHA=$PREBUILT_SHA present but artefacts unusable (HEAD=$NEW_SHA) — building on VPS"
+fi
+
 # Load production environment variables (source of DATABASE_URL etc.)
 ENV_FILE="/opt/toilet-monitor/.env.production"
 

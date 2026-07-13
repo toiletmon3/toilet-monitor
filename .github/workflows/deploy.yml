@@ -36,6 +36,62 @@ jobs:
             exit 1
           fi
 
+      # ── Build accelerator (best-effort) ─────────────────────────────────────
+      # Compile the app on the fast GitHub runner and ship ONLY the artefacts
+      # (apps/web/dist + apps/server/dist) to the VPS, so the droplet skips its
+      # slow build. EVERY step here is continue-on-error and only sets
+      # PREBUILT_SHA once the build+integrity+rsync all succeed — if anything
+      # fails, PREBUILT_SHA stays empty and deploy.sh builds on the VPS exactly
+      # like before. The web/server bundles carry no build-time env (API base is
+      # the relative /api, VAPID key is a source constant), so a runner build is
+      # byte-for-byte what the VPS would have produced.
+      - name: Checkout (for CI build)
+        uses: actions/checkout@v4
+        continue-on-error: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        continue-on-error: true
+        with:
+          version: 9
+
+      - name: Setup Node + pnpm cache
+        uses: actions/setup-node@v4
+        continue-on-error: true
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Build on runner and ship artefacts to VPS
+        continue-on-error: true
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -eo pipefail
+          pnpm install --frozen-lockfile
+          # Prisma client must exist before `nest build` typechecks the server.
+          ( cd apps/server && pnpm exec prisma generate )
+          pnpm run build
+          # Integrity gate: never ship a broken/empty build — fall through to a
+          # VPS build instead. Entry point path matches ecosystem.config.cjs.
+          test -s apps/web/dist/index.html
+          test -s apps/server/dist/src/main.js
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          HOST=$(printf '%s' "$SSH_HOST" | tr -d '\r\n' | xargs)
+          USER=$(printf '%s' "$SSH_USER" | tr -d '\r\n' | xargs)
+          RSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=20"
+          # --delete mirrors the source so stale files from an older build can't
+          # linger. dist/ is gitignored, so the VPS `git pull` won't disturb it.
+          rsync -az --delete -e "$RSH" apps/web/dist/    "$USER@$HOST:/opt/toilet-monitor/apps/web/dist/"
+          rsync -az --delete -e "$RSH" apps/server/dist/ "$USER@$HOST:/opt/toilet-monitor/apps/server/dist/"
+          echo "PREBUILT_SHA=$SHA" >> "$GITHUB_ENV"
+          echo "Shipped prebuilt artefacts for $SHA"
+
       - name: Deploy via SSH (raw ssh, no appleboy)
         env:
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
@@ -115,6 +171,8 @@ jobs:
           export GMAIL_REFRESH_TOKEN="${GMAIL_REFRESH_TOKEN}"
           export CRON_SECRET="${CRON_SECRET}"
           export GITHUB_PAT="${GITHUB_PAT}"
+          # Empty unless the build-accelerator step above succeeded end-to-end.
+          export PREBUILT_SHA="${PREBUILT_SHA}"
           echo "=== [$(date -u +%H:%M:%S)] start ==="
           cd /opt/toilet-monitor
           rm -f .git/index.lock .git/HEAD.lock .git/FETCH_HEAD.lock 2>/dev/null || true
@@ -126,26 +184,29 @@ jobs:
 
       - name: Smoke test — verify site is not showing default nginx page
         run: |
-          echo "Waiting 10s for deploy to stabilize..."
-          sleep 10
+          # Poll instead of a fixed sleep: pass as soon as the site serves the
+          # app (usually a few seconds), only wait longer if it's slow to come up.
+          HTTP_CODE="000"
+          for i in $(seq 1 15); do
+            HTTP_CODE=$(curl -s -o /tmp/smoke-body.txt -w "%{http_code}" \
+              --max-time 15 -L -k "https://cleanco.ai" 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" != "000" ] && ! grep -qi "welcome to nginx" /tmp/smoke-body.txt 2>/dev/null; then
+              echo "Smoke test passed — site is serving the app (HTTP $HTTP_CODE, after ~$((i*2))s)"
+              exit 0
+            fi
+            sleep 2
+          done
 
-          HTTP_CODE=$(curl -s -o /tmp/smoke-body.txt -w "%{http_code}" \
-            --max-time 15 -L -k \
-            "https://cleanco.ai" 2>/dev/null || echo "000")
-
-          echo "HTTP status: $HTTP_CODE"
-
+          echo "Final HTTP status: $HTTP_CODE"
           if [ "$HTTP_CODE" = "000" ]; then
             echo "::warning::Could not reach production site — network issue or server down"
             exit 0
           fi
-
           if grep -qi "welcome to nginx" /tmp/smoke-body.txt 2>/dev/null; then
             echo "::error::Production site is showing the default nginx page!"
             cat /tmp/smoke-body.txt
             exit 1
           fi
-
           echo "Smoke test passed — site is serving the app (HTTP $HTTP_CODE)"
 
   notify-on-failure:
