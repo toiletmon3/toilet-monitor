@@ -41,6 +41,15 @@ export class PushController {
     return this.pushService.diagnose(user.orgId);
   }
 
+  /** One-call diagnosis of the batched-alert (Option 2) pipeline — per-property
+   *  pulse timing + open-issue counts + per-cleaner subscription counts. */
+  @Roles(...ADMIN_ROLES)
+  @UseGuards(JwtAuthGuard)
+  @Get('batch-diagnose')
+  batchDiagnose(@CurrentUser() user: any) {
+    return this.pushService.batchDiagnose(user.orgId);
+  }
+
   /** Send a real test notification to this org's subscribed devices and report per-device results.
    *  Admin-only and org-scoped (was public: anyone could blast every device in every org). */
   @Roles(...ADMIN_ROLES)

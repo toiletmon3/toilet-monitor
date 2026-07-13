@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as webpush from 'web-push';
+import { readAlertSettings } from '../../common/alert-mode';
 
 export interface PushPayload {
   title: string;
@@ -183,6 +184,82 @@ export class PushService implements OnModuleInit {
           provider: this.providerOf(s.endpoint),
           since: s.createdAt,
         })),
+      })),
+    };
+  }
+
+  /**
+   * One-call diagnosis of the batched-alert (Option 2) pipeline for an org:
+   * per property — its mode/interval, whether the pulse ever fired
+   * (lastBatchPulseAt), how many OPEN issues sit in it, how long the oldest has
+   * waited, and how many minutes until the next pulse is due (negative = the
+   * pulse is overdue and should already have fired). Plus a per-cleaner push
+   * subscription count, so "no batched notification" can be split into
+   * not-firing (timing/no-open-issue) vs not-delivered (no subscription / VAPID).
+   */
+  async batchDiagnose(orgId: string) {
+    const now = Date.now();
+
+    const properties = await this.prisma.property.findMany({
+      where: { orgId },
+      select: { id: true, name: true, settings: true, buildings: { select: { name: true } } },
+      orderBy: { name: 'asc' },
+    });
+
+    const openIncidents = await this.prisma.incident.findMany({
+      where: { restroom: { floor: { building: { orgId } } }, status: 'OPEN' },
+      select: {
+        reportedAt: true,
+        notifiedAt: true,
+        restroom: { select: { floor: { select: { building: { select: { propertyId: true } } } } } },
+      },
+    });
+    const openByProp = new Map<string, Array<{ reportedAt: Date; notifiedAt: Date | null }>>();
+    let openWithoutProperty = 0;
+    for (const inc of openIncidents) {
+      const pid = inc.restroom.floor.building.propertyId;
+      if (!pid) { openWithoutProperty++; continue; }
+      const arr = openByProp.get(pid) ?? [];
+      arr.push({ reportedAt: inc.reportedAt, notifiedAt: inc.notifiedAt });
+      openByProp.set(pid, arr);
+    }
+
+    const cleaners = await this.prisma.user.findMany({
+      where: { orgId, role: 'CLEANER', isActive: true },
+      select: { name: true, buildingId: true, pushSubscriptions: { select: { id: true } } },
+      orderBy: { name: 'asc' },
+    });
+
+    return {
+      vapidConfigured: !!process.env.VAPID_PUBLIC_KEY && !!process.env.VAPID_PRIVATE_KEY,
+      openIssuesWithoutProperty: openWithoutProperty, // these NEVER get a batched pulse
+      properties: properties.map((p) => {
+        const cfg = readAlertSettings(p.settings);
+        const open = openByProp.get(p.id) ?? [];
+        const oldestMs = open.length ? Math.min(...open.map((i) => i.reportedAt.getTime())) : null;
+        const lastPulseRaw = (p.settings as any)?.lastBatchPulseAt ?? null;
+        const lastPulseMs = lastPulseRaw ? new Date(lastPulseRaw).getTime() : null;
+        let nextPulseInMinutes: number | null = null;
+        if (cfg.alertMode === 'batched' && oldestMs !== null) {
+          const anchorMs = lastPulseMs !== null && lastPulseMs >= oldestMs ? lastPulseMs : oldestMs;
+          nextPulseInMinutes = Math.round((anchorMs + cfg.batchIntervalMinutes * 60_000 - now) / 60_000);
+        }
+        return {
+          name: p.name,
+          alertMode: cfg.alertMode,
+          batchIntervalMinutes: cfg.batchIntervalMinutes,
+          buildings: p.buildings.map((b) => b.name),
+          lastBatchPulseAt: lastPulseRaw,
+          openIssues: open.length,
+          oldestOpenWaitedMinutes: oldestMs !== null ? Math.round((now - oldestMs) / 60_000) : null,
+          // negative = pulse is overdue (should already have fired on the next tick)
+          nextPulseInMinutes,
+        };
+      }),
+      cleaners: cleaners.map((c) => ({
+        name: c.name,
+        assignedTo: c.buildingId ? 'one building' : 'all buildings',
+        pushSubscriptions: c.pushSubscriptions.length,
       })),
     };
   }
