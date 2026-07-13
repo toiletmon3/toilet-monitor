@@ -537,6 +537,62 @@ function BuildingCard({ building, onRefresh }: { building: any; onRefresh: () =>
 // ─── devices panel — removed, merged into UrlGuide ────────────────────────────
 
 // ─── Properties (נכסים) — grouping layer above buildings ──────────────────────
+// Per-property alert policy (Option 1 immediate / Option 2 batched) — the
+// "general" manager's per-נכס notification config.
+function PropertyAlertConfig({ property, onSaved }: { property: any; onSaved: () => void }) {
+  const { t } = useTranslation();
+  const settings = property.settings ?? {};
+  const mode: 'immediate' | 'batched' = settings.alertMode === 'batched' ? 'batched' : 'immediate';
+  const interval: number = Number(settings.batchIntervalMinutes) >= 1 ? Math.floor(Number(settings.batchIntervalMinutes)) : 40;
+
+  const save = async (patch: { alertMode?: string; batchIntervalMinutes?: number }) => {
+    try {
+      await api.patch(`/buildings/properties/${property.id}/alert-config`, patch);
+      onSaved();
+      toast.success(t('common.updated'));
+    } catch { toast.error(t('common.error')); }
+  };
+
+  const modeBtn = (value: 'immediate' | 'batched', label: string) => {
+    const active = mode === value;
+    return (
+      <button
+        onClick={() => { if (!active) save({ alertMode: value }); }}
+        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-start"
+        style={{
+          background: active ? 'rgba(0,229,204,0.15)' : 'rgba(255,255,255,0.05)',
+          border: `1px solid ${active ? 'rgba(0,229,204,0.6)' : 'rgba(255,255,255,0.1)'}`,
+          color: active ? '#00e5cc' : 'var(--color-text-secondary)',
+        }}>
+        {label}
+      </button>
+    );
+  };
+
+  return (
+    <div className="flex flex-col gap-2 pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+      <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+        🔔 {t('admin.settings.alertModeTitle')}
+      </span>
+      <div className="flex flex-wrap gap-2">
+        {modeBtn('immediate', t('admin.settings.alertModeImmediate'))}
+        {modeBtn('batched', t('admin.settings.alertModeBatched'))}
+      </div>
+      <p className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+        {mode === 'batched' ? t('admin.settings.alertModeBatchedDesc') : t('admin.settings.alertModeImmediateDesc')}
+      </p>
+      {mode === 'batched' && (
+        <div className="flex flex-col gap-1 pt-1">
+          <span className="text-[11px] font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+            {t('admin.settings.alertBatchInterval')}
+          </span>
+          <MinutesInput value={interval} onSave={n => save({ batchIntervalMinutes: n })} color="#00e5cc" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PropertiesPanel({ structure, onRefresh }: { structure: any[]; onRefresh: () => void }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -607,26 +663,29 @@ function PropertiesPanel({ structure, onRefresh }: { structure: any[]; onRefresh
 
         {/* Property cards */}
         {properties.map((p: any) => (
-          <div key={p.id} className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+          <div key={p.id} className="rounded-xl px-4 py-3 flex flex-col gap-3"
             style={{ background: '#0a0e1a', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-semibold text-white">🏘️ {p.name}</span>
-              <span className="text-[11px] truncate" style={{ color: 'var(--color-text-secondary)' }}>
-                {p.buildings.length > 0
-                  ? p.buildings.map((b: any) => b.name).join(' · ')
-                  : t('admin.settings.propertyNoBuildings')}
-              </span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-semibold text-white">🏘️ {p.name}</span>
+                <span className="text-[11px] truncate" style={{ color: 'var(--color-text-secondary)' }}>
+                  {p.buildings.length > 0
+                    ? p.buildings.map((b: any) => b.name).join(' · ')
+                    : t('admin.settings.propertyNoBuildings')}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button onClick={() => renameProperty(p.id, p.name)} title={t('common.edit')}
+                  className="p-1.5 rounded-lg hover:bg-white/10 transition-all" style={{ color: 'var(--color-text-secondary)' }}>
+                  <Pencil size={14} />
+                </button>
+                <button onClick={() => deleteProperty(p.id, p.name)} title={t('admin.settings.deleteProperty')}
+                  className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all" style={{ color: 'rgba(239,68,68,0.5)' }}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button onClick={() => renameProperty(p.id, p.name)} title={t('common.edit')}
-                className="p-1.5 rounded-lg hover:bg-white/10 transition-all" style={{ color: 'var(--color-text-secondary)' }}>
-                <Pencil size={14} />
-              </button>
-              <button onClick={() => deleteProperty(p.id, p.name)} title={t('admin.settings.deleteProperty')}
-                className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all" style={{ color: 'rgba(239,68,68,0.5)' }}>
-                <Trash2 size={14} />
-              </button>
-            </div>
+            <PropertyAlertConfig property={p} onSaved={refreshAll} />
           </div>
         ))}
 

@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { PushService } from '../push/push.service';
 import { IncidentStatus } from '@prisma/client';
+import { readAlertSettings } from '../../common/alert-mode';
 
 const INCIDENT_INCLUDE = {
   issueType: true,
@@ -108,13 +109,30 @@ export class IncidentsService {
       incident.restroom.name,
     ].filter(Boolean).join(' › ');
 
-    // Push to CLEANERs only — SHIFT_SUPERVISORs get notified via escalation
-    this.push.sendToBuilding(orgId, buildingId, {
-      title: isPositiveFeedback ? '😊 משוב חיובי' : '❗ בקשה חדשה',
-      body: `${issueIcon} ${issueLabel} — ${location}`,
-      url: '/cleaner',
-      tag: isPositiveFeedback ? 'positive-feedback' : `incident-${incident.id}`,
-    }, ['CLEANER']).catch(() => {});
+    // Immediate-alert properties (Option 1) push CLEANERs the moment anything is
+    // reported. Batched-alert properties (Option 2) stay completely silent here
+    // — no per-report push at all, positive feedback included — so the cleaner
+    // is never pinged outside the every-N-minutes grouped pulse. Issues are
+    // announced later by the scheduler's pulse, which starts their response
+    // clock (Incident.notifiedAt); positive feedback just surfaces in-app.
+    // SHIFT_SUPERVISORs still get notified via escalation in either mode.
+    const propertyId = incident.restroom.floor.building.propertyId;
+    let batched = false;
+    if (propertyId) {
+      const property = await this.prisma.property.findUnique({
+        where: { id: propertyId },
+        select: { settings: true },
+      });
+      batched = readAlertSettings(property?.settings).alertMode === 'batched';
+    }
+    if (!batched) {
+      this.push.sendToBuilding(orgId, buildingId, {
+        title: isPositiveFeedback ? '😊 משוב חיובי' : '❗ בקשה חדשה',
+        body: `${issueIcon} ${issueLabel} — ${location}`,
+        url: '/cleaner',
+        tag: isPositiveFeedback ? 'positive-feedback' : `incident-${incident.id}`,
+      }, ['CLEANER']).catch(() => {});
+    }
 
     if (!isPositiveFeedback) {
       this.events.broadcastToOrg(orgId, 'incident:created', incident);

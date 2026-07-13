@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
-import { RESPONSE_TIME_RESET_AT } from '../../common/response-time-reset';
+import { RESPONSE_TIME_RESET_AT, responseMinutes } from '../../common/response-time-reset';
+import { AlertMode, readAlertSettings } from '../../common/alert-mode';
 
 const OFFLINE_AFTER_MS = 90_000; // mark offline if no heartbeat for 90s (1.5× the 60s interval)
 
@@ -65,6 +66,39 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
 
   async assignBuildingToProperty(buildingId: string, propertyId: string | null) {
     return this.prisma.building.update({ where: { id: buildingId }, data: { propertyId } });
+  }
+
+  /**
+   * Per-property alert policy (Option 1 immediate vs Option 2 batched), set by
+   * the org ("general") manager. Merges the two known keys into the property's
+   * settings blob (never spreads the raw body) and returns the normalised
+   * config. Scoped to the caller's org so a foreign property id 404s.
+   */
+  async updatePropertyAlertConfig(
+    propertyId: string,
+    orgId: string,
+    patch: { alertMode?: AlertMode; batchIntervalMinutes?: number },
+  ) {
+    const property = await this.prisma.property.findFirst({
+      where: { id: propertyId, orgId },
+      select: { settings: true },
+    });
+    if (!property) throw new NotFoundException('Property not found');
+
+    const current = readAlertSettings(property.settings);
+    // Normalise through readAlertSettings so bad input (out-of-range minutes,
+    // unknown mode) falls back to sane values rather than persisting garbage.
+    const next = readAlertSettings({
+      alertMode: patch.alertMode ?? current.alertMode,
+      batchIntervalMinutes: patch.batchIntervalMinutes ?? current.batchIntervalMinutes,
+    });
+    const merged = {
+      ...((property.settings ?? {}) as Record<string, unknown>),
+      alertMode: next.alertMode,
+      batchIntervalMinutes: next.batchIntervalMinutes,
+    };
+    await this.prisma.property.update({ where: { id: propertyId }, data: { settings: merged } });
+    return next;
   }
 
   /** Building ids belonging to a property — used to scope PROPERTY_MANAGER queries. */
@@ -469,7 +503,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
         }),
         this.prisma.incident.findMany({
           where: { ...buildingFilter, status: 'RESOLVED', resolvedAt: { not: null }, reportedAt: { gte: avgSince } },
-          select: { reportedAt: true, resolvedAt: true },
+          select: { reportedAt: true, notifiedAt: true, resolvedAt: true },
         }),
       ]);
       const weeklyByType: Record<string, number> = {};
@@ -484,7 +518,7 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
         }
       }
       const avg = resolved.length > 0
-        ? Math.round(resolved.reduce((sum, i) => sum + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / resolved.length)
+        ? Math.round(resolved.reduce((sum, i) => sum + responseMinutes(i), 0) / resolved.length)
         : avgBaselineMinutes;
       statsByBuilding.set(buildingId, {
         weeklyReports: weekIncidents.length,

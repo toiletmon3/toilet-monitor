@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RESPONSE_TIME_RESET_AT, countsForResponseTime } from '../../common/response-time-reset';
+import { RESPONSE_TIME_RESET_AT, countsForResponseTime, responseMinutes } from '../../common/response-time-reset';
 
 /**
  * Assumed minutes a routine patrol would take to detect/handle an issue.
@@ -16,6 +16,7 @@ type ScoredIncident = {
   restroomId: string;
   issueTypeId: string;
   reportedAt: Date;
+  notifiedAt: Date | null;
   resolvedAt: Date | null;
   issueType: { priority: number; code: string; nameI18n: any; icon: string | null } | null;
   restroom: { name: string; floor: { name: string; building: { id: string; name: string } } };
@@ -104,14 +105,11 @@ export class AnalyticsService {
         // response-time measurement restarted system-wide on this date
         reportedAt: { gte: RESPONSE_TIME_RESET_AT },
       },
-      select: { reportedAt: true, resolvedAt: true },
+      select: { reportedAt: true, notifiedAt: true, resolvedAt: true },
     });
 
     const avgMinutes = resolved30d.length > 0
-      ? resolved30d.reduce((sum, i) => {
-          const diff = (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000;
-          return sum + diff;
-        }, 0) / resolved30d.length
+      ? resolved30d.reduce((sum, i) => sum + responseMinutes(i), 0) / resolved30d.length
       : 0;
 
     const todayStart = new Date();
@@ -198,7 +196,7 @@ export class AnalyticsService {
         restroom: this.restroomScope(orgId, scope),
         reportedAt: { gte: from, lte: to },
       },
-      select: { issueTypeId: true, issueType: true, reportedAt: true, resolvedAt: true },
+      select: { issueTypeId: true, issueType: true, reportedAt: true, notifiedAt: true, resolvedAt: true },
     });
 
     const map = new Map<string, { name: string; count: number; totalMinutes: number; timedCount: number }>();
@@ -213,7 +211,7 @@ export class AnalyticsService {
       // only incidents reported after the system-wide response-time reset
       // contribute a duration; older ones still count in the frequency
       if (countsForResponseTime(inc as any)) {
-        existing.totalMinutes += ((inc as any).resolvedAt.getTime() - inc.reportedAt.getTime()) / 60000;
+        existing.totalMinutes += responseMinutes(inc);
         existing.timedCount++;
       }
       map.set(inc.issueTypeId, existing);
@@ -265,13 +263,13 @@ export class AnalyticsService {
         resolvedAt: { not: null },
         reportedAt: { gte: since, lte: to },
       },
-      select: { reportedAt: true, resolvedAt: true, acknowledgedAt: true },
+      select: { reportedAt: true, notifiedAt: true, resolvedAt: true, acknowledgedAt: true },
     });
 
     if (resolved.length === 0) return { totalResolved: 0, withinSla: 0, slaPercent: 0, avgMinutes: 0, targetMinutes };
 
     const times = resolved
-      .map(i => (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000)
+      .map(i => responseMinutes(i))
       .sort((a, b) => a - b);
 
     const withinSla = times.filter(t => t <= targetMinutes).length;
@@ -390,14 +388,12 @@ export class AnalyticsService {
           resolvedAt: { not: null },
           reportedAt: { gte: avgSince },
         },
-        select: { reportedAt: true, resolvedAt: true },
+        select: { reportedAt: true, notifiedAt: true, resolvedAt: true },
       }),
     ]);
 
     const avgResponseMinutes = resolvedWithTimes.length > 0
-      ? Math.round(resolvedWithTimes.reduce((sum, i) => {
-          return sum + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000;
-        }, 0) / resolvedWithTimes.length)
+      ? Math.round(resolvedWithTimes.reduce((sum, i) => sum + responseMinutes(i), 0) / resolvedWithTimes.length)
       : null;
 
     return {
@@ -449,7 +445,7 @@ export class AnalyticsService {
       // (measured only from the system-wide response-time reset onwards)
       const resolved = b.incidents.filter(countsForResponseTime);
       const avgMin = resolved.length
-        ? resolved.reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / resolved.length
+        ? resolved.reduce((s, i) => s + responseMinutes(i), 0) / resolved.length
         : 0;
       const response = Math.min(1, avgMin / 60) * 20;
 
@@ -497,6 +493,7 @@ export class AnalyticsService {
     restroomId: true,
     issueTypeId: true,
     reportedAt: true,
+    notifiedAt: true,
     resolvedAt: true,
     issueType: { select: { priority: true, code: true, nameI18n: true, icon: true } },
     restroom: {
@@ -564,10 +561,10 @@ export class AnalyticsService {
       const avgScore = scores.length ? Math.round(scores.reduce((s, r) => s + r.score, 0) / scores.length) : 100;
       const resolved = complaints.filter(countsForResponseTime);
       const avgResponse = resolved.length
-        ? Math.round(resolved.reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / resolved.length)
+        ? Math.round(resolved.reduce((s, i) => s + responseMinutes(i), 0) / resolved.length)
         : 0;
       const timeSavedH = Math.round(
-        resolved.reduce((s, i) => s + Math.max(0, BASELINE_PATROL_MIN - (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000), 0) / 60 * 10,
+        resolved.reduce((s, i) => s + Math.max(0, BASELINE_PATROL_MIN - responseMinutes(i)), 0) / 60 * 10,
       ) / 10;
       return { avgScore, complaints: complaints.length, avgResponse, timeSavedH };
     };
@@ -593,10 +590,10 @@ export class AnalyticsService {
         out.complaints.push(day.length);
         const dayResolved = day.filter(countsForResponseTime);
         out.avgResponse.push(dayResolved.length
-          ? Math.round(dayResolved.reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / dayResolved.length)
+          ? Math.round(dayResolved.reduce((s, i) => s + responseMinutes(i), 0) / dayResolved.length)
           : 0);
         out.timeSaved.push(Math.round(
-          dayResolved.reduce((s, i) => s + Math.max(0, BASELINE_PATROL_MIN - (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000), 0) / 60 * 10,
+          dayResolved.reduce((s, i) => s + Math.max(0, BASELINE_PATROL_MIN - responseMinutes(i)), 0) / 60 * 10,
         ) / 10);
       }
       return out;
@@ -803,7 +800,7 @@ export class AnalyticsService {
         },
         assignedIncidents: {
           where: { reportedAt: { gte: from, lte: to }, restroom },
-          select: { reportedAt: true, resolvedAt: true, status: true },
+          select: { reportedAt: true, notifiedAt: true, resolvedAt: true, status: true },
         },
       },
     });
@@ -815,9 +812,7 @@ export class AnalyticsService {
       totalResolved: c.incidentActions.length,
       avgResolutionMinutes: c.assignedIncidents
         .filter(countsForResponseTime)
-        .reduce((sum, i, _, arr) => {
-          return sum + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000 / arr.length;
-        }, 0),
+        .reduce((sum, i, _, arr) => sum + responseMinutes(i) / arr.length, 0),
     })).sort((a, b) => b.totalResolved - a.totalResolved);
   }
 }

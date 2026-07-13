@@ -5,7 +5,7 @@ import { EmailService } from './email.service';
 import { buildDailyReportHtml, buildMultiPropertyReportHtml, DailyReportData, OverviewData } from './daily-report.template';
 import { getReportStrings } from './daily-report.i18n';
 import { translateLocationPath } from '../../common/locale/translate-name';
-import { countsForResponseTime } from '../../common/response-time-reset';
+import { countsForResponseTime, responseMinutes } from '../../common/response-time-reset';
 import { AnalyticsService } from '../analytics/analytics.service';
 
 const DEFAULT_REPORT_HOUR = 8;
@@ -298,20 +298,18 @@ export class DailyReportService {
 
     const resolvedIncidents = await this.prisma.incident.findMany({
       where: { ...orgFilter, ...dateFilter, status: 'RESOLVED', resolvedAt: { not: null } },
-      select: { reportedAt: true, resolvedAt: true },
+      select: { reportedAt: true, notifiedAt: true, resolvedAt: true },
     });
 
     // Response-time figures only count incidents reported after the
     // system-wide measurement reset (matters only for the first report).
     const timedIncidents = resolvedIncidents.filter(countsForResponseTime);
     const avgMinutes = timedIncidents.length > 0
-      ? Math.round(timedIncidents.reduce((s, i) =>
-          s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0) / timedIncidents.length)
+      ? Math.round(timedIncidents.reduce((s, i) => s + responseMinutes(i), 0) / timedIncidents.length)
       : 0;
 
     const slaTarget = 15;
-    const withinSla = timedIncidents.filter(i =>
-      (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000 <= slaTarget).length;
+    const withinSla = timedIncidents.filter(i => responseMinutes(i) <= slaTarget).length;
     const slaPercent = timedIncidents.length > 0
       ? Math.round((withinSla / timedIncidents.length) * 100) : 0;
 
@@ -369,7 +367,7 @@ export class DailyReportService {
         },
         assignedIncidents: {
           where: { reportedAt: { gte: from, lt: to } },
-          select: { reportedAt: true, resolvedAt: true },
+          select: { reportedAt: true, notifiedAt: true, resolvedAt: true },
         },
       },
     });
@@ -381,9 +379,7 @@ export class DailyReportService {
           name: c.name,
           resolved: c.incidentActions.length,
           avgMinutes: timed.length > 0
-            ? Math.round(timed
-                .reduce((s, i) => s + (i.resolvedAt!.getTime() - i.reportedAt.getTime()) / 60000, 0)
-              / timed.length)
+            ? Math.round(timed.reduce((s, i) => s + responseMinutes(i), 0) / timed.length)
             : 0,
         };
       })

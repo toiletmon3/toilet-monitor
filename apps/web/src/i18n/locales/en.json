@@ -527,7 +527,13 @@
       "assignBuildingProperty": "Assign buildings to properties",
       "noProperty": "— No property —",
       "propertyInterface": "Property Manager Interface",
-      "propertyInterfaceSub": "Login with email and password — scoped to their property"
+      "propertyInterfaceSub": "Login with email and password — scoped to their property",
+      "alertModeTitle": "Worker alert policy",
+      "alertModeImmediate": "Option 1 — Immediate",
+      "alertModeBatched": "Option 2 — Batched",
+      "alertModeImmediateDesc": "Every issue pushes the worker the moment it is reported, and response time is measured from the report. (Current behavior)",
+      "alertModeBatchedDesc": "No push on report. Every few minutes one grouped alert about all open issues is sent, and response time is measured from that grouped alert — not from the report.",
+      "alertBatchInterval": "Minutes between grouped alerts"
     }
   },
   "common": {
