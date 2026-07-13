@@ -43,7 +43,22 @@ api.interceptors.response.use(
         return axios(config);
       } catch {
         localStorage.clear();
-        window.location.href = '/admin/login';
+        // Send the user to the login screen for the interface they're actually
+        // in — NOT always the admin login. The old hardcoded '/admin/login'
+        // dumped cleaners/supervisors on the MANAGER screen whenever their
+        // session expired; in the installed PWA (start_url '/cleaner', separate
+        // storage from Safari) that happened on virtually every launch.
+        const path = window.location.pathname;
+        const loginPath = path.startsWith('/admin')
+          ? '/admin/login'
+          : path.startsWith('/supervisor')
+            ? '/supervisor/login'
+            : path.startsWith('/kiosk')
+              ? path // kiosk endpoints are public — don't bounce it to a login
+              : '/cleaner/login';
+        if (window.location.pathname !== loginPath) {
+          window.location.href = loginPath;
+        }
       }
     }
     return Promise.reject(err);
