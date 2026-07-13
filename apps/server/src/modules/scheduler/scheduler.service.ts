@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/commo
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { PushService } from '../push/push.service';
+import { readAlertSettings } from '../../common/alert-mode';
 
 @Injectable()
 export class SchedulerService implements OnModuleInit, OnModuleDestroy {
@@ -33,9 +34,12 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
    *
    * Track 1 — Cleaner reminders:
    *   At t = cleanerInterval * 1, cleanerInterval * 2, … → push to CLEANER
+   *   SKIPPED for batched-alert (Option 2) properties — there the cleaners are
+   *   notified by the grouped per-property pulse (runBatchedPulses) instead.
    *
    * Track 2 — Supervisor escalation:
    *   At t = supervisorInterval * 1, supervisorInterval * 2, … → push to SHIFT_SUPERVISOR
+   *   Runs in BOTH alert modes — batching only changes how cleaners are alerted.
    */
   private async runEscalation() {
     try {
@@ -46,6 +50,22 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
         if (s.escalationEnabled === false) continue;
         const cleanerInterval: number = s.cleanerReminderMinutes ?? 5;
         const supervisorInterval: number = s.supervisorEscalationMinutes ?? 10;
+
+        // Per-property alert policy (Option 1 immediate vs Option 2 batched).
+        // Buildings with no property default to immediate.
+        const properties = await this.prisma.property.findMany({
+          where: { orgId: org.id },
+          select: { id: true, name: true, settings: true },
+        });
+        const batchedPropIds = new Set<string>();
+        const batchedProps: Array<{ id: string; name: string; settings: any; interval: number }> = [];
+        for (const p of properties) {
+          const cfg = readAlertSettings(p.settings);
+          if (cfg.alertMode !== 'batched') continue;
+          batchedPropIds.add(p.id);
+          batchedProps.push({ id: p.id, name: p.name, settings: (p.settings ?? {}) as any, interval: cfg.batchIntervalMinutes });
+        }
+        const isBatched = (propertyId: string | null | undefined) => !!propertyId && batchedPropIds.has(propertyId);
 
         const openIncidents = await this.prisma.incident.findMany({
           where: {
@@ -58,6 +78,9 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
             issueType: true,
           },
         });
+
+        // ── Batched-alert pulse (Option 2): one grouped push per property ──
+        if (batchedProps.length > 0) await this.runBatchedPulses(org.id, openIncidents, batchedProps);
 
         // One reminder per real-world problem: when several open incidents share
         // the same type + restroom (visitors re-reporting the same issue), only
@@ -84,9 +107,10 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
             incident.restroom.name,
           ].filter(Boolean).join(' › ');
           const buildingId = incident.restroom.floor.buildingId;
+          const batchedProperty = isBatched(incident.restroom.floor.building.propertyId);
 
-          // ── Cleaner reminder track ──
-          if (cleanerInterval > 0) {
+          // ── Cleaner reminder track (immediate-alert properties only) ──
+          if (cleanerInterval > 0 && !batchedProperty) {
             const nextCleanerAt = cleanerInterval * (cleanerReminders + 1);
             if (minutesOpen >= nextCleanerAt) {
               const round = cleanerReminders + 1;
@@ -145,6 +169,87 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (err) {
       this.logger.error('Escalation cron error', err);
+    }
+  }
+
+  /**
+   * Option 2 (batched alerts): for every property in "batched" mode, hold newly
+   * reported issues silently and — while any issue is open — send ONE grouped
+   * push to that property's cleaners every `interval` minutes ("you have N open
+   * issues to handle"). Each issue the pulse announces for the FIRST time is
+   * stamped with `notifiedAt`; that stamp is where its response-time stopwatch
+   * starts (see responseStartAt), so the wait for the next pulse is never
+   * charged against the property. Already-announced issues keep their original
+   * stamp — the recurring pulse just keeps reminding, it does not reset clocks.
+   *
+   * The pulse cadence is anchored on `settings.lastBatchPulseAt`: the wait is
+   * measured from the previous pulse, or (on the first pulse, or after the queue
+   * emptied and refilled) from when the oldest still-open issue was reported —
+   * so a fresh issue always gets its full quiet window before it is announced.
+   *
+   * `openIncidents` are all OPEN/IN_PROGRESS incidents of the org (already
+   * loaded by the caller); only status OPEN issues count as "to handle".
+   */
+  private async runBatchedPulses(
+    orgId: string,
+    openIncidents: Array<{
+      id: string;
+      status: string;
+      reportedAt: Date;
+      notifiedAt: Date | null;
+      restroom: { floor: { buildingId: string; building: { propertyId: string | null } } };
+    }>,
+    batchedProps: Array<{ id: string; name: string; settings: any; interval: number }>,
+  ) {
+    const now = new Date();
+    const nowMs = now.getTime();
+
+    // Bucket OPEN issues by their (batched) property.
+    const openByProp = new Map<string, typeof openIncidents>();
+    for (const inc of openIncidents) {
+      if (inc.status !== 'OPEN') continue;
+      const propertyId = inc.restroom.floor.building.propertyId;
+      if (!propertyId) continue;
+      const arr = openByProp.get(propertyId) ?? [];
+      arr.push(inc);
+      openByProp.set(propertyId, arr);
+    }
+
+    for (const prop of batchedProps) {
+      const open = openByProp.get(prop.id);
+      if (!open || open.length === 0) continue;
+
+      const intervalMs = prop.interval * 60_000;
+      const oldestReportedMs = Math.min(...open.map(i => i.reportedAt.getTime()));
+      const lastPulseMs = prop.settings?.lastBatchPulseAt ? new Date(prop.settings.lastBatchPulseAt).getTime() : null;
+      // Count the wait from the previous pulse when it preceded these issues;
+      // otherwise from when the oldest still-open issue was reported (fresh cohort).
+      const anchorMs = lastPulseMs !== null && lastPulseMs >= oldestReportedMs ? lastPulseMs : oldestReportedMs;
+      if (nowMs - anchorMs < intervalMs) continue;
+
+      // Start the response clock for issues announced here for the first time.
+      const firstTimeIds = open.filter(i => !i.notifiedAt).map(i => i.id);
+      if (firstTimeIds.length > 0) {
+        await this.prisma.incident.updateMany({ where: { id: { in: firstTimeIds } }, data: { notifiedAt: now } });
+      }
+
+      // Persist the pulse time so the next reminder is one interval later.
+      await this.prisma.property.update({
+        where: { id: prop.id },
+        data: { settings: { ...(prop.settings ?? {}), lastBatchPulseAt: now.toISOString() } },
+      });
+
+      const count = open.length;
+      const buildingIds = [...new Set(open.map(i => i.restroom.floor.buildingId))];
+      await this.push.sendToBuildings(orgId, buildingIds, {
+        title: `🔔 ${count} ${count === 1 ? 'תקלה ממתינה' : 'תקלות ממתינות'}`,
+        body: `יש ${count === 1 ? 'תקלה אחת' : `${count} תקלות`} לטיפול — ${prop.name}`,
+        url: '/cleaner',
+        tag: `batch-${prop.id}`,
+      }, ['CLEANER']).catch(() => {});
+
+      this.events.broadcastToOrg(orgId, 'incident:batch-notified', { propertyId: prop.id, count });
+      this.logger.log(`Batched alert — property "${prop.name}": ${count} open issue(s), ${firstTimeIds.length} newly announced`);
     }
   }
 

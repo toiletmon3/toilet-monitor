@@ -69,6 +69,19 @@ export class BuildingsController {
     return this.buildingsService.assignBuildingToProperty(buildingId, dto.propertyId ?? null);
   }
 
+  // Per-property alert policy (immediate vs batched) — the "general" manager's
+  // per-נכס notification config. General admins only, never property managers.
+  @Roles(...ADMIN_ROLES)
+  @UseGuards(JwtAuthGuard)
+  @Patch('properties/:id/alert-config')
+  updatePropertyAlertConfig(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() dto: { alertMode?: 'immediate' | 'batched'; batchIntervalMinutes?: number },
+  ) {
+    return this.buildingsService.updatePropertyAlertConfig(id, user.orgId, dto);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post()
   createBuilding(@CurrentUser() user: any, @Body() dto: { name: string; address?: string }) {

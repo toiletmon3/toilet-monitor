@@ -82,6 +82,22 @@ export class PushService implements OnModuleInit {
     payload: PushPayload,
     roles: string[] = ['CLEANER'],
   ) {
+    return this.sendToBuildings(orgId, buildingId ? [buildingId] : [], payload, roles);
+  }
+
+  /**
+   * Send a push notification to users across a set of buildings — used for the
+   * property-wide batched pulse, where one grouped push must reach the cleaners
+   * of every building in the property (plus building-less/global cleaners),
+   * each device notified exactly once. An empty `buildingIds` targets only the
+   * global (buildingId = null) users, matching the single-building helper.
+   */
+  async sendToBuildings(
+    orgId: string,
+    buildingIds: string[],
+    payload: PushPayload,
+    roles: string[] = ['CLEANER'],
+  ) {
     if (!process.env.VAPID_PUBLIC_KEY) return;
 
     const users = await this.prisma.user.findMany({
@@ -90,7 +106,7 @@ export class PushService implements OnModuleInit {
         isActive: true,
         role: { in: roles as any },
         OR: [
-          { buildingId: buildingId ?? undefined },
+          { buildingId: buildingIds.length ? { in: buildingIds } : undefined },
           { buildingId: null },
         ],
       },
@@ -123,7 +139,7 @@ export class PushService implements OnModuleInit {
 
     const sent = results.filter((r) => r.status === 'fulfilled').length;
     const failed = results.filter((r) => r.status === 'rejected').length;
-    if (failed > 0) this.logger.warn(`Push to building ${buildingId}: ${sent} sent, ${failed} failed`);
+    if (failed > 0) this.logger.warn(`Push to buildings [${buildingIds.join(', ')}]: ${sent} sent, ${failed} failed`);
   }
 
   /** Human-readable push provider from a subscription endpoint (endpoint itself is never exposed). */

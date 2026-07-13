@@ -57,6 +57,12 @@ model Property {
   id    String @id @default(uuid())
   orgId String
   name  String
+  // Per-property alert policy, set by the org ("general") manager:
+  //   { alertMode: "immediate" | "batched", batchIntervalMinutes: number }
+  // "immediate" (default) = the legacy behaviour (push per report + reminders).
+  // "batched" = no push on report; one grouped push every N minutes, and
+  // response time is measured from that push (Incident.notifiedAt), not report.
+  settings Json @default("{}")
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   buildings    Building[]
@@ -278,6 +284,10 @@ model Incident {
   assignedCleanerId String?
   status           IncidentStatus @default(OPEN)
   reportedAt       DateTime       // device timestamp
+  // Batched-alert mode (Option 2): the moment the grouped push that announced
+  // this incident to cleaners was sent. Response time is measured from here
+  // instead of reportedAt. Null in immediate mode (and until the pulse fires).
+  notifiedAt       DateTime?
   acknowledgedAt   DateTime?
   resolvedAt       DateTime?
   createdAt        DateTime       @default(now()) // server receipt time

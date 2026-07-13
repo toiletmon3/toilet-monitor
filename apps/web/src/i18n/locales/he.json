@@ -527,7 +527,13 @@
       "assignBuildingProperty": "שיוך בניינים לנכסים",
       "noProperty": "— ללא נכס —",
       "propertyInterface": "ממשק מנהל נכס",
-      "propertyInterfaceSub": "כניסה עם אימייל וסיסמה — רואה רק את הנכס שלו"
+      "propertyInterfaceSub": "כניסה עם אימייל וסיסמה — רואה רק את הנכס שלו",
+      "alertModeTitle": "מדיניות התראות לעובדים",
+      "alertModeImmediate": "אופציה 1 — מיידי",
+      "alertModeBatched": "אופציה 2 — מרוכז",
+      "alertModeImmediateDesc": "כל תקלה שולחת התראה לעובד מיד עם הדיווח, וזמן התגובה נמדד מרגע הדיווח. (ההתנהגות הקיימת)",
+      "alertModeBatchedDesc": "אין התראה בזמן הדיווח. אחת לכמה דקות נשלחת התראה מרוכזת אחת על כל התקלות הפתוחות, וזמן התגובה נמדד מרגע ההתראה המרוכזת — לא מרגע הדיווח.",
+      "alertBatchInterval": "כל כמה דקות נשלחת ההתראה המרוכזת"
     }
   },
   "common": {
