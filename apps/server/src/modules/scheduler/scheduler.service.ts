@@ -121,6 +121,16 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
           const buildingId = incident.restroom.floor.buildingId;
           const batchedProperty = isBatched(incident.restroom.floor.building.propertyId);
 
+          // Escalation clock — a layer that follows the property's alert option.
+          // Batched (Option 2): escalation counts from the issue's FIRST grouped
+          // announcement (notifiedAt), the same moment its response time starts —
+          // NOT from report time; until that first pulse the issue hasn't been
+          // announced, so escalation holds entirely. Immediate (Option 1):
+          // counts from reportedAt as usual.
+          const notYetAnnounced = batchedProperty && !incident.notifiedAt;
+          const escalationStart = incident.notifiedAt ?? incident.reportedAt;
+          const minutesSinceEscalationStart = (Date.now() - escalationStart.getTime()) / 60000;
+
           // ── Cleaner reminder track (immediate-alert properties only) ──
           if (cleanerInterval > 0 && !batchedProperty) {
             const nextCleanerAt = cleanerInterval * (cleanerReminders + 1);
@@ -150,10 +160,11 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
           }
 
           // ── Supervisor escalation track ──
-          // Counts from incident creation, independent of the cleaner track.
-          if (supervisorInterval > 0) {
+          // Follows the alert option's clock (see escalationStart above) and
+          // holds until a batched issue has had its first grouped announcement.
+          if (supervisorInterval > 0 && !notYetAnnounced) {
             const nextSupervisorAt = supervisorInterval * (supervisorReminders + 1);
-            if (minutesOpen >= nextSupervisorAt) {
+            if (minutesSinceEscalationStart >= nextSupervisorAt) {
               const round = supervisorReminders + 1;
               await this.prisma.incidentAction.create({
                 data: {
