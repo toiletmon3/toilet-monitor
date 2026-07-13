@@ -47,7 +47,11 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
 
       for (const org of orgs) {
         const s = (org.settings ?? {}) as any;
-        if (s.escalationEnabled === false) continue;
+        // The escalation on/off toggle governs ONLY the old cleaner-reminder and
+        // supervisor-escalation tracks below — NOT the per-property batched pulse,
+        // which is a property's own chosen notification mechanism and must keep
+        // firing even when the legacy escalation machinery is switched off.
+        const escalationEnabled = s.escalationEnabled !== false;
         const cleanerInterval: number = s.cleanerReminderMinutes ?? 5;
         const supervisorInterval: number = s.supervisorEscalationMinutes ?? 10;
 
@@ -67,6 +71,10 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
         }
         const isBatched = (propertyId: string | null | undefined) => !!propertyId && batchedPropIds.has(propertyId);
 
+        // Nothing to do for this org only when there are no batched properties AND
+        // the legacy escalation tracks are disabled.
+        if (batchedProps.length === 0 && !escalationEnabled) continue;
+
         const openIncidents = await this.prisma.incident.findMany({
           where: {
             restroom: { floor: { building: { orgId: org.id } } },
@@ -80,7 +88,11 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
         });
 
         // ── Batched-alert pulse (Option 2): one grouped push per property ──
+        // Runs regardless of the escalation toggle (see note above).
         if (batchedProps.length > 0) await this.runBatchedPulses(org.id, openIncidents, batchedProps);
+
+        // Everything below is the LEGACY escalation machinery, gated by the toggle.
+        if (!escalationEnabled) continue;
 
         // One reminder per real-world problem: when several open incidents share
         // the same type + restroom (visitors re-reporting the same issue), only
