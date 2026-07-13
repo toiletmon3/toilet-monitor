@@ -74,7 +74,12 @@ jobs:
           pnpm install --frozen-lockfile
           # Prisma client must exist before `nest build` typechecks the server.
           ( cd apps/server && pnpm exec prisma generate )
-          pnpm run build
+          # Build server + web directly — exactly what the VPS does. NOT the root
+          # `pnpm run build`: that also compiles @toilet/shared-types via a bare
+          # `tsc`, but shared-types has no tsconfig and fails; server/web consume
+          # it straight from source, so no separate shared-types build is needed.
+          pnpm --filter @toilet/server build
+          pnpm --filter @toilet/web build
           # Integrity gate: never ship a broken/empty build — fall through to a
           # VPS build instead. Entry point path matches ecosystem.config.cjs.
           test -s apps/web/dist/index.html
