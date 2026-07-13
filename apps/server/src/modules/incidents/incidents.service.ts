@@ -109,15 +109,16 @@ export class IncidentsService {
       incident.restroom.name,
     ].filter(Boolean).join(' › ');
 
-    // Immediate-alert properties (Option 1) push CLEANERs the moment an issue is
-    // reported. Batched-alert properties (Option 2) stay silent here — the
-    // scheduler's per-property pulse announces the open issues later and starts
-    // their response clock (Incident.notifiedAt). Positive feedback is never an
-    // issue-to-handle, so it always notifies immediately regardless of mode.
-    // SHIFT_SUPERVISORs get notified via escalation in either mode.
+    // Immediate-alert properties (Option 1) push CLEANERs the moment anything is
+    // reported. Batched-alert properties (Option 2) stay completely silent here
+    // — no per-report push at all, positive feedback included — so the cleaner
+    // is never pinged outside the every-N-minutes grouped pulse. Issues are
+    // announced later by the scheduler's pulse, which starts their response
+    // clock (Incident.notifiedAt); positive feedback just surfaces in-app.
+    // SHIFT_SUPERVISORs still get notified via escalation in either mode.
     const propertyId = incident.restroom.floor.building.propertyId;
     let batched = false;
-    if (!isPositiveFeedback && propertyId) {
+    if (propertyId) {
       const property = await this.prisma.property.findUnique({
         where: { id: propertyId },
         select: { settings: true },
