@@ -899,6 +899,113 @@ function UrlGuide({ structure, onRefresh, propertyManagerMode = false }: { struc
   );
 }
 
+// ─── Batched-alert diagnostics (mobile-friendly, no console needed) ──────────
+function NotificationDiagnostics() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const run = async () => {
+    setLoading(true); setErr(null);
+    try {
+      const res = await api.get('/push/batch-diagnose');
+      setData(res.data);
+    } catch (e: any) {
+      setErr(e?.response?.data?.message || e?.message || 'שגיאה');
+    } finally { setLoading(false); }
+  };
+
+  const sendTest = async () => {
+    setLoading(true); setErr(null);
+    try {
+      const res = await api.get('/push/test');
+      toast.success(`נשלח ל-${res.data?.sent ?? 0} מכשירים, נכשל ${res.data?.failed ?? 0}`);
+    } catch (e: any) {
+      setErr(e?.response?.data?.message || e?.message || 'שגיאה');
+    } finally { setLoading(false); }
+  };
+
+  const lines: { icon: string; text: string; tone: 'bad' | 'warn' | 'ok' | 'info' }[] = [];
+  if (data) {
+    if (!data.vapidConfigured) lines.push({ icon: '❌', tone: 'bad', text: 'VAPID לא מוגדר בשרת — שום התראת push לא נשלחת.' });
+    for (const p of (data.properties ?? []).filter((x: any) => x.alertMode === 'batched')) {
+      if (p.openIssues === 0) {
+        lines.push({ icon: 'ℹ️', tone: 'info', text: `נכס "${p.name}": אין תקלות פתוחות — אין על מה לשלוח פעימה. דווח תקלה ואל תסגור אותה.` });
+      } else if (!p.lastBatchPulseAt && (p.nextPulseInMinutes ?? 1) <= 0) {
+        lines.push({ icon: '🐞', tone: 'bad', text: `נכס "${p.name}": ${p.openIssues} תקלות פתוחות, הפעימה אמורה כבר לרוץ אבל לא רצה — נראה כמו באג בשרת.` });
+      } else if (p.lastBatchPulseAt) {
+        lines.push({ icon: '✅', tone: 'ok', text: `נכס "${p.name}": הפעימה כן רצה (לאחרונה ${new Date(p.lastBatchPulseAt).toLocaleString('he-IL')}). אם לא הגיעה התראה — הבעיה בהגעה למכשיר (מנוי push).` });
+      } else {
+        lines.push({ icon: '⏳', tone: 'warn', text: `נכס "${p.name}": ${p.openIssues} תקלות פתוחות, הפעימה הבאה בעוד ${p.nextPulseInMinutes} דקות.` });
+      }
+    }
+    const noSub = (data.cleaners ?? []).filter((c: any) => c.pushSubscriptions === 0);
+    if (noSub.length) lines.push({ icon: '📵', tone: 'bad', text: `מנקים בלי מנוי push (לא יקבלו שום התראה עד שיאשרו נוטיפיקציות במכשיר): ${noSub.map((c: any) => c.name).join(', ')}` });
+    if (data.openIssuesWithoutProperty > 0) lines.push({ icon: '⚠️', tone: 'warn', text: `${data.openIssuesWithoutProperty} תקלות פתוחות בבניינים ללא נכס — אלה לעולם לא יקבלו פעימה מרוכזת.` });
+  }
+  const toneColor = (t: string) => t === 'bad' ? '#ef4444' : t === 'warn' ? '#f59e0b' : t === 'ok' ? '#22c55e' : '#8a9bb0';
+
+  return (
+    <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h2 className="font-semibold text-white flex items-center gap-2">🔔 אבחון התראות מרוכזות</h2>
+        <div className="flex gap-2">
+          <button onClick={run} disabled={loading}
+            className="px-4 py-2 rounded-xl text-sm font-medium"
+            style={{ background: 'rgba(0,229,204,0.15)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}>
+            {loading ? '...' : 'בדוק עכשיו'}
+          </button>
+          <button onClick={sendTest} disabled={loading}
+            className="px-4 py-2 rounded-xl text-sm font-medium"
+            style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.5)', color: '#a78bfa' }}>
+            שלח push בדיקה
+          </button>
+        </div>
+      </div>
+
+      {err && <div className="text-sm" style={{ color: '#ef4444' }}>{err}</div>}
+
+      {data && (
+        <div className="flex flex-col gap-3">
+          {/* Auto interpretation */}
+          <div className="flex flex-col gap-2">
+            {lines.length === 0 && <div className="text-sm" style={{ color: '#22c55e' }}>נראה תקין — אין בעיה בולטת.</div>}
+            {lines.map((l, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm rounded-xl px-3 py-2"
+                style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${toneColor(l.tone)}33`, color: 'var(--color-text)' }}>
+                <span>{l.icon}</span><span style={{ color: toneColor(l.tone) }}>{l.text}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Per-property detail */}
+          <div className="flex flex-col gap-1.5">
+            <div className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>נכסים</div>
+            {(data.properties ?? []).map((p: any, i: number) => (
+              <div key={i} className="text-xs rounded-lg px-3 py-2" style={{ background: '#0a0e1a', border: '1px solid rgba(255,255,255,0.06)', color: 'var(--color-text-secondary)' }}>
+                <span className="text-white font-medium">{p.name}</span> · {p.alertMode === 'batched' ? `מרוכז ${p.batchIntervalMinutes}ד'` : 'מיידי'} · תקלות פתוחות: {p.openIssues} · פעימה אחרונה: {p.lastBatchPulseAt ? new Date(p.lastBatchPulseAt).toLocaleTimeString('he-IL') : '—'}{p.nextPulseInMinutes != null ? ` · הבאה בעוד ${p.nextPulseInMinutes}ד'` : ''}
+              </div>
+            ))}
+          </div>
+
+          {/* Cleaners subscriptions */}
+          <div className="flex flex-col gap-1.5">
+            <div className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>מנקים · מנויי push · VAPID: {data.vapidConfigured ? '✓' : '✗'}</div>
+            <div className="flex flex-wrap gap-1.5">
+              {(data.cleaners ?? []).map((c: any, i: number) => (
+                <span key={i} className="text-[11px] px-2 py-1 rounded-lg"
+                  style={{ background: c.pushSubscriptions > 0 ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: c.pushSubscriptions > 0 ? '#22c55e' : '#ef4444', border: `1px solid ${c.pushSubscriptions > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+                  {c.name} ({c.pushSubscriptions})
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── main page ─────────────────────────────────────────────────────────────────
 export default function AdminSettings() {
   const { t } = useTranslation();
@@ -1049,6 +1156,9 @@ export default function AdminSettings() {
 
       {/* ── Properties (נכסים) — org admins only ── */}
       {!isPropertyManager && <PropertiesPanel structure={structure} onRefresh={refresh} />}
+
+      {/* ── Batched-alert diagnostics — org admins only ── */}
+      {!isPropertyManager && <NotificationDiagnostics />}
 
       {/* ── Language Settings — org-wide config, org admins only ── */}
       {!isPropertyManager && (
