@@ -6,7 +6,7 @@ import { setLanguage } from '../../i18n';
 import api from '../../lib/api';
 import {
   LayoutDashboard, AlertCircle, BarChart2, Users, Settings, LogOut,
-  Sun, Moon, LayoutTemplate, Menu, X, ChevronLeft, ChevronRight, WifiOff,
+  Sun, Moon, LayoutTemplate, Menu, X, ChevronLeft, ChevronRight, WifiOff, Building2,
 } from 'lucide-react';
 import { getSocket, joinOrg } from '../../lib/socket';
 import toast from 'react-hot-toast';
@@ -155,6 +155,7 @@ export default function AdminLayout() {
     { to: '/admin/analytics', icon: BarChart2, label: t('admin.nav.analytics') },
     { to: '/admin/cleaners', icon: Users, label: t('admin.nav.cleaners') },
     { to: '/admin/settings', icon: Settings, label: t('admin.nav.settings') },
+    { to: '/admin/property-settings', icon: Building2, label: t('admin.nav.propertySettings') },
     ...(isPropertyManager ? [] : [{ to: '/admin/kiosk', icon: LayoutTemplate, label: t('admin.nav.kiosk') }]),
   ];
 

@@ -1071,7 +1071,7 @@ function NotificationDiagnostics() {
 }
 
 // ─── main page ─────────────────────────────────────────────────────────────────
-export default function AdminSettings() {
+export default function AdminSettings({ section = 'general' }: { section?: 'general' | 'places' }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showBuildingModal, setShowBuildingModal] = useState(false);
@@ -1150,6 +1150,11 @@ export default function AdminSettings() {
 
   return (
     <div className="flex flex-col gap-5">
+      <h1 className="text-2xl font-bold text-white">
+        {section === 'places' ? t('admin.nav.propertySettings') : t('admin.nav.settings')}
+      </h1>
+
+      {section === 'general' && (<>
       {/* ── My Account — Change Password ── */}
       <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
         <div className="flex items-center justify-between">
@@ -1217,12 +1222,6 @@ export default function AdminSettings() {
           </form>
         )}
       </div>
-
-      {/* ── Properties (נכסים) — org admins only ── */}
-      {!isPropertyManager && <PropertiesPanel structure={structure} onRefresh={refresh} />}
-
-      {/* ── Batched-alert diagnostics — org admins only ── */}
-      {!isPropertyManager && <NotificationDiagnostics />}
 
       {/* ── Language Settings — org-wide config, org admins only ── */}
       {!isPropertyManager && (
@@ -1448,10 +1447,18 @@ export default function AdminSettings() {
         </div>
       </div>
       )}
+      </>)}
 
-      {/* page header */}
+      {section === 'places' && (<>
+      {/* ── Properties (נכסים) — org admins only ── */}
+      {!isPropertyManager && <PropertiesPanel structure={structure} onRefresh={refresh} />}
+
+      {/* ── Batched-alert diagnostics — org admins only ── */}
+      {!isPropertyManager && <NotificationDiagnostics />}
+
+      {/* buildings header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">{t('admin.nav.settings')}</h1>
+        <h2 className="text-lg font-bold text-white">{t('admin.settings.buildingsTitle')}</h2>
         <button
           onClick={() => setShowBuildingModal(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
@@ -1492,6 +1499,7 @@ export default function AdminSettings() {
 
       {/* ── Kiosk URLs + device status (merged) ── */}
       <UrlGuide structure={structure} onRefresh={refresh} propertyManagerMode={isPropertyManager} />
+      </>)}
 
       {showBuildingModal && (
         <AddBuildingModal

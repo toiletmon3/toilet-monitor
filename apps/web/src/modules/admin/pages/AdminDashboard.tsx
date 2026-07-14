@@ -663,22 +663,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* KPI row 1 — previous period (baseline, light cards) */}
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.dashboard.ovPrevPeriod')}</span>
-          <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)', opacity: 0.7 }}>{fmtRange(prevKpis?.from, prevKpis?.to)}</span>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <KpiCardLight label={t('admin.dashboard.ovAvgScore')} value={prevKpis?.avgScore?.value ?? 100} color="#3b82f6" spark={prevKpis?.avgScore?.spark} />
-          <KpiCardLight label={t('admin.dashboard.ovPeople')} value={fmtNum(prevKpis?.people?.value ?? 0)} color="#22c55e" spark={prevKpis?.people?.spark} />
-          <KpiCardLight label={t('admin.dashboard.ovComplaints')} value={fmtNum(prevKpis?.complaints?.value ?? 0)} color="#ef4444" spark={prevKpis?.complaints?.spark} />
-          <KpiCardLight label={t('admin.dashboard.ovResponseTime')} value={prevKpis?.responseTime?.value ?? 0} unit={minutesUnit} color="#f59e0b" spark={prevKpis?.responseTime?.spark} />
-          <KpiCardLight label={t('admin.dashboard.ovTimeSaved')} value={prevKpis?.timeSaved?.value ?? 0} unit={t('admin.dashboard.ovHoursShort')} color="#eab308" spark={prevKpis?.timeSaved?.spark} />
-        </div>
-      </div>
-
-      {/* KPI row 2 — current selected period (bold colored cards, trend vs previous) */}
+      {/* KPI row 1 — current selected period (bold colored cards, trend vs previous) */}
       <div>
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-accent)' }}>{t('admin.dashboard.ovCurrentPeriod')}</span>
@@ -694,6 +679,21 @@ export default function AdminDashboard() {
         <p className="text-[11px] mt-2" style={{ color: 'var(--color-text-secondary)' }}>
           {t('admin.dashboard.ovVsPrev')} · {t('admin.dashboard.ovTimeSavedHint', { min: ov?.baselinePatrolMinutes ?? 45 })}
         </p>
+      </div>
+
+      {/* KPI row 2 — previous period (baseline, light cards) */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.dashboard.ovPrevPeriod')}</span>
+          <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)', opacity: 0.7 }}>{fmtRange(prevKpis?.from, prevKpis?.to)}</span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <KpiCardLight label={t('admin.dashboard.ovAvgScore')} value={prevKpis?.avgScore?.value ?? 100} color="#3b82f6" spark={prevKpis?.avgScore?.spark} />
+          <KpiCardLight label={t('admin.dashboard.ovPeople')} value={fmtNum(prevKpis?.people?.value ?? 0)} color="#22c55e" spark={prevKpis?.people?.spark} />
+          <KpiCardLight label={t('admin.dashboard.ovComplaints')} value={fmtNum(prevKpis?.complaints?.value ?? 0)} color="#ef4444" spark={prevKpis?.complaints?.spark} />
+          <KpiCardLight label={t('admin.dashboard.ovResponseTime')} value={prevKpis?.responseTime?.value ?? 0} unit={minutesUnit} color="#f59e0b" spark={prevKpis?.responseTime?.spark} />
+          <KpiCardLight label={t('admin.dashboard.ovTimeSaved')} value={prevKpis?.timeSaved?.value ?? 0} unit={t('admin.dashboard.ovHoursShort')} color="#eab308" spark={prevKpis?.timeSaved?.spark} />
+        </div>
       </div>
 
       {/* Donuts */}
