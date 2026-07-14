@@ -69,6 +69,19 @@ export class BuildingsController {
     return this.buildingsService.assignBuildingToProperty(buildingId, dto.propertyId ?? null);
   }
 
+  // Per-building operating hours — the "general" manager's per-building config;
+  // outside them no push is sent for the building. General admins only.
+  @Roles(...ADMIN_ROLES)
+  @UseGuards(JwtAuthGuard)
+  @Patch(':buildingId/operating-hours')
+  updateBuildingOperatingHours(
+    @CurrentUser() user: any,
+    @Param('buildingId') buildingId: string,
+    @Body() dto: { enabled?: boolean; open?: string | null; close?: string | null },
+  ) {
+    return this.buildingsService.updateBuildingOperatingHours(buildingId, user.orgId, dto);
+  }
+
   // Per-property alert policy (immediate vs batched) — the "general" manager's
   // per-נכס notification config. General admins only, never property managers.
   @Roles(...ADMIN_ROLES)

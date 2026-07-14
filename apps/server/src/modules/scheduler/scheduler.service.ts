@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { PushService } from '../push/push.service';
 import { readAlertSettings } from '../../common/alert-mode';
+import { isWithinOperatingHours } from '../../common/operating-hours';
 
 @Injectable()
 export class SchedulerService implements OnModuleInit, OnModuleDestroy {
@@ -54,6 +55,8 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
         const escalationEnabled = s.escalationEnabled !== false;
         const cleanerInterval: number = s.cleanerReminderMinutes ?? 5;
         const supervisorInterval: number = s.supervisorEscalationMinutes ?? 10;
+        // Building operating hours are evaluated in the org's timezone.
+        const timezone: string = s.timezone ?? 'Asia/Jerusalem';
 
         // Per-property alert policy (Option 1 immediate vs Option 2 batched).
         // Buildings with no property default to immediate.
@@ -89,7 +92,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
 
         // ── Batched-alert pulse (Option 2): one grouped push per property ──
         // Runs regardless of the escalation toggle (see note above).
-        if (batchedProps.length > 0) await this.runBatchedPulses(org.id, openIncidents, batchedProps);
+        if (batchedProps.length > 0) await this.runBatchedPulses(org.id, openIncidents, batchedProps, timezone);
 
         // Everything below is the LEGACY escalation machinery, gated by the toggle.
         if (!escalationEnabled) continue;
@@ -120,6 +123,9 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
           ].filter(Boolean).join(' › ');
           const buildingId = incident.restroom.floor.buildingId;
           const batchedProperty = isBatched(incident.restroom.floor.building.propertyId);
+          // Operating hours: hold ALL escalation pushes (cleaner + supervisor)
+          // for a building outside its active window; they resume on reopen.
+          const withinHours = isWithinOperatingHours(incident.restroom.floor.building.settings, timezone);
 
           // Escalation clock — a layer that follows the property's alert option.
           // Batched (Option 2): escalation counts from the issue's FIRST grouped
@@ -132,7 +138,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
           const minutesSinceEscalationStart = (Date.now() - escalationStart.getTime()) / 60000;
 
           // ── Cleaner reminder track (immediate-alert properties only) ──
-          if (cleanerInterval > 0 && !batchedProperty) {
+          if (cleanerInterval > 0 && !batchedProperty && withinHours) {
             const nextCleanerAt = cleanerInterval * (cleanerReminders + 1);
             if (minutesOpen >= nextCleanerAt) {
               const round = cleanerReminders + 1;
@@ -160,9 +166,10 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
           }
 
           // ── Supervisor escalation track ──
-          // Follows the alert option's clock (see escalationStart above) and
-          // holds until a batched issue has had its first grouped announcement.
-          if (supervisorInterval > 0 && !notYetAnnounced) {
+          // Follows the alert option's clock (see escalationStart above), holds
+          // until a batched issue has had its first grouped announcement, and is
+          // held entirely while the building is outside its operating hours.
+          if (supervisorInterval > 0 && !notYetAnnounced && withinHours) {
             const nextSupervisorAt = supervisorInterval * (supervisorReminders + 1);
             if (minutesSinceEscalationStart >= nextSupervisorAt) {
               const round = supervisorReminders + 1;
@@ -220,17 +227,21 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       status: string;
       reportedAt: Date;
       notifiedAt: Date | null;
-      restroom: { floor: { buildingId: string; building: { propertyId: string | null } } };
+      restroom: { floor: { buildingId: string; building: { propertyId: string | null; settings: unknown } } };
     }>,
     batchedProps: Array<{ id: string; name: string; settings: any; interval: number }>,
+    timezone: string,
   ) {
     const now = new Date();
     const nowMs = now.getTime();
 
-    // Bucket OPEN issues by their (batched) property.
+    // Bucket OPEN issues by their (batched) property, skipping any whose building
+    // is currently outside its operating hours — those are held (not announced,
+    // notifiedAt not stamped) until the building is active again.
     const openByProp = new Map<string, typeof openIncidents>();
     for (const inc of openIncidents) {
       if (inc.status !== 'OPEN') continue;
+      if (!isWithinOperatingHours(inc.restroom.floor.building.settings, timezone)) continue;
       const propertyId = inc.restroom.floor.building.propertyId;
       if (!propertyId) continue;
       const arr = openByProp.get(propertyId) ?? [];

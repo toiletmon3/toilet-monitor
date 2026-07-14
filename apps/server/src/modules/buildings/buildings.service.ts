@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { RESPONSE_TIME_RESET_AT, responseMinutes } from '../../common/response-time-reset';
 import { AlertMode, readAlertSettings } from '../../common/alert-mode';
+import { readOperatingHours } from '../../common/operating-hours';
 
 const OFFLINE_AFTER_MS = 90_000; // mark offline if no heartbeat for 90s (1.5× the 60s interval)
 
@@ -586,6 +587,32 @@ export class BuildingsService implements OnModuleInit, OnModuleDestroy {
 
   async updateBuilding(buildingId: string, dto: { name?: string; address?: string }) {
     return this.prisma.building.update({ where: { id: buildingId }, data: dto });
+  }
+
+  /**
+   * Per-building operating hours (org "general" manager only). When enabled,
+   * no push notifications are sent for this building's issues outside the
+   * window. Merges only the operatingHours keys into the settings blob (never
+   * spreads the raw body); returns the normalised config.
+   */
+  async updateBuildingOperatingHours(
+    buildingId: string,
+    orgId: string,
+    dto: { enabled?: boolean; open?: string | null; close?: string | null },
+  ) {
+    const building = await this.prisma.building.findFirst({ where: { id: buildingId, orgId }, select: { settings: true } });
+    if (!building) throw new NotFoundException('Building not found');
+
+    const HHMM = /^\d{1,2}:\d{2}$/;
+    const current = (building.settings ?? {}) as any;
+    const oh = { ...(current.operatingHours ?? {}) };
+    if (dto.enabled !== undefined) oh.enabled = !!dto.enabled;
+    if (dto.open !== undefined) oh.open = dto.open && HHMM.test(dto.open) ? dto.open : '';
+    if (dto.close !== undefined) oh.close = dto.close && HHMM.test(dto.close) ? dto.close : '';
+
+    const merged = { ...current, operatingHours: oh };
+    await this.prisma.building.update({ where: { id: buildingId }, data: { settings: merged } });
+    return readOperatingHours(merged);
   }
 
   async updateFloor(floorId: string, dto: { name?: string; floorNumber?: number }) {
