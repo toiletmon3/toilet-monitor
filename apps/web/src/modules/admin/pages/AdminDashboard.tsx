@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import api from '../../../lib/api';
 import { getSocket, joinOrg } from '../../../lib/socket';
+import { startOfDayInTz } from '../../../lib/tz';
 import { translateFloorName, translateRestroomName, translateLocationPath } from '../../../lib/translate-name';
 
 const GENERAL_COLORS: Record<string, string> = { like: '#22c55e', cleaning: '#ef4444', maintenance: '#3b82f6' };
@@ -462,6 +463,12 @@ export default function AdminDashboard() {
     queryKey: ['properties'],
     queryFn: async () => (await api.get('/buildings/properties')).data,
   });
+  // "Today"/"yesterday" are the ORG's day, not the viewer device's timezone.
+  const { data: orgSettings } = useQuery({
+    queryKey: ['org-settings'],
+    queryFn: async () => (await api.get('/users/org-settings')).data,
+  });
+  const orgTz = orgSettings?.timezone ?? 'Asia/Jerusalem';
   // The property filter sits above the buildings filter and narrows it.
   const buildings = propertyId ? allBuildings.filter((b: any) => b.propertyId === propertyId) : allBuildings;
 
@@ -481,12 +488,12 @@ export default function AdminDashboard() {
   // LOCAL time, from midnight); numeric presets use days=N.
   const rangeParam = (() => {
     if (range === 'today' || range === 'yesterday') {
-      const start = new Date(); start.setHours(0, 0, 0, 0);
+      const todayStart = startOfDayInTz(orgTz, 0);
       if (range === 'today') {
-        return `from=${encodeURIComponent(start.toISOString())}&to=${encodeURIComponent(new Date().toISOString())}`;
+        return `from=${encodeURIComponent(todayStart.toISOString())}&to=${encodeURIComponent(new Date().toISOString())}`;
       }
-      const yStart = new Date(start); yStart.setDate(yStart.getDate() - 1);
-      const yEnd = new Date(start.getTime() - 1);
+      const yStart = startOfDayInTz(orgTz, -1);
+      const yEnd = new Date(todayStart.getTime() - 1);
       return `from=${encodeURIComponent(yStart.toISOString())}&to=${encodeURIComponent(yEnd.toISOString())}`;
     }
     if (range === 'custom') {
@@ -501,15 +508,17 @@ export default function AdminDashboard() {
   const scopeParam = `${propertyId ? `&propertyId=${propertyId}` : ''}${buildingId ? `&buildingId=${buildingId}` : ''}${floorId ? `&floorId=${floorId}` : ''}${restroomId ? `&restroomId=${restroomId}` : ''}`;
   const ovParams = `${rangeParam}${scopeParam}`;
   const { data: ov } = useQuery({
-    queryKey: ['analytics-overview', range, range === 'custom' ? `${customFrom}:${customTo}` : '', propertyId, buildingId, floorId, restroomId],
+    queryKey: ['analytics-overview', range, range === 'custom' ? `${customFrom}:${customTo}` : '', orgTz, propertyId, buildingId, floorId, restroomId],
     queryFn: async () => (await api.get(`/analytics/overview?${ovParams}`)).data,
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: urgentData = [] } = useQuery({
-    queryKey: ['incidents', 'urgent', range, range === 'custom' ? `${customFrom}:${customTo}` : '', propertyId, buildingId, floorId, restroomId],
+    queryKey: ['incidents', 'urgent', range, range === 'custom' ? `${customFrom}:${customTo}` : '', orgTz, propertyId, buildingId, floorId, restroomId],
     queryFn: async () => (await api.get(`/incidents/urgent?${ovParams}`)).data,
     refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
@@ -523,8 +532,18 @@ export default function AdminDashboard() {
     };
     socket.on('incident:created', refresh);
     socket.on('incident:resolved', refresh);
+    socket.on('incident:updated', refresh);
     socket.on('incident:escalated', refresh);
-    return () => { socket.off('incident:created', refresh); socket.off('incident:resolved', refresh); socket.off('incident:escalated', refresh); };
+    // Re-join + refetch whenever the socket reconnects, so live data resumes
+    // after a mobile/network drop instead of silently going stale.
+    socket.on('connect', refresh);
+    return () => {
+      socket.off('incident:created', refresh);
+      socket.off('incident:resolved', refresh);
+      socket.off('incident:updated', refresh);
+      socket.off('incident:escalated', refresh);
+      socket.off('connect', refresh);
+    };
   }, [queryClient]);
 
   const selectedBuildingName = buildings.find((b: any) => b.id === buildingId)?.name;
