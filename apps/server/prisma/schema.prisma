@@ -81,6 +81,11 @@ model Building {
   latitude         Float?
   longitude        Float?
   kioskTemplateId  String?
+  // Per-building settings. Currently holds operating hours (in the org's
+  // timezone): { operatingHours: { open: "HH:MM", close: "HH:MM" } }. Outside
+  // those hours NO push notifications are sent for this building's issues.
+  // Absent/empty = active 24/7 (notifications always).
+  settings         Json    @default("{}")
 
   organization  Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
   property      Property?      @relation(fields: [propertyId], references: [id], onDelete: SetNull)

@@ -4,6 +4,7 @@ import { EventsGateway } from '../events/events.gateway';
 import { PushService } from '../push/push.service';
 import { IncidentStatus } from '@prisma/client';
 import { readAlertSettings } from '../../common/alert-mode';
+import { isWithinOperatingHours } from '../../common/operating-hours';
 
 const INCIDENT_INCLUDE = {
   issueType: true,
@@ -125,7 +126,16 @@ export class IncidentsService {
       });
       batched = readAlertSettings(property?.settings).alertMode === 'batched';
     }
-    if (!batched) {
+
+    // Operating hours: outside a building's active window NO push is sent for its
+    // issues (the incident is still recorded and broadcast live — only the alert
+    // is held until the building is active again). Enforced in the org's
+    // timezone; disabled/unset hours = active 24/7.
+    const org = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } });
+    const timezone = (org?.settings as any)?.timezone ?? 'Asia/Jerusalem';
+    const withinHours = isWithinOperatingHours(incident.restroom.floor.building.settings, timezone);
+
+    if (!batched && withinHours) {
       this.push.sendToBuilding(orgId, buildingId, {
         title: isPositiveFeedback ? '😊 משוב חיובי' : '❗ בקשה חדשה',
         body: `${issueIcon} ${issueLabel} — ${location}`,

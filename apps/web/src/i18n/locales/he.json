@@ -533,7 +533,13 @@
       "alertModeBatched": "אופציה 2 — מרוכז",
       "alertModeImmediateDesc": "כל תקלה שולחת התראה לעובד מיד עם הדיווח, וזמן התגובה נמדד מרגע הדיווח. (ההתנהגות הקיימת)",
       "alertModeBatchedDesc": "אין התראה בזמן הדיווח. אחת לכמה דקות נשלחת התראה מרוכזת אחת על כל התקלות הפתוחות, וזמן התגובה נמדד מרגע ההתראה המרוכזת — לא מרגע הדיווח.",
-      "alertBatchInterval": "כל כמה דקות נשלחת ההתראה המרוכזת"
+      "alertBatchInterval": "כל כמה דקות נשלחת ההתראה המרוכזת",
+      "operatingHours": "שעות פעילות",
+      "operatingHoursOn": "פעיל",
+      "operatingHoursOff": "כבוי (24/7)",
+      "operatingFrom": "מ־",
+      "operatingTo": "עד",
+      "operatingHoursHint": "מחוץ לשעות אלה לא נשלחות התראות לאף אחד (התקלות עדיין נרשמות)."
     }
   },
   "common": {

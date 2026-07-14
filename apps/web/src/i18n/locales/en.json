@@ -533,7 +533,13 @@
       "alertModeBatched": "Option 2 — Batched",
       "alertModeImmediateDesc": "Every issue pushes the worker the moment it is reported, and response time is measured from the report. (Current behavior)",
       "alertModeBatchedDesc": "No push on report. Every few minutes one grouped alert about all open issues is sent, and response time is measured from that grouped alert — not from the report.",
-      "alertBatchInterval": "Minutes between grouped alerts"
+      "alertBatchInterval": "Minutes between grouped alerts",
+      "operatingHours": "Operating hours",
+      "operatingHoursOn": "On",
+      "operatingHoursOff": "Off (24/7)",
+      "operatingFrom": "From",
+      "operatingTo": "to",
+      "operatingHoursHint": "Outside these hours no notifications are sent to anyone (issues are still recorded)."
     }
   },
   "common": {

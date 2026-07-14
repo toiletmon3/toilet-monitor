@@ -469,7 +469,68 @@ function FloorRow({ floor, onRestroomAdded, onDeleted }: { floor: any; onRestroo
   );
 }
 
-function BuildingCard({ building, onRefresh }: { building: any; onRefresh: () => void }) {
+// Per-building operating hours — outside them no push is sent. General manager only.
+function BuildingHours({ building, onSaved }: { building: any; onSaved: () => void }) {
+  const { t } = useTranslation();
+  const oh = building.settings?.operatingHours ?? {};
+  const [enabled, setEnabled] = useState<boolean>(!!oh.enabled);
+  const [openT, setOpenT] = useState<string>(oh.open || '08:00');
+  const [closeT, setCloseT] = useState<string>(oh.close || '22:00');
+
+  useEffect(() => {
+    const o = building.settings?.operatingHours ?? {};
+    setEnabled(!!o.enabled);
+    setOpenT(o.open || '08:00');
+    setCloseT(o.close || '22:00');
+  }, [building.id, building.settings]);
+
+  const save = async (patch: { enabled?: boolean; open?: string; close?: string }) => {
+    try {
+      await api.patch(`/buildings/${building.id}/operating-hours`, patch);
+      onSaved();
+      toast.success(t('common.updated'));
+    } catch { toast.error(t('common.error')); }
+  };
+
+  const timeInputStyle = { background: '#0a0e1a', border: '1px solid rgba(0,229,204,0.3)', color: 'white', borderRadius: 8, padding: '4px 8px', fontSize: 13 } as const;
+
+  return (
+    <div className="px-5 py-3 flex flex-col gap-2" style={{ borderBottom: '1px solid rgba(0,229,204,0.08)' }}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span className="text-sm flex items-center gap-1.5" style={{ color: 'var(--color-text-secondary)' }}>
+          🕐 {t('admin.settings.operatingHours')}
+        </span>
+        <button
+          onClick={() => { const next = !enabled; setEnabled(next); save({ enabled: next, open: openT, close: closeT }); }}
+          className="px-3 py-1 rounded-lg text-xs font-medium transition-all"
+          style={{
+            background: enabled ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.05)',
+            border: `1px solid ${enabled ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`,
+            color: enabled ? '#22c55e' : 'var(--color-text-secondary)',
+          }}>
+          {enabled ? t('admin.settings.operatingHoursOn') : t('admin.settings.operatingHoursOff')}
+        </button>
+      </div>
+      {enabled && (
+        <>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.operatingFrom')}</span>
+            <input type="time" value={openT} style={timeInputStyle}
+              onChange={e => { setOpenT(e.target.value); save({ enabled: true, open: e.target.value, close: closeT }); }} />
+            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{t('admin.settings.operatingTo')}</span>
+            <input type="time" value={closeT} style={timeInputStyle}
+              onChange={e => { setCloseT(e.target.value); save({ enabled: true, open: openT, close: e.target.value }); }} />
+          </div>
+          <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
+            {t('admin.settings.operatingHoursHint')}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+function BuildingCard({ building, onRefresh, canEditHours = false }: { building: any; onRefresh: () => void; canEditHours?: boolean }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(true);
   const [showFloorModal, setShowFloorModal] = useState(false);
@@ -510,6 +571,9 @@ function BuildingCard({ building, onRefresh }: { building: any; onRefresh: () =>
           </button>
         </div>
       </div>
+
+      {/* operating hours — general manager only */}
+      {canEditHours && <BuildingHours building={building} onSaved={onRefresh} />}
 
       {/* floors */}
       {open && (
@@ -1422,7 +1486,7 @@ export default function AdminSettings() {
         </div>
       ) : (
         structure.map((b: any) => (
-          <BuildingCard key={b.id} building={b} onRefresh={refresh} />
+          <BuildingCard key={b.id} building={b} onRefresh={refresh} canEditHours={!isPropertyManager} />
         ))
       )}
 
