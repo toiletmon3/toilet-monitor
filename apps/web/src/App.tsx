@@ -43,7 +43,8 @@ export default function App() {
           <Route path="incidents" element={<AdminIncidents />} />
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="cleaners" element={<AdminCleaners />} />
-          <Route path="settings" element={<AdminSettings />} />
+          <Route path="settings" element={<AdminSettings section="general" />} />
+          <Route path="property-settings" element={<AdminSettings section="places" />} />
           <Route path="kiosk" element={<AdminKiosk />} />
         </Route>
 
