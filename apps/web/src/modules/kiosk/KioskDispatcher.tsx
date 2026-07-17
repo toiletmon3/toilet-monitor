@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../lib/api';
 import { getSocket, joinRestroom } from '../../lib/socket';
+import { refreshRoster } from '../../lib/offline';
 import { useScrollLock } from '../../lib/useScrollLock';
 import KioskPage from './KioskPage';
 import KioskPageNeon from './templates/neon/KioskPageNeon';
@@ -50,6 +51,13 @@ export default function KioskDispatcher() {
         setTheme(err?.response?.status === 404 ? 'removed' : 'default');
       });
     return () => { cancelled = true; };
+  }, [deviceCode]);
+
+  // Cache the building's staff roster while online so any assigned worker can
+  // log in on the team screen during an internet outage — even if they've never
+  // personally used this tablet before. Refreshed on every kiosk load.
+  useEffect(() => {
+    refreshRoster(deviceCode);
   }, [deviceCode]);
 
   // React to admin template changes pushed from the server.

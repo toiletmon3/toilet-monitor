@@ -169,6 +169,18 @@ export class UsersController {
     return this.usersService.checkout(dto.cleanerIdNumber);
   }
 
+  // Roster of the kiosk's building staff, cached by the tablet while online so
+  // any assigned worker can identify themselves during an internet outage — even
+  // on a tablet they've never personally logged into. Scoped to one building by
+  // the (physically printed) deviceCode, same trust level as the other kiosk
+  // config endpoints.
+  @Public()
+  @RateLimit({ limit: 60, windowMs: 5 * 60 * 1000 })
+  @Get('kiosk-roster/:deviceCode')
+  kioskRoster(@Param('deviceCode') deviceCode: string) {
+    return this.usersService.kioskRoster(deviceCode);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('active-cleaners')
   getActiveCleaners(@CurrentUser() user: any) {
