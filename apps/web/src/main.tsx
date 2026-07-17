@@ -5,12 +5,19 @@ import { Toaster } from 'react-hot-toast';
 import './i18n';
 import './index.css';
 import App from './App';
+import { flushOffline } from './lib/offline';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 2, staleTime: 30_000 },
   },
 });
+
+// Flush any queued offline kiosk work (reports, check-ins, resolves) whenever
+// connectivity returns — and once on load — so nothing stays stranded after the
+// team screen that queued it has closed. Best-effort and idempotent.
+flushOffline().catch(() => {});
+window.addEventListener('online', () => { flushOffline().catch(() => {}); });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

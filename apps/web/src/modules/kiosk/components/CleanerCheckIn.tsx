@@ -1,8 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../../lib/api';
+import {
+  queueAction, queueReplay, syncPending, flushOffline, getQueuedIncidents,
+  cacheStaff, getCachedStaff, setCachedCheckedIn,
+  cacheRestroomIncidents, getCachedRestroomIncidents,
+  cacheIssueTypes, getCachedIssueType,
+  markResolvedLocal, getResolvedLocal, clearResolvedLocal,
+} from '../../../lib/offline';
 import { ArrowRight, Settings } from 'lucide-react';
 
 const AUTO_CLOSE_SEC = 25;
+
+/** Axios reports a lost connection with no `response` (or a timeout code) — the
+ *  signal we use to fall back to the offline cache instead of erroring out. */
+const isNetworkError = (e: any) =>
+  !e?.response || e?.code === 'ERR_NETWORK' || e?.code === 'ECONNABORTED';
+
+const FALLBACK_ISSUE = { icon: '📋', nameI18n: { he: 'בקשת טיפול' } };
 
 interface Props {
   restroomId: string;
@@ -33,6 +47,7 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
   const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [offline, setOffline] = useState(!navigator.onLine);
   const [countdown, setCountdown] = useState(AUTO_CLOSE_SEC);
 
   // Restroom picker state (admin only)
@@ -58,6 +73,76 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
     return () => clearInterval(timerRef.current!);
   }, [onBack]);
 
+  // ── Incident loading (online → server + cache; offline → cache + queue) ─────
+  const loadIncidentsOffline = useCallback(async (rid: string) => {
+    const resolved = getResolvedLocal();
+    const cached = getCachedRestroomIncidents(rid)
+      .filter((i: any) => !resolved.has(i.id))
+      .map((i: any) => ({ ...i, __source: 'server' as const }));
+    const queued = (await getQueuedIncidents(rid))
+      .filter(q => !resolved.has(q.clientId))
+      .map(q => ({
+        id: q.clientId,
+        clientId: q.clientId,
+        reportedAt: q.reportedAt,
+        issueType: q.issueType ?? getCachedIssueType(q.issueTypeId) ?? FALLBACK_ISSUE,
+        __source: 'queued' as const,
+      }));
+    setIncidents([...cached, ...queued]);
+  }, []);
+
+  const loadIncidents = useCallback(async (rid: string) => {
+    if (!navigator.onLine) { setOffline(true); await loadIncidentsOffline(rid); return; }
+    try {
+      // Push anything queued while offline first, so the fresh list is accurate.
+      await flushOffline().catch(() => {});
+      const { data: incs } = await api.get(`/incidents/restroom/${rid}`);
+      cacheRestroomIncidents(rid, incs ?? []);
+      cacheIssueTypes((incs ?? []).map((i: any) => i.issueType).filter(Boolean));
+      clearResolvedLocal();
+      setIncidents((incs ?? []).map((i: any) => ({ ...i, __source: 'server' as const })));
+      setOffline(false);
+    } catch (e: any) {
+      // Network error → work from cache; any other failure → still don't block
+      // the cleaner, fall back to whatever we last saw for this restroom.
+      if (isNetworkError(e)) setOffline(true);
+      await loadIncidentsOffline(rid);
+    }
+  }, [loadIncidentsOffline]);
+
+  // Best-effort: cache the issue-type catalogue while online so queued incidents
+  // reported offline still render with the right icon/name on the team screen.
+  useEffect(() => {
+    if (!navigator.onLine) return;
+    (async () => {
+      try {
+        const { data: org } = await api.get('/auth/default-org');
+        if (org?.orgId) {
+          const { data: types } = await api.get(`/buildings/issue-types/${org.orgId}`);
+          cacheIssueTypes(types ?? []);
+        }
+      } catch { /* offline / no org — fall back to icons cached from incidents */ }
+    })();
+  }, []);
+
+  // React to the tablet regaining/losing connectivity while the screen is open.
+  useEffect(() => {
+    const onOnline = async () => {
+      setOffline(false);
+      await flushOffline().catch(() => {});
+      if (!isAdmin && (step === 'action' || step === 'tasks' || step === 'arrived')) {
+        await loadIncidents(restroomId).catch(() => {});
+      }
+    };
+    const onOffline = () => setOffline(true);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, [isAdmin, step, restroomId, loadIncidents]);
+
   const NUMPAD = ['1','2','3','4','5','6','7','8','9','←','0','✓'];
 
   // ── Login: try cleaner first, then admin ──────────────────────────────────
@@ -69,8 +154,10 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
       // 1. Try as cleaner
       const { data: cv } = await api.post('/users/verify-cleaner', { idNumber });
       if (cv.found) {
-        const { data: incs } = await api.get(`/incidents/restroom/${restroomId}`);
-        setIncidents(incs);
+        // Remember this worker so they can still identify themselves if the
+        // tablet later loses internet ("what was known until there was internet").
+        cacheStaff(idNumber, { name: cv.name, isAdmin: false, checkedIn: !!cv.checkedIn });
+        await loadIncidents(restroomId);
         setCleaner({ idNumber, name: cv.name });
         setCheckedIn(!!cv.checkedIn);
         setIsAdmin(false);
@@ -81,6 +168,7 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
       // 2. Try as admin
       const { data: av } = await api.post('/users/verify-admin', { idNumber });
       if (av.found) {
+        cacheStaff(idNumber, { name: av.name, isAdmin: true });
         setCleaner({ idNumber, name: av.name });
         setIsAdmin(true);
         setStep('admin_action');
@@ -97,8 +185,29 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
       // 3. Not found
       setError(cv.inactive ? 'החשבון מושבת — פנה למנהל' : 'תעודת זהות לא נמצאה במערכת');
       setIdNumber('');
-    } catch {
-      setError('שגיאה בהתחברות — נסה שוב');
+    } catch (e: any) {
+      if (isNetworkError(e)) {
+        // No internet on the tablet — identify against the offline roster of
+        // people who have logged in here before.
+        setOffline(true);
+        const cached = getCachedStaff(idNumber);
+        if (cached && cached.isAdmin) {
+          setCleaner({ idNumber, name: cached.name });
+          setIsAdmin(true);
+          setStep('admin_action');
+        } else if (cached) {
+          await loadIncidentsOffline(restroomId);
+          setCleaner({ idNumber, name: cached.name });
+          setCheckedIn(cached.checkedIn);
+          setIsAdmin(false);
+          setStep('action');
+        } else {
+          setError('אין חיבור לאינטרנט — כדי להזדהות בפעם הראשונה נדרש חיבור');
+          setIdNumber('');
+        }
+      } else {
+        setError('שגיאה בהתחברות — נסה שוב');
+      }
     } finally {
       setLoading(false);
     }
@@ -107,13 +216,23 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
   // ── Cleaner actions ───────────────────────────────────────────────────────
   const handleArrived = async () => {
     setLoading(true);
+    const finishOffline = async () => {
+      await queueReplay({ method: 'post', url: '/users/checkin', data: { cleanerIdNumber: idNumber, restroomId } });
+      setOffline(true);
+      setCheckedIn(true);
+      setCachedCheckedIn(idNumber, true);
+      setStep('arrived');
+    };
+    if (!navigator.onLine) { await finishOffline(); setLoading(false); return; }
     try {
       const { data } = await api.post('/users/checkin', { cleanerIdNumber: idNumber, restroomId });
       setCleaner(data.cleaner);
       setCheckedIn(true);
+      setCachedCheckedIn(idNumber, true);
       setStep('arrived');
-    } catch {
-      setError('שגיאה בדיווח הגעה');
+    } catch (e: any) {
+      if (isNetworkError(e)) await finishOffline();
+      else setError('שגיאה בדיווח הגעה');
     } finally {
       setLoading(false);
     }
@@ -121,27 +240,71 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
 
   const handleCheckout = async () => {
     setLoading(true);
+    const finishOffline = async () => {
+      await queueReplay({ method: 'post', url: '/users/checkout', data: { cleanerIdNumber: idNumber } });
+      setOffline(true);
+      setCheckedIn(false);
+      setCachedCheckedIn(idNumber, false);
+      setStep('checkout_done' as Step);
+    };
+    if (!navigator.onLine) { await finishOffline(); setLoading(false); return; }
     try {
       const { data } = await api.post('/users/checkout', { cleanerIdNumber: idNumber });
       setCleaner(data.cleaner);
       setCheckedIn(false);
+      setCachedCheckedIn(idNumber, false);
       setStep('checkout_done' as Step);
-    } catch {
-      setError('שגיאה בדיווח יציאה');
+    } catch (e: any) {
+      if (isNetworkError(e)) await finishOffline();
+      else setError('שגיאה בדיווח יציאה');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResolve = async (incidentId: string) => {
+  const handleResolve = async (inc: any) => {
+    const key = inc.clientId ?? inc.id;
+    const removeFromList = () => setIncidents(prev => prev.filter(i => (i.clientId ?? i.id) !== key));
+
+    // Reported offline and not on the server yet → resolve through the
+    // incident-clientId sync path (which creates + resolves it on flush).
+    if (inc.__source === 'queued') {
+      await queueAction({
+        incidentClientId: inc.clientId,
+        actionType: 'RESOLVED',
+        cleanerIdNumber: idNumber,
+        performedAt: new Date().toISOString(),
+      });
+      markResolvedLocal(key);
+      removeFromList();
+      if (navigator.onLine) syncPending().catch(() => {});
+      else setOffline(true);
+      return;
+    }
+
+    // A real server incident: resolve live, or queue a replay if there's no net.
+    if (!navigator.onLine) {
+      await queueReplay({ method: 'patch', url: `/incidents/${inc.id}/resolve`, data: { cleanerIdNumber: idNumber } });
+      markResolvedLocal(key);
+      setOffline(true);
+      removeFromList();
+      return;
+    }
     try {
-      await api.patch(`/incidents/${incidentId}/resolve`, { cleanerIdNumber: idNumber });
-      setIncidents(prev => prev.filter(i => i.id !== incidentId));
-    } catch {}
+      await api.patch(`/incidents/${inc.id}/resolve`, { cleanerIdNumber: idNumber });
+      removeFromList();
+    } catch (e: any) {
+      if (isNetworkError(e)) {
+        await queueReplay({ method: 'patch', url: `/incidents/${inc.id}/resolve`, data: { cleanerIdNumber: idNumber } });
+        markResolvedLocal(key);
+        setOffline(true);
+        removeFromList();
+      }
+    }
   };
 
   const handleResolveAll = async () => {
-    for (const inc of incidents) await handleResolve(inc.id);
+    for (const inc of [...incidents]) await handleResolve(inc);
   };
 
   // ── Admin: load building structure ────────────────────────────────────────
@@ -152,8 +315,8 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
       setBuildings(data);
       if (data?.length === 1) { setSelBuilding(data[0]); setStep('admin_floor'); }
       else setStep('admin_building');
-    } catch {
-      setError('שגיאה בטעינת המבנה');
+    } catch (e: any) {
+      setError(isNetworkError(e) ? 'אין חיבור לאינטרנט — הגדרת שירותים דורשת חיבור' : 'שגיאה בטעינת המבנה');
     }
   };
 
@@ -168,8 +331,8 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
         if (onReassigned) onReassigned(restroom.id);
         else onBack();
       }, 2000);
-    } catch {
-      setError('שגיאה בהגדרת השירותים');
+    } catch (e: any) {
+      setError(isNetworkError(e) ? 'אין חיבור לאינטרנט — נסה שוב כשהחיבור יחזור' : 'שגיאה בהגדרת השירותים');
     } finally {
       setLoading(false);
     }
@@ -217,6 +380,14 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
           {countdown}s
         </div>
       </div>
+
+      {/* Offline banner — staff can keep working; everything syncs on reconnect */}
+      {offline && (
+        <div className="mx-5 mb-2 px-3 py-2 rounded-xl text-center text-xs"
+          style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.35)', color: '#fbbf24' }}>
+          📴 אין חיבור לאינטרנט — הפעולות נשמרות ויסונכרנו אוטומטית כשהחיבור יחזור
+        </div>
+      )}
 
       {/* ── LOGIN ── */}
       {step === 'login' && (
@@ -383,7 +554,7 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
                   </div>
                 </div>
               </div>
-              <button onClick={() => handleResolve(inc.id)}
+              <button onClick={() => handleResolve(inc)}
                 className="px-4 py-2 rounded-xl text-sm font-medium"
                 style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.4)' }}>
                 ✓ טיפלתי

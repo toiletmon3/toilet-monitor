@@ -201,16 +201,38 @@ export class IncidentsService {
       userId = cleaner?.id;
     }
 
-    return this.prisma.incidentAction.create({
+    const performedAt = new Date(action.performedAt);
+    const created = await this.prisma.incidentAction.create({
       data: {
         clientId: action.clientId,
         incidentId: incident.id,
         userId,
         actionType: action.actionType,
         notes: action.notes,
-        performedAt: new Date(action.performedAt),
+        performedAt,
       },
     });
+
+    // A RESOLVED action recorded offline must actually close the incident when
+    // it syncs — otherwise an issue the cleaner already handled while the tablet
+    // had no internet would reappear as open once connectivity returns. (The
+    // action row alone never changed the incident's status.)
+    if (action.actionType === 'RESOLVED' && incident.status !== 'RESOLVED') {
+      const updated = await this.prisma.incident.update({
+        where: { id: incident.id },
+        data: {
+          status: 'RESOLVED',
+          resolvedAt: performedAt,
+          assignedCleanerId: userId ?? incident.assignedCleanerId ?? undefined,
+        },
+        include: INCIDENT_INCLUDE,
+      });
+      const orgId = updated.restroom.floor.building.orgId;
+      this.events.broadcastToOrg(orgId, 'incident:resolved', updated);
+      this.events.broadcastToRestroom(updated.restroomId, 'incident:resolved', updated);
+    }
+
+    return created;
   }
 
   async findAll(orgId: string, filters: {
