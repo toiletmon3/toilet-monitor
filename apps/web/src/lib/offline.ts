@@ -227,6 +227,37 @@ export function setCachedCheckedIn(idNumber: string, checkedIn: boolean): void {
   if (s) cacheStaff(idNumber, { name: s.name, isAdmin: s.isAdmin, checkedIn });
 }
 
+/** Bulk-merge a whole roster (from the server) into the cached staff list. */
+export function cacheRoster(entries: Array<{ idNumber: string; name: string; isAdmin?: boolean; checkedIn?: boolean }>): void {
+  try {
+    const roster: Record<string, CachedStaff> = JSON.parse(localStorage.getItem(ROSTER_KEY) || '{}');
+    const now = new Date().toISOString();
+    for (const e of entries) {
+      if (!e?.idNumber) continue;
+      const prev = roster[e.idNumber];
+      roster[e.idNumber] = {
+        name: e.name,
+        isAdmin: e.isAdmin ?? prev?.isAdmin ?? false,
+        checkedIn: e.checkedIn ?? prev?.checkedIn ?? false,
+        cachedAt: now,
+      };
+    }
+    localStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
+  } catch { /* storage full / disabled — offline login just won't be available */ }
+}
+
+/** Fetch the building's staff roster for this kiosk and cache it, so any
+ *  assigned worker can log in offline later. Best-effort; a no-op when offline. */
+export async function refreshRoster(deviceCode?: string): Promise<void> {
+  if (!deviceCode || !navigator.onLine) return;
+  try {
+    const { data } = await api.get(`/users/kiosk-roster/${deviceCode}`);
+    const cleaners = (data?.cleaners ?? []).map((c: any) => ({ idNumber: c.idNumber, name: c.name, isAdmin: false, checkedIn: c.checkedIn }));
+    const admins = (data?.admins ?? []).map((a: any) => ({ idNumber: a.idNumber, name: a.name, isAdmin: true }));
+    cacheRoster([...cleaners, ...admins]);
+  } catch { /* offline / unknown device — keep whatever roster we already have */ }
+}
+
 /** Last set of open incidents seen for a restroom while online. */
 const incidentsKey = (restroomId: string) => `kioskIncidents:${restroomId}`;
 

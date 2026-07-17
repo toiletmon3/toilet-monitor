@@ -257,6 +257,59 @@ export class UsersService {
     return { found: true, name: admin.name, role: admin.role, orgId: admin.orgId };
   }
 
+  /**
+   * Staff assigned to the building this kiosk belongs to, so the tablet can
+   * cache the roster while online and let any of them log in during an internet
+   * outage — even on a tablet they've never personally used before. Returns the
+   * kiosk login credential (idNumber); it is @Public but scoped to a single
+   * building via the deviceCode, matching the trust level of the other kiosk
+   * endpoints. Falls back to an empty roster for an unknown/blocked device.
+   */
+  async kioskRoster(deviceCode: string) {
+    const device = await this.prisma.device.findUnique({
+      where: { deviceCode },
+      select: {
+        restroom: { select: { floor: { select: { building: { select: { id: true, orgId: true } } } } } },
+      },
+    });
+    const building = device?.restroom?.floor?.building;
+    if (!building) return { cleaners: [], admins: [] };
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const cleaners = await this.prisma.user.findMany({
+      where: {
+        buildingId: building.id,
+        isActive: true,
+        role: { in: ['CLEANER', 'SHIFT_SUPERVISOR'] },
+      },
+      select: {
+        idNumber: true,
+        name: true,
+        arrivals: {
+          where: { arrivedAt: { gte: todayStart }, leftAt: null },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+
+    const admins = await this.prisma.user.findMany({
+      where: {
+        orgId: building.orgId,
+        isActive: true,
+        role: { in: ['ORG_ADMIN', 'MANAGER'] },
+      },
+      select: { idNumber: true, name: true },
+    });
+
+    return {
+      cleaners: cleaners.map((c) => ({ idNumber: c.idNumber, name: c.name, checkedIn: c.arrivals.length > 0 })),
+      admins: admins.map((a) => ({ idNumber: a.idNumber, name: a.name })),
+    };
+  }
+
   async checkin(dto: { cleanerIdNumber: string; restroomId?: string; buildingId?: string; note?: string }) {
     const cleaner = await this.prisma.user.findFirst({
       where: { idNumber: dto.cleanerIdNumber, isActive: true, role: 'CLEANER' },

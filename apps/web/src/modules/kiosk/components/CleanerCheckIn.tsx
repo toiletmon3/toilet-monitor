@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../../lib/api';
 import {
   queueAction, queueReplay, syncPending, flushOffline, getQueuedIncidents,
-  cacheStaff, getCachedStaff, setCachedCheckedIn,
+  cacheStaff, getCachedStaff, setCachedCheckedIn, refreshRoster,
   cacheRestroomIncidents, getCachedRestroomIncidents,
   cacheIssueTypes, getCachedIssueType,
   markResolvedLocal, getResolvedLocal, clearResolvedLocal,
@@ -114,6 +114,8 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
   // reported offline still render with the right icon/name on the team screen.
   useEffect(() => {
     if (!navigator.onLine) return;
+    // Keep the offline login roster fresh whenever the team screen opens online.
+    refreshRoster(deviceCode);
     (async () => {
       try {
         const { data: org } = await api.get('/auth/default-org');
@@ -123,12 +125,13 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
         }
       } catch { /* offline / no org — fall back to icons cached from incidents */ }
     })();
-  }, []);
+  }, [deviceCode]);
 
   // React to the tablet regaining/losing connectivity while the screen is open.
   useEffect(() => {
     const onOnline = async () => {
       setOffline(false);
+      refreshRoster(deviceCode);
       await flushOffline().catch(() => {});
       if (!isAdmin && (step === 'action' || step === 'tasks' || step === 'arrived')) {
         await loadIncidents(restroomId).catch(() => {});
