@@ -266,36 +266,38 @@ export class UsersService {
    * endpoints. Falls back to an empty roster for an unknown/blocked device.
    */
   async kioskRoster(deviceCode: string) {
-    // Resolve the org this kiosk belongs to. Handle both real device codes and
-    // the selector-based ROOM-<restroomId> codes (whose Device row may not exist
-    // until the kiosk page has loaded once).
-    let orgId: string | undefined;
+    // Resolve the org + property this kiosk belongs to (via its building).
+    // Handle both real device codes and the selector-based ROOM-<restroomId>
+    // codes (whose Device row may not exist until the kiosk has loaded once).
+    const buildingSelect = { orgId: true, propertyId: true } as const;
     const device = await this.prisma.device.findUnique({
       where: { deviceCode },
-      select: { restroom: { select: { floor: { select: { building: { select: { orgId: true } } } } } } },
+      select: { restroom: { select: { floor: { select: { building: { select: buildingSelect } } } } } },
     });
-    orgId = device?.restroom?.floor?.building?.orgId;
-    if (!orgId && deviceCode.startsWith('ROOM-')) {
+    let building = device?.restroom?.floor?.building ?? null;
+    if (!building && deviceCode.startsWith('ROOM-')) {
       const restroom = await this.prisma.restroom.findUnique({
         where: { id: deviceCode.slice(5) },
-        select: { floor: { select: { building: { select: { orgId: true } } } } },
+        select: { floor: { select: { building: { select: buildingSelect } } } },
       });
-      orgId = restroom?.floor?.building?.orgId;
+      building = restroom?.floor?.building ?? null;
     }
-    if (!orgId) return { cleaners: [], admins: [] };
+    if (!building) return { cleaners: [], admins: [] };
 
+    const { orgId, propertyId } = building;
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    // Org-scoped, to match how the online verify-cleaner endpoint works (any
-    // active worker of the company can use any kiosk). Building-scoping would
-    // silently return an empty roster whenever cleaners aren't assigned a
-    // building, which breaks offline login for them.
+    // Property-scoped when the kiosk's building belongs to a property: only the
+    // cleaners of that property (by their own propertyId or their building's
+    // property) appear, so a worker of another property can't identify here.
+    // Falls back to org-wide when the building has no property set.
     const cleaners = await this.prisma.user.findMany({
       where: {
         orgId,
         isActive: true,
         role: { in: ['CLEANER', 'SHIFT_SUPERVISOR'] },
+        ...(propertyId ? { OR: [{ propertyId }, { building: { propertyId } }] } : {}),
       },
       select: {
         idNumber: true,
@@ -308,11 +310,18 @@ export class UsersService {
       },
     });
 
+    // Org-level admins manage everything (kept global); property managers are
+    // scoped to the property they manage/belong to.
     const admins = await this.prisma.user.findMany({
       where: {
         orgId,
         isActive: true,
-        role: { in: ['ORG_ADMIN', 'MANAGER'] },
+        OR: [
+          { role: { in: ['SUPER_ADMIN', 'ORG_ADMIN', 'MANAGER'] } },
+          propertyId
+            ? { role: 'PROPERTY_MANAGER', OR: [{ propertyId }, { managedProperties: { some: { id: propertyId } } }] }
+            : { role: 'PROPERTY_MANAGER' },
+        ],
       },
       select: { idNumber: true, name: true },
     });
