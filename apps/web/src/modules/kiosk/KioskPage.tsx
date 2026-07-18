@@ -59,7 +59,7 @@ export default function KioskPage() {
   const [kioskButtons, setKioskButtons] = useState<any[]>(DEFAULT_BUTTONS);
   const [confirmed, setConfirmed] = useState<string | null>(null);
   const [confirmScale, setConfirmScale] = useState<number>(1);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('online');
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(navigator.onLine ? 'online' : 'offline');
   const [pendingCount, setPendingCount] = useState(0);
   const [showCleanerMode, setShowCleanerMode] = useState(false);
   const [stats, setStats] = useState<{ weeklyReports: number; dailyReports: number; avgResponseMinutes: number | null } | null>(null);
