@@ -249,7 +249,9 @@ export function cacheRoster(entries: Array<{ idNumber: string; name: string; isA
 /** Fetch the building's staff roster for this kiosk and cache it, so any
  *  assigned worker can log in offline later. Best-effort; a no-op when offline. */
 export async function refreshRoster(deviceCode?: string): Promise<void> {
-  if (!deviceCode || !navigator.onLine) return;
+  if (!deviceCode) return;
+  // Runs online (live) or offline (served from the api-layer cache if the
+  // roster was fetched at least once before).
   try {
     const { data } = await api.get(`/users/kiosk-roster/${deviceCode}`);
     const cleaners = (data?.cleaners ?? []).map((c: any) => ({ idNumber: c.idNumber, name: c.name, isAdmin: false, checkedIn: c.checkedIn }));

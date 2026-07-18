@@ -266,21 +266,34 @@ export class UsersService {
    * endpoints. Falls back to an empty roster for an unknown/blocked device.
    */
   async kioskRoster(deviceCode: string) {
+    // Resolve the org this kiosk belongs to. Handle both real device codes and
+    // the selector-based ROOM-<restroomId> codes (whose Device row may not exist
+    // until the kiosk page has loaded once).
+    let orgId: string | undefined;
     const device = await this.prisma.device.findUnique({
       where: { deviceCode },
-      select: {
-        restroom: { select: { floor: { select: { building: { select: { id: true, orgId: true } } } } } },
-      },
+      select: { restroom: { select: { floor: { select: { building: { select: { orgId: true } } } } } } },
     });
-    const building = device?.restroom?.floor?.building;
-    if (!building) return { cleaners: [], admins: [] };
+    orgId = device?.restroom?.floor?.building?.orgId;
+    if (!orgId && deviceCode.startsWith('ROOM-')) {
+      const restroom = await this.prisma.restroom.findUnique({
+        where: { id: deviceCode.slice(5) },
+        select: { floor: { select: { building: { select: { orgId: true } } } } },
+      });
+      orgId = restroom?.floor?.building?.orgId;
+    }
+    if (!orgId) return { cleaners: [], admins: [] };
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
+    // Org-scoped, to match how the online verify-cleaner endpoint works (any
+    // active worker of the company can use any kiosk). Building-scoping would
+    // silently return an empty roster whenever cleaners aren't assigned a
+    // building, which breaks offline login for them.
     const cleaners = await this.prisma.user.findMany({
       where: {
-        buildingId: building.id,
+        orgId,
         isActive: true,
         role: { in: ['CLEANER', 'SHIFT_SUPERVISOR'] },
       },
@@ -297,7 +310,7 @@ export class UsersService {
 
     const admins = await this.prisma.user.findMany({
       where: {
-        orgId: building.orgId,
+        orgId,
         isActive: true,
         role: { in: ['ORG_ADMIN', 'MANAGER'] },
       },
