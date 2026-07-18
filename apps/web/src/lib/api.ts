@@ -65,4 +65,61 @@ api.interceptors.response.use(
   },
 );
 
+// ── Offline read-through cache for the public kiosk GETs ──────────────────────
+// The kiosk loads its device, buttons, issue-types and staff roster fresh on
+// every page load. With no internet those GETs reject and the kiosk renders
+// empty (no buttons) and the team screen can't identify anyone. Cache the last
+// successful response per URL and replay it on a network error, so a tablet that
+// has been online at least once keeps working through an outage.
+const OFFLINE_CACHE_PREFIX = 'apiCache:';
+const OFFLINE_CACHEABLE = [
+  /^\/auth\/kiosk\//,
+  /^\/auth\/default-org/,
+  /^\/buildings\/issue-types\//,
+  /^\/buildings\/kiosk-buttons\//,
+  /^\/buildings\/kiosk-config\//,
+  /^\/buildings\/public-structure\//,
+  /^\/users\/kiosk-roster\//,
+  /^\/analytics\/kiosk-stats\//,
+];
+
+function offlineCacheKey(config: any): string {
+  return OFFLINE_CACHE_PREFIX + (config?.method || 'get').toLowerCase() + ':' + (config?.url || '');
+}
+function isOfflineCacheable(config: any): boolean {
+  const method = (config?.method || 'get').toLowerCase();
+  return method === 'get' && OFFLINE_CACHEABLE.some((re) => re.test(config?.url || ''));
+}
+function isNetworkErr(err: any): boolean {
+  return !err?.response || err?.code === 'ERR_NETWORK' || err?.code === 'ECONNABORTED';
+}
+
+api.interceptors.response.use(
+  (res) => {
+    if (isOfflineCacheable(res.config)) {
+      try { localStorage.setItem(offlineCacheKey(res.config), JSON.stringify(res.data)); } catch { /* storage full/disabled */ }
+    }
+    return res;
+  },
+  (err) => {
+    const config = err?.config;
+    if (config && isNetworkErr(err) && isOfflineCacheable(config)) {
+      try {
+        const cached = localStorage.getItem(offlineCacheKey(config));
+        if (cached != null) {
+          return Promise.resolve({
+            data: JSON.parse(cached),
+            status: 200,
+            statusText: 'OK (offline cache)',
+            headers: {},
+            config,
+            request: err.request,
+          });
+        }
+      } catch { /* fall through to reject */ }
+    }
+    return Promise.reject(err);
+  },
+);
+
 export default api;
