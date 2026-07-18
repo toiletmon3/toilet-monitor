@@ -153,8 +153,8 @@ export class UsersController {
   @Public()
   @RateLimit({ limit: 60, windowMs: 5 * 60 * 1000 })
   @Post('verify-cleaner')
-  verifyCleaner(@Body() dto: { idNumber: string }) {
-    return this.usersService.verifyCleaner(dto.idNumber);
+  verifyCleaner(@Body() dto: { idNumber: string; deviceCode?: string }) {
+    return this.usersService.verifyCleaner(dto.idNumber, dto.deviceCode);
   }
 
   @Public()
