@@ -350,6 +350,52 @@ export class UsersService {
     };
   }
 
+  /**
+   * Explains, in plain terms, whether a given worker may sign in on a given
+   * kiosk and *why* — so a "he still gets in" report can be resolved without
+   * guessing at the data. @Public, mirrors the kiosk endpoints' trust model.
+   */
+  async kioskAccessDiagnose(deviceCode: string, idNumber?: string) {
+    const loc = await this.resolveKioskLocation(deviceCode);
+    const result: any = {
+      deviceCode,
+      kioskResolved: !!loc,
+      kioskOrgId: loc?.orgId ?? null,
+      kioskPropertyId: loc?.propertyId ?? null,
+    };
+    if (!idNumber) return result;
+
+    const cleaner = await this.prisma.user.findFirst({
+      where: { idNumber, role: { in: ['CLEANER', 'SHIFT_SUPERVISOR'] } },
+      select: {
+        name: true, isActive: true, role: true, propertyId: true, buildingId: true,
+        building: { select: { name: true, propertyId: true } },
+      },
+    });
+    if (!cleaner) { result.cleaner = { found: false }; return result; }
+
+    const own = [cleaner.propertyId, cleaner.building?.propertyId].filter(Boolean) as string[];
+    let verdict: string;
+    if (!cleaner.isActive) verdict = 'BLOCKED_inactive';
+    else if (!loc?.propertyId) verdict = 'ALLOWED_kiosk_building_has_no_property';
+    else if (own.length === 0) verdict = 'ALLOWED_cleaner_not_assigned_to_any_property';
+    else if (!own.includes(loc.propertyId)) verdict = 'BLOCKED_wrong_property';
+    else verdict = 'ALLOWED_same_property';
+
+    result.cleaner = {
+      found: true,
+      name: cleaner.name,
+      isActive: cleaner.isActive,
+      role: cleaner.role,
+      cleanerPropertyId: cleaner.propertyId ?? null,
+      buildingId: cleaner.buildingId ?? null,
+      buildingName: cleaner.building?.name ?? null,
+      buildingPropertyId: cleaner.building?.propertyId ?? null,
+      verdict,
+    };
+    return result;
+  }
+
   async checkin(dto: { cleanerIdNumber: string; restroomId?: string; buildingId?: string; note?: string }) {
     const cleaner = await this.prisma.user.findFirst({
       where: { idNumber: dto.cleanerIdNumber, isActive: true, role: 'CLEANER' },

@@ -181,6 +181,14 @@ export class UsersController {
     return this.usersService.kioskRoster(deviceCode);
   }
 
+  // Diagnostic: explains whether a worker may sign in on a kiosk and why.
+  @Public()
+  @RateLimit({ limit: 60, windowMs: 5 * 60 * 1000 })
+  @Get('kiosk-access-diagnose/:deviceCode')
+  kioskAccessDiagnose(@Param('deviceCode') deviceCode: string, @Query('idNumber') idNumber?: string) {
+    return this.usersService.kioskAccessDiagnose(deviceCode, idNumber);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('active-cleaners')
   getActiveCleaners(@CurrentUser() user: any) {
