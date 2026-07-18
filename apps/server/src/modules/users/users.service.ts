@@ -230,13 +230,46 @@ export class UsersService {
     });
   }
 
-  async verifyCleaner(idNumber: string) {
+  /** Resolve the org + property a kiosk belongs to (via its building). Handles
+   *  real device codes and selector-based ROOM-<restroomId> codes. */
+  private async resolveKioskLocation(deviceCode: string): Promise<{ orgId: string; propertyId: string | null } | null> {
+    const buildingSelect = { orgId: true, propertyId: true } as const;
+    const device = await this.prisma.device.findUnique({
+      where: { deviceCode },
+      select: { restroom: { select: { floor: { select: { building: { select: buildingSelect } } } } } },
+    });
+    let building = device?.restroom?.floor?.building ?? null;
+    if (!building && deviceCode.startsWith('ROOM-')) {
+      const restroom = await this.prisma.restroom.findUnique({
+        where: { id: deviceCode.slice(5) },
+        select: { floor: { select: { building: { select: buildingSelect } } } },
+      });
+      building = restroom?.floor?.building ?? null;
+    }
+    return building ? { orgId: building.orgId, propertyId: building.propertyId } : null;
+  }
+
+  async verifyCleaner(idNumber: string, deviceCode?: string) {
     const cleaner = await this.prisma.user.findFirst({
       where: { idNumber, role: { in: ['CLEANER', 'SHIFT_SUPERVISOR'] } },
-      select: { id: true, name: true, isActive: true, role: true },
+      select: { id: true, name: true, isActive: true, role: true, propertyId: true, building: { select: { propertyId: true } } },
     });
     if (!cleaner) return { found: false };
     if (!cleaner.isActive) return { found: false, inactive: true };
+
+    // Property gate: a worker tied to a property can only sign in on that
+    // property's kiosks. A worker with no property tie can sign in anywhere
+    // (so unassigned staff are never locked out).
+    if (deviceCode) {
+      const loc = await this.resolveKioskLocation(deviceCode);
+      if (loc?.propertyId) {
+        const own = [cleaner.propertyId, cleaner.building?.propertyId].filter(Boolean) as string[];
+        if (own.length > 0 && !own.includes(loc.propertyId)) {
+          return { found: false, wrongProperty: true };
+        }
+      }
+    }
+
     // Currently on shift? (an open arrival today with no checkout) — lets the
     // kiosk team screen offer check-in OR check-out, not both.
     const todayStart = new Date();
@@ -266,25 +299,10 @@ export class UsersService {
    * endpoints. Falls back to an empty roster for an unknown/blocked device.
    */
   async kioskRoster(deviceCode: string) {
-    // Resolve the org + property this kiosk belongs to (via its building).
-    // Handle both real device codes and the selector-based ROOM-<restroomId>
-    // codes (whose Device row may not exist until the kiosk has loaded once).
-    const buildingSelect = { orgId: true, propertyId: true } as const;
-    const device = await this.prisma.device.findUnique({
-      where: { deviceCode },
-      select: { restroom: { select: { floor: { select: { building: { select: buildingSelect } } } } } },
-    });
-    let building = device?.restroom?.floor?.building ?? null;
-    if (!building && deviceCode.startsWith('ROOM-')) {
-      const restroom = await this.prisma.restroom.findUnique({
-        where: { id: deviceCode.slice(5) },
-        select: { floor: { select: { building: { select: buildingSelect } } } },
-      });
-      building = restroom?.floor?.building ?? null;
-    }
-    if (!building) return { cleaners: [], admins: [] };
+    const loc = await this.resolveKioskLocation(deviceCode);
+    if (!loc) return { cleaners: [], admins: [] };
 
-    const { orgId, propertyId } = building;
+    const { orgId, propertyId } = loc;
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 

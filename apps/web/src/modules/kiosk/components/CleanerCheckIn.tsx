@@ -155,7 +155,7 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
     setError('');
     try {
       // 1. Try as cleaner
-      const { data: cv } = await api.post('/users/verify-cleaner', { idNumber });
+      const { data: cv } = await api.post('/users/verify-cleaner', { idNumber, deviceCode });
       if (cv.found) {
         // Remember this worker so they can still identify themselves if the
         // tablet later loses internet ("what was known until there was internet").
@@ -165,6 +165,12 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
         setCheckedIn(!!cv.checkedIn);
         setIsAdmin(false);
         setStep('action');
+        return;
+      }
+      // Blocked: this worker belongs to a different property than this kiosk.
+      if (cv.wrongProperty) {
+        setError('העובד משויך לנכס אחר — אין הרשאה לקיוסק הזה');
+        setIdNumber('');
         return;
       }
 
