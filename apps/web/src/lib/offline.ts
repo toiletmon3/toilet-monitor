@@ -227,10 +227,17 @@ export function setCachedCheckedIn(idNumber: string, checkedIn: boolean): void {
   if (s) cacheStaff(idNumber, { name: s.name, isAdmin: s.isAdmin, checkedIn });
 }
 
-/** Bulk-merge a whole roster (from the server) into the cached staff list. */
-export function cacheRoster(entries: Array<{ idNumber: string; name: string; isAdmin?: boolean; checkedIn?: boolean }>): void {
+/** Cache a whole roster from the server. `replace` overwrites the stored roster
+ *  entirely (pruning stale entries — e.g. a worker no longer allowed on this
+ *  kiosk); the default merges, used by per-login caching. */
+export function cacheRoster(
+  entries: Array<{ idNumber: string; name: string; isAdmin?: boolean; checkedIn?: boolean }>,
+  replace = false,
+): void {
   try {
-    const roster: Record<string, CachedStaff> = JSON.parse(localStorage.getItem(ROSTER_KEY) || '{}');
+    const roster: Record<string, CachedStaff> = replace
+      ? {}
+      : JSON.parse(localStorage.getItem(ROSTER_KEY) || '{}');
     const now = new Date().toISOString();
     for (const e of entries) {
       if (!e?.idNumber) continue;
@@ -256,7 +263,9 @@ export async function refreshRoster(deviceCode?: string): Promise<void> {
     const { data } = await api.get(`/users/kiosk-roster/${deviceCode}`);
     const cleaners = (data?.cleaners ?? []).map((c: any) => ({ idNumber: c.idNumber, name: c.name, isAdmin: false, checkedIn: c.checkedIn }));
     const admins = (data?.admins ?? []).map((a: any) => ({ idNumber: a.idNumber, name: a.name, isAdmin: true }));
-    cacheRoster([...cleaners, ...admins]);
+    // Replace, don't merge: a worker who is no longer on this kiosk's roster
+    // (e.g. reassigned to another property) must drop out of the offline cache.
+    cacheRoster([...cleaners, ...admins], true);
   } catch { /* offline / unknown device — keep whatever roster we already have */ }
 }
 
