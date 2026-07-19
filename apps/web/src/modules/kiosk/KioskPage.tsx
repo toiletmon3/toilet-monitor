@@ -166,9 +166,9 @@ export default function KioskPage() {
     return () => { wakeLock?.release(); };
   }, []);
 
-  // Auto-reload every 6h to prevent memory leaks
+  // Auto-reload every 1h to prevent memory leaks and pick up fresh config/roster
   useEffect(() => {
-    const timer = setTimeout(() => window.location.reload(), 6 * 60 * 60 * 1000);
+    const timer = setTimeout(() => window.location.reload(), 1 * 60 * 60 * 1000);
     return () => clearTimeout(timer);
   }, []);
 
