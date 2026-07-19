@@ -136,7 +136,7 @@ export default function KioskPageNeon() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => window.location.reload(), 6 * 60 * 60 * 1000);
+    const timer = setTimeout(() => window.location.reload(), 1 * 60 * 60 * 1000);
     return () => clearTimeout(timer);
   }, []);
 
