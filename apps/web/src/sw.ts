@@ -6,8 +6,13 @@ declare let self: ServiceWorkerGlobalScope;
 clientsClaim();
 self.skipWaiting();
 
-// Inject Workbox precache manifest (filled by vite-plugin-pwa at build time)
-precacheAndRoute(self.__WB_MANIFEST);
+// Inject Workbox precache manifest (filled by vite-plugin-pwa at build time).
+// The kiosk media is referenced with a `?v=N` cache-buster (e.g.
+// neon-video-he.mp4?v=1); tell the precache to ignore that param so those
+// requests still match the precached file and are served offline.
+precacheAndRoute(self.__WB_MANIFEST, {
+  ignoreURLParametersMatching: [/^v$/, /^utm_/, /^fbclid$/],
+});
 
 // ── Push notification handler ──────────────────────────────────────────────
 

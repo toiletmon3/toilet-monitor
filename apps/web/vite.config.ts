@@ -14,11 +14,12 @@ export default defineConfig({
       filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // Kiosk background artwork is large (multi-MB) and only used on
-        // always-online kiosk devices — keep it out of the PWA precache so it
-        // doesn't blow past Workbox's per-file size limit (and bloat installs).
-        globIgnores: ['**/kiosk-templates/**'],
+        // Precache the kiosk artwork (images + videos, ~4MB total) too, so the
+        // designed kiosk templates keep working offline instead of falling back
+        // to the plain classic look. The default 2 MiB per-file cap would drop
+        // the ~1.9MB background image, so raise it.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,mp4,mp3}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       manifest: {
         name: 'Toilet Monitor',

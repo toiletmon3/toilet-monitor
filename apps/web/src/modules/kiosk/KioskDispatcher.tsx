@@ -32,16 +32,6 @@ export default function KioskDispatcher() {
   useScrollLock(); // wall tablets must never bounce/pan
   const { deviceCode } = useParams<{ deviceCode: string }>();
   const [theme, setTheme] = useState<string | null>(null);
-  const [online, setOnline] = useState(navigator.onLine);
-
-  // Track connectivity so we can pick a template that actually works offline.
-  useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener('online', on);
-    window.addEventListener('offline', off);
-    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
-  }, []);
 
   useEffect(() => {
     if (!deviceCode) {
@@ -95,13 +85,10 @@ export default function KioskDispatcher() {
   }
   if (theme === 'removed') return <KioskRemoved />;
 
-  // Offline, the image/video templates render their buttons as invisible
-  // hotspots over background artwork that is deliberately kept out of the PWA
-  // precache (multi-MB). With no artwork the screen goes black and the buttons
-  // vanish. The classic template draws real DOM buttons that always render, so
-  // fall back to it whenever there's no connection.
-  if (!online) return <KioskPage />;
-
+  // The kiosk artwork (images + videos) is precached, so the designed templates
+  // keep working offline — no need to fall back to the classic look. A tablet
+  // that has never been online falls through to 'default' above (its theme was
+  // never fetched), which is the only case the classic template shows.
   return (
     theme === 'neon' ? <KioskPageNeon /> :
     theme === 'neon-pro' ? <KioskPageNeonPro /> :
