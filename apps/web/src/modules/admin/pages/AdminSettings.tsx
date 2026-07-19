@@ -352,6 +352,11 @@ function RestroomRow({ room, onDeviceAdded, onDeleted }: { room: any; onDeviceAd
     catch { toast.error('Error'); }
   };
 
+  const copyKioskUrl = (code: string) => {
+    navigator.clipboard?.writeText(`https://cleanco.ai/kiosk/${code}`);
+    toast.success(t('common.copied'));
+  };
+
   const handleDeleteRestroom = async () => {
     if (!window.confirm(`${t('common.delete')} ${room.name}?`)) return;
     try { await api.delete(`/buildings/restrooms/${room.id}`); onDeleted(); }
@@ -378,9 +383,11 @@ function RestroomRow({ room, onDeviceAdded, onDeleted }: { room: any; onDeviceAd
         <div className="flex items-center gap-1 ms-2">
           {(room.devices ?? []).map((d: any) => (
             <div key={d.id} className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-mono" style={{ background: 'rgba(255,255,255,0.05)', color: '#8a9bb0' }}>
-              <span className={`w-1.5 h-1.5 rounded-full ${d.isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${d.isOnline ? 'bg-green-400' : 'bg-red-400'}`}
+                title={d.isOnline ? t('admin.devices.online') : t('admin.devices.offline')} />
               {d.deviceCode}
-              <button onClick={() => handleDeleteDevice(d.id, d.deviceCode)} className="hover:text-red-400 transition-colors ms-1"><Trash2 size={10} /></button>
+              <button onClick={() => copyKioskUrl(d.deviceCode)} title={t('common.copy')} className="hover:text-[#00e5cc] transition-colors ms-1"><Copy size={10} /></button>
+              <button onClick={() => handleDeleteDevice(d.id, d.deviceCode)} title={t('common.delete')} className="hover:text-red-400 transition-colors"><Trash2 size={10} /></button>
             </div>
           ))}
         </div>
@@ -824,140 +831,34 @@ function CopyRow({ label, sub, url, accent }: { label: string; sub?: string; url
   );
 }
 
-function UrlGuide({ structure, onRefresh, propertyManagerMode = false }: { structure: any[]; onRefresh: () => void; propertyManagerMode?: boolean }) {
+function UrlGuide({ propertyManagerMode = false }: { propertyManagerMode?: boolean }) {
   const { t } = useTranslation();
   // cleanco.ai is the ONLY served domain — the legacy duckdns address was
   // decommissioned (07/2026) and is blocked at the nginx level.
   const PRIMARY_ORIGIN = 'https://cleanco.ai';
 
-  type DeviceEntry = {
-    id: string;
-    deviceCode: string;
-    buildingName: string;
-    floorName: string;
-    restroomName: string;
-    isOnline: boolean;
-    lastHeartbeat: string | null;
-  };
-
-  const allDevices: DeviceEntry[] = [];
-  for (const b of structure) {
-    for (const f of b.floors ?? []) {
-      for (const r of f.restrooms ?? []) {
-        for (const d of r.devices ?? []) {
-          allDevices.push({
-            id: d.id,
-            deviceCode: d.deviceCode,
-            buildingName: b.name,
-            floorName: f.name,
-            restroomName: r.name,
-            isOnline: d.isOnline,
-            lastHeartbeat: d.lastHeartbeat ?? null,
-          });
-        }
-      }
-    }
-  }
-
-  const handleDeleteDevice = async (deviceId: string, deviceCode: string) => {
-    if (!window.confirm(`${t('admin.settings.deleteDevice')} "${deviceCode}"?`)) return;
-    try {
-      await api.delete(`/buildings/devices/${deviceId}`);
-      onRefresh();
-      toast.success(t('admin.settings.deviceDeleted'));
-    } catch {
-      toast.error(t('common.error'));
-    }
-  };
-
-  const fmtHeartbeat = (ts: string | null) => {
-    if (!ts) return t('admin.devices.never');
-    const diff = Date.now() - new Date(ts).getTime();
-    const m = Math.floor(diff / 60000);
-    if (m < 1) return t('admin.devices.justNow');
-    if (m < 60) return `${m} ${t('common.minutes')} ${t('admin.devices.ago')}`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h} ${t('common.hours')} ${t('admin.devices.ago')}`;
-    return `${Math.floor(h / 24)} ${t('common.days')} ${t('admin.devices.ago')}`;
-  };
-
+  // Kiosk tablet URLs now live inline on each device in the buildings tree
+  // above (copy button per device), so this panel only lists the staff app
+  // interfaces — no separate, redundant "kiosk links" card.
   return (
-    <div className="flex flex-col gap-4">
-      {/* Staff interfaces */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-        <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
-          <ShieldCheck size={15} style={{ color: 'var(--color-accent)' }} />
-          <h2 className="font-semibold text-white">{t('admin.settings.staffInterfaces')}</h2>
-        </div>
-        <div className="flex flex-col gap-2 p-4">
-          {[
-            // A property manager sees a link to their own interface, not the org admin's
-            propertyManagerMode
-              ? { label: t('admin.settings.propertyInterface'), sub: t('admin.settings.propertyInterfaceSub'), path: '/admin', accent: '#00e5cc' }
-              : { label: t('admin.settings.adminInterface'), sub: t('admin.settings.adminInterfaceSub'), path: '/admin', accent: '#00e5cc' },
-            { label: t('admin.settings.workerInterface'), sub: t('admin.settings.workerInterfaceSub'), path: '/cleaner', accent: '#8b5cf6' },
-            { label: t('admin.settings.supervisorInterface'), sub: t('admin.settings.supervisorInterfaceSub'), path: '/supervisor', accent: '#f59e0b' },
-          ].map(iface => (
-            <div key={iface.path} className="flex flex-col gap-1.5">
-              <CopyRow label={iface.label} sub={iface.sub} url={`${PRIMARY_ORIGIN}${iface.path}`} accent={iface.accent} />
-            </div>
-          ))}
-        </div>
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
+      <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
+        <ShieldCheck size={15} style={{ color: 'var(--color-accent)' }} />
+        <h2 className="font-semibold text-white">{t('admin.settings.staffInterfaces')}</h2>
       </div>
-
-      {/* Kiosk tablets — merged with device status */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.15)' }}>
-        <div className="px-5 py-4 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(0,229,204,0.1)' }}>
-          <Tablet size={15} style={{ color: 'var(--color-accent)' }} />
-          <h2 className="font-semibold text-white">{t('admin.nav.kiosk')}</h2>
-          <span className="text-xs px-2 py-0.5 rounded-full ms-1" style={{ background: 'rgba(0,229,204,0.1)', color: 'var(--color-accent)' }}>
-            {allDevices.length}
-          </span>
-          <span className="text-[11px] ms-auto" style={{ color: 'var(--color-text-secondary)' }}>
-            {t('admin.settings.kioskHint')}
-          </span>
-        </div>
-        <div className="flex flex-col gap-0 divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-          {allDevices.length === 0 && (
-            <p className="text-sm text-center py-6" style={{ color: 'var(--color-text-secondary)' }}>
-              {t('admin.settings.noTablets')}
-            </p>
-          )}
-          {allDevices.map(d => (
-            <div key={d.deviceCode} className="px-4 py-4 flex flex-col gap-2">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${d.isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
-                    <span className="text-sm font-semibold text-white truncate">{d.restroomName}</span>
-                    <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.05)', color: '#8a9bb0' }}>{d.deviceCode}</span>
-                  </div>
-                  <div className="text-xs mt-0.5 ps-4" style={{ color: 'var(--color-text-secondary)' }}>
-                    {d.buildingName} › {d.floorName}
-                  </div>
-                  <div className="text-xs mt-0.5 ps-4" style={{ color: d.isOnline ? '#22c55e' : 'rgba(239,68,68,0.6)' }}>
-                    {d.isOnline
-                      ? `● ${t('admin.devices.online')}`
-                      : `○ ${t('admin.devices.offline')} — ${fmtHeartbeat(d.lastHeartbeat)}`}
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleDeleteDevice(d.id, d.deviceCode)}
-                  title={t('admin.settings.deleteDevice')}
-                  className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all flex-shrink-0"
-                  style={{ color: 'rgba(239,68,68,0.5)' }}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-              <CopyRow
-                label={`${PRIMARY_ORIGIN}/kiosk/${d.deviceCode}`}
-                url={`${PRIMARY_ORIGIN}/kiosk/${d.deviceCode}`}
-                accent="#f59e0b"
-              />
-            </div>
-          ))}
-        </div>
+      <div className="flex flex-col gap-2 p-4">
+        {[
+          // A property manager sees a link to their own interface, not the org admin's
+          propertyManagerMode
+            ? { label: t('admin.settings.propertyInterface'), sub: t('admin.settings.propertyInterfaceSub'), path: '/admin', accent: '#00e5cc' }
+            : { label: t('admin.settings.adminInterface'), sub: t('admin.settings.adminInterfaceSub'), path: '/admin', accent: '#00e5cc' },
+          { label: t('admin.settings.workerInterface'), sub: t('admin.settings.workerInterfaceSub'), path: '/cleaner', accent: '#8b5cf6' },
+          { label: t('admin.settings.supervisorInterface'), sub: t('admin.settings.supervisorInterfaceSub'), path: '/supervisor', accent: '#f59e0b' },
+        ].map(iface => (
+          <div key={iface.path} className="flex flex-col gap-1.5">
+            <CopyRow label={iface.label} sub={iface.sub} url={`${PRIMARY_ORIGIN}${iface.path}`} accent={iface.accent} />
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1497,8 +1398,8 @@ export default function AdminSettings({ section = 'general' }: { section?: 'gene
         ))
       )}
 
-      {/* ── Kiosk URLs + device status (merged) ── */}
-      <UrlGuide structure={structure} onRefresh={refresh} propertyManagerMode={isPropertyManager} />
+      {/* ── Staff app interfaces (kiosk URLs now live inline per device above) ── */}
+      <UrlGuide propertyManagerMode={isPropertyManager} />
       </>)}
 
       {showBuildingModal && (
