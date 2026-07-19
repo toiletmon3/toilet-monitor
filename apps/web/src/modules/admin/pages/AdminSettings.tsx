@@ -370,41 +370,67 @@ function RestroomRow({ room, onDeviceAdded, onDeleted }: { room: any; onDeviceAd
   };
 
   return (
-    <div className="flex items-center justify-between py-2 px-3 rounded-xl" style={{ background: 'rgba(0,0,0,0.2)' }}>
-      <div className="flex items-center gap-2 min-w-0">
-        <select value={gender} onChange={e => handleGenderChange(e.target.value)}
-          className="text-sm rounded-lg px-1 py-0.5 outline-none" style={{ background: 'transparent', color: 'inherit', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
-          <option value="MALE">🚹</option>
-          <option value="FEMALE">🚺</option>
-          <option value="UNISEX">🚻</option>
-        </select>
-        <InlineEdit value={room.name} className="text-sm text-white"
-          onSave={async v => { await api.patch(`/buildings/restrooms/${room.id}`, { name: v }); onDeviceAdded(); }} />
-        <div className="flex items-center gap-1 ms-2">
-          {(room.devices ?? []).map((d: any) => (
-            <div key={d.id} className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-mono" style={{ background: 'rgba(255,255,255,0.05)', color: '#8a9bb0' }}>
-              <span className={`w-1.5 h-1.5 rounded-full ${d.isOnline ? 'bg-green-400' : 'bg-red-400'}`}
-                title={d.isOnline ? t('admin.devices.online') : t('admin.devices.offline')} />
-              {d.deviceCode}
-              <button onClick={() => copyKioskUrl(d.deviceCode)} title={t('common.copy')} className="hover:text-[#00e5cc] transition-colors ms-1"><Copy size={10} /></button>
-              <button onClick={() => handleDeleteDevice(d.id, d.deviceCode)} title={t('common.delete')} className="hover:text-red-400 transition-colors"><Trash2 size={10} /></button>
-            </div>
-          ))}
+    <div className="flex flex-col gap-2 py-2 px-3 rounded-xl" style={{ background: 'rgba(0,0,0,0.2)' }}>
+      {/* header: gender + name + actions */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <select value={gender} onChange={e => handleGenderChange(e.target.value)}
+            className="text-sm rounded-lg px-1 py-0.5 outline-none" style={{ background: 'transparent', color: 'inherit', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+            <option value="MALE">🚹</option>
+            <option value="FEMALE">🚺</option>
+            <option value="UNISEX">🚻</option>
+          </select>
+          <InlineEdit value={room.name} className="text-sm text-white"
+            onSave={async v => { await api.patch(`/buildings/restrooms/${room.id}`, { name: v }); onDeviceAdded(); }} />
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={() => setShowDeviceModal(true)}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all"
+            style={{ background: 'rgba(0,229,204,0.08)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-accent)' }}
+          >
+            <Tablet size={12} />
+            <span>{t('admin.settings.addDevice')}</span>
+          </button>
+          <button onClick={handleDeleteRestroom} className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all" style={{ color: 'rgba(239,68,68,0.6)' }}>
+            <Trash2 size={13} />
+          </button>
         </div>
       </div>
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <button
-          onClick={() => setShowDeviceModal(true)}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all"
-          style={{ background: 'rgba(0,229,204,0.08)', border: '1px solid rgba(0,229,204,0.2)', color: 'var(--color-accent)' }}
-        >
-          <Tablet size={12} />
-          <span>{t('admin.settings.addDevice')}</span>
-        </button>
-        <button onClick={handleDeleteRestroom} className="p-1.5 rounded-lg hover:bg-red-500/20 transition-all" style={{ color: 'rgba(239,68,68,0.6)' }}>
-          <Trash2 size={13} />
-        </button>
-      </div>
+
+      {/* devices — each on its own row with a visible, copyable kiosk URL */}
+      {(room.devices ?? []).map((d: any) => {
+        const isSensor = d.type === 'SENSOR';
+        const url = `https://cleanco.ai/kiosk/${d.deviceCode}`;
+        return (
+          <div key={d.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${d.isOnline ? 'bg-green-400' : 'bg-red-400'}`}
+              title={d.isOnline ? t('admin.devices.online') : t('admin.devices.offline')} />
+            <span className="text-xs font-mono flex-shrink-0" style={{ color: '#8a9bb0' }}>{d.deviceCode}</span>
+            {isSensor ? (
+              <span className="flex-1" />
+            ) : (
+              <a href={url} target="_blank" rel="noopener noreferrer"
+                className="text-[11px] font-mono truncate hover:underline flex-1 min-w-0 flex items-center gap-1"
+                style={{ color: '#f59e0b' }}>
+                <span className="truncate">{url}</span>
+                <ExternalLink size={10} className="flex-shrink-0" />
+              </a>
+            )}
+            {!isSensor && (
+              <button onClick={() => copyKioskUrl(d.deviceCode)} title={t('common.copy')}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] flex-shrink-0 transition-all"
+                style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <Copy size={11} /> {t('common.copy')}
+              </button>
+            )}
+            <button onClick={() => handleDeleteDevice(d.id, d.deviceCode)} title={t('common.delete')}
+              className="p-1 rounded-lg hover:bg-red-500/20 transition-all flex-shrink-0" style={{ color: 'rgba(239,68,68,0.6)' }}>
+              <Trash2 size={12} />
+            </button>
+          </div>
+        );
+      })}
       {showDeviceModal && (
         <RegisterDeviceModal
           restroomId={room.id}
