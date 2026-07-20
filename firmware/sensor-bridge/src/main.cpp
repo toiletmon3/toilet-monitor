@@ -16,8 +16,16 @@
 #include <Preferences.h>
 
 // ── Pins ─────────────────────────────────────────────────────────────────────
+// Radar UART pins differ per board; everything else is identical.
+#if CONFIG_IDF_TARGET_ESP32S3
+// LILYGO T-SIM7670G-S3
 constexpr int RADAR_RX_PIN = 15; // LD2450 TX -> board GPIO15
 constexpr int RADAR_TX_PIN = 16; // LD2450 RX -> board GPIO16
+#else
+// Classic ESP32 (NodeMCU-ESP32 / DevKitV1, 30-pin): the RX2/TX2 header pins.
+constexpr int RADAR_RX_PIN = 16; // LD2450 TX -> board GPIO16 (RX2)
+constexpr int RADAR_TX_PIN = 17; // LD2450 RX -> board GPIO17 (TX2)
+#endif
 constexpr int BOOT_BTN_PIN = 0;  // hold 5s to wipe provisioning
 
 // ── Radar protocol (LD2450 data frame) ───────────────────────────────────────
@@ -35,7 +43,7 @@ constexpr uint32_t HEARTBEAT_EVERY_MS = 60000; // status ping to the server
 
 constexpr const char *SETUP_AP_NAME = "ToiletMon-Setup";
 constexpr const char *DEFAULT_SERVER = "https://cleanco.ai"; // the ONLY domain — legacy duckdns is decommissioned/blocked
-constexpr const char *FIRMWARE_VERSION = "1.0.2";
+constexpr const char *FIRMWARE_VERSION = "1.1.0";
 
 Preferences prefs;
 String wifiSsid, wifiPass, deviceCode, serverUrl;
@@ -377,7 +385,8 @@ void setup() {
 
   Serial1.setRxBufferSize(2048);
   Serial1.begin(RADAR_BAUD, SERIAL_8N1, RADAR_RX_PIN, RADAR_TX_PIN);
-  Serial.println("[radar] UART up at 256000 baud (RX=15 TX=16)");
+  Serial.printf("[radar] UART up at %u baud (RX=%d TX=%d)\n",
+                (unsigned)RADAR_BAUD, RADAR_RX_PIN, RADAR_TX_PIN);
 
   loadConfig();
 
