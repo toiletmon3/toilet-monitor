@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @page { size: A4; margin: 0; }
+  html, body {
+    font-family: "DejaVu Sans", "FreeSans", sans-serif;
+    color: #1f2937;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body { width: 210mm; height: 297mm; padding: 9mm 11mm; position: relative; }
+
+  .header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #4338ca 55%, #6d28d9 100%);
+    color: #fff; border-radius: 14px; padding: 13px 18px;
+    display: flex; align-items: center; gap: 14px; margin-bottom: 11px;
+  }
+  .header .icon { font-size: 32px; line-height: 1; }
+  .header h1 { font-size: 19.5px; font-weight: bold; margin-bottom: 3px; }
+  .header p { font-size: 11px; opacity: .92; }
+
+  .row { display: flex; gap: 11px; margin-bottom: 10px; }
+  .card {
+    flex: 1; border: 1.4px solid #e2e8f0; border-radius: 12px;
+    padding: 10px 13px; background: #fff;
+  }
+  .card h2 {
+    font-size: 14px; color: #4338ca; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 7px; font-weight: bold;
+    border-bottom: 2px solid #eef2ff; padding-bottom: 6px;
+  }
+  .card h2 .num {
+    background: #4f46e5; color: #fff; width: 20px; height: 20px;
+    border-radius: 50%; display: inline-flex; align-items: center;
+    justify-content: center; font-size: 12px; flex-shrink: 0;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { padding: 5.5px 8px; text-align: right; border-bottom: 1px solid #eef2f6; }
+  th { background: #eef2ff; color: #4338ca; font-weight: bold; }
+  td.pin { font-family: "DejaVu Sans Mono", monospace; font-weight: bold; color: #b45309; }
+  td.pin2 { font-family: "DejaVu Sans Mono", monospace; font-weight: bold; color: #4f46e5; }
+  td .arrow { color: #94a3b8; font-weight: bold; }
+
+  .sensor-card { background: #f5f3ff; border-color: #ddd6fe; }
+  .sensor-card h2 { color: #6d28d9; border-bottom-color: #ede9fe; }
+  .sensor-card h2 .num { background: #7c3aed; }
+  .pinlist { list-style: none; font-size: 11.3px; }
+  .pinlist li { padding: 4.5px 0; border-bottom: 1px solid #ede9fe; display: flex; gap: 8px; align-items: center; }
+  .pinlist li:last-child { border-bottom: none; }
+  .badge {
+    font-family: "DejaVu Sans Mono", monospace; background: #ede9fe; color: #5b21b6;
+    border-radius: 5px; padding: 2px 7px; font-weight: bold; font-size: 10.5px; min-width: 40px; text-align: center;
+  }
+
+  .power-card { background: #fffbeb; border-color: #fde68a; }
+  .power-card h2 { color: #b45309; border-bottom-color: #fef3c7; }
+  .power-card h2 .num { background: #d97706; }
+  .power-note { font-size: 11px; line-height: 1.55; color: #713f12; }
+  .power-note b { color: #92400e; }
+  .hl { background: #fde68a; padding: 1px 5px; border-radius: 4px; font-weight: bold; }
+
+  .code-card { background: #0f172a; border: none; }
+  .code-card h2 { color: #a5b4fc; border-bottom-color: #1e293b; }
+  .code-card h2 .num { background: #6366f1; }
+  pre {
+    font-family: "DejaVu Sans Mono", monospace; color: #e2e8f0;
+    font-size: 9.5px; line-height: 1.5; direction: ltr; text-align: left;
+    white-space: pre; overflow: hidden;
+  }
+  .cmt { color: #64748b; }
+  .kw { color: #f472b6; }
+  .fn { color: #7dd3fc; }
+  .str { color: #86efac; }
+  .num2 { color: #fbbf24; }
+  .ty { color: #c4b5fd; }
+
+  .board { background: #f8fafc; border: 1.4px solid #e2e8f0; border-radius: 12px; padding: 10px 13px; margin-bottom: 10px; }
+  .board h2 { font-size: 13px; color: #334155; margin-bottom: 8px; font-weight: bold; }
+  .pinrow { display: flex; gap: 3px; justify-content: center; margin-bottom: 5px; flex-wrap: nowrap; direction: ltr; }
+  .chip {
+    font-family: "DejaVu Sans Mono", monospace; font-size: 8px; font-weight: bold;
+    border-radius: 4px; padding: 3px 2px; text-align: center; min-width: 26px; color: #475569;
+    background: #e2e8f0; border: 1px solid #cbd5e1;
+  }
+  .chip.pwr { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+  .chip.pwr3 { background: #dcfce7; border-color: #86efac; color: #166534; }
+  .chip.uart { background: #e0e7ff; border-color: #a5b4fc; color: #3730a3; }
+  .chip.gnd { background: #1e293b; border-color: #0f172a; color: #e2e8f0; }
+  .board .rowlabel { font-size: 9px; color: #94a3b8; text-align: center; margin: 3px 0; }
+  .legend { display: flex; gap: 14px; justify-content: center; font-size: 9px; margin-top: 6px; color: #64748b; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+  .tips { background: #eef2ff; border: 1.4px solid #c7d2fe; border-radius: 12px; padding: 9px 14px; }
+  .tips h2 { font-size: 13px; color: #4338ca; margin-bottom: 6px; font-weight: bold; }
+  .tips ul { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
+  .tips li { font-size: 10.5px; padding-right: 19px; position: relative; line-height: 1.4; }
+  .tips li::before { content: "✓"; position: absolute; right: 0; color: #4f46e5; font-weight: bold; }
+
+  .footer { position: absolute; bottom: 6mm; right: 11mm; left: 11mm;
+    display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8;
+    border-top: 1px solid #e2e8f0; padding-top: 5px; }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <span class="icon">📡</span>
+    <div>
+      <h1>מדריך מהיר — חיבור ראדאר HLK-LD2450 ל-ESP32 DevKitV1</h1>
+      <p>ראדאר נוכחות mmWave 24GHz (מעקב עד 3 מטרות) · תקשורת UART · לוח NodeMCU-ESP32 בן 30 פינים</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="card sensor-card" style="flex: 0.85;">
+      <h2><span class="num">1</span> החיישן — HLK-LD2450</h2>
+      <ul class="pinlist">
+        <li><span class="badge">VCC</span> מתח כניסה 5V (מקבל גם 3.3V)</li>
+        <li><span class="badge">GND</span> הארקה (0V)</li>
+        <li><span class="badge">TX</span> יציאת נתונים טורית (UART)</li>
+        <li><span class="badge">RX</span> כניסת נתונים טורית (UART)</li>
+      </ul>
+      <p style="font-size:10px; color:#5b21b6; margin-top:7px; line-height:1.5;">
+        ראדאר 24GHz — מזהה <b>מיקום ותנועה</b> ומחזיר קואורדינטות X/Y של עד 3 מטרות ב-<b>UART 256000</b> baud.
+        זהו חיישן טורי — <b>לא</b> יציאת HIGH/LOW כמו PIR.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">2</span> חיווט (טבלה)</h2>
+      <table>
+        <tr><th>LD2450</th><th></th><th>הלוח שלך</th></tr>
+        <tr><td class="pin">VCC</td><td class="arrow">→</td><td class="pin2">3V3</td></tr>
+        <tr><td class="pin">GND</td><td class="arrow">→</td><td class="pin2">GND</td></tr>
+        <tr><td class="pin">TX</td><td class="arrow">→</td><td class="pin2">RX2 (GPIO16)</td></tr>
+        <tr><td class="pin">RX</td><td class="arrow">→</td><td class="pin2">TX2 (GPIO17)</td></tr>
+      </table>
+      <p style="font-size:10px; color:#475569; margin-top:7px; line-height:1.5;">
+        ⚠️ <b>TX/RX מוצלבים!</b> TX של החיישן → RX2 של הלוח, ולהפך.
+      </p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="card power-card" style="flex: 1;">
+      <h2><span class="num">3</span> הזנת מתח — שים לב!</h2>
+      <p class="power-note">
+        בלוח ה-30 פינים הזה <b>אין פין שכתוב עליו "5V"</b>. מקורות המתח היחידים הם:<br>
+        • <span class="hl">VIN</span> = ה-5V של הלוח (פינה שמאלית-עליונה)<br>
+        • <span class="hl">3V3</span> = 3.3V (פינה שמאלית-תחתונה)<br><br>
+        אם ה-<b>VIN</b> חסום/תפוס → הזן את הראדאר מ-<span class="hl">3V3</span>
+        (ה-LD2450 מקבל 3.3V). אם לא יציב — 5V חיצוני עם <b>GND משותף</b>.
+      </p>
+    </div>
+
+    <div class="card code-card" style="flex: 1.25;">
+      <h2><span class="num">4</span> קוד לבדיקה (Arduino / Serial2)</h2>
+<pre><span class="cmt">// LD2450 TX->GPIO16(RX2), RX->GPIO17(TX2)</span>
+<span class="kw">#define</span> RXD2 <span class="num2">16</span>
+<span class="kw">#define</span> TXD2 <span class="num2">17</span>
+<span class="ty">uint8_t</span> buf[<span class="num2">30</span>];
+
+<span class="ty">int16_t</span> <span class="fn">coord</span>(<span class="ty">uint8_t</span> lo, <span class="ty">uint8_t</span> hi){
+  <span class="ty">int16_t</span> v = ((hi & <span class="num2">0x7F</span>) &lt;&lt; <span class="num2">8</span>) | lo;
+  <span class="kw">return</span> (hi & <span class="num2">0x80</span>) ? v : -v;  <span class="cmt">// mm</span>
+}
+<span class="kw">void</span> <span class="fn">setup</span>(){
+  Serial.<span class="fn">begin</span>(<span class="num2">115200</span>);
+  Serial2.<span class="fn">begin</span>(<span class="num2">256000</span>, SERIAL_8N1, RXD2, TXD2);
+}
+<span class="kw">void</span> <span class="fn">loop</span>(){
+  <span class="kw">if</span> (Serial2.<span class="fn">available</span>() &gt;= <span class="num2">30</span>){
+    Serial2.<span class="fn">readBytes</span>(buf, <span class="num2">30</span>);
+    <span class="kw">if</span> (buf[<span class="num2">0</span>]==<span class="num2">0xAA</span> && buf[<span class="num2">1</span>]==<span class="num2">0xFF</span>){
+      <span class="ty">int16_t</span> x = <span class="fn">coord</span>(buf[<span class="num2">4</span>], buf[<span class="num2">5</span>]);
+      <span class="ty">int16_t</span> y = <span class="fn">coord</span>(buf[<span class="num2">6</span>], buf[<span class="num2">7</span>]);
+      Serial.<span class="fn">printf</span>(<span class="str">"X=%d mm  Y=%d mm\n"</span>, x, y);
+    }
+  }
+}</pre>
+    </div>
+  </div>
+
+  <div class="board">
+    <h2>🗺️ מפת הפינים של הלוח שלך (30 פינים)</h2>
+    <div class="rowlabel">▲ שורה עליונה (VIN בפינה, ליד ה-USB)</div>
+    <div class="pinrow">
+      <div class="chip pwr">VIN</div><div class="chip gnd">GND</div><div class="chip">D13</div><div class="chip">D12</div><div class="chip">D14</div><div class="chip">D27</div><div class="chip">D26</div><div class="chip">D25</div><div class="chip">D33</div><div class="chip">D32</div><div class="chip">D35</div><div class="chip">D34</div><div class="chip">VN</div><div class="chip">VP</div><div class="chip">EN</div>
+    </div>
+    <div class="pinrow">
+      <div class="chip pwr3">3V3</div><div class="chip gnd">GND</div><div class="chip">D15</div><div class="chip">D2</div><div class="chip">D4</div><div class="chip uart">RX2</div><div class="chip uart">TX2</div><div class="chip">D5</div><div class="chip">D18</div><div class="chip">D19</div><div class="chip">D21</div><div class="chip">RX0</div><div class="chip">TX0</div><div class="chip">D22</div><div class="chip">D23</div>
+    </div>
+    <div class="rowlabel">▼ שורה תחתונה (3V3 בפינה)</div>
+    <div class="legend">
+      <span><span class="dot" style="background:#fcd34d"></span> VIN = 5V</span>
+      <span><span class="dot" style="background:#86efac"></span> 3V3 = הזנה חלופית ל-LD2450</span>
+      <span><span class="dot" style="background:#a5b4fc"></span> RX2/TX2 = UART לחיישן</span>
+      <span><span class="dot" style="background:#1e293b"></span> GND</span>
+    </div>
+  </div>
+
+  <div class="tips">
+    <h2>💡 טיפים חשובים</h2>
+    <ul>
+      <li>TX/RX תמיד <b>מוצלבים</b>: TX→RX2, RX→TX2.</li>
+      <li>מהירות ה-UART חייבת להיות <b>256000</b> baud, 8N1.</li>
+      <li>הלוגיקה של החיישן 3.3V — בטוח לחיבור ישיר ל-ESP32.</li>
+      <li>אין פין 5V נפרד — ה-5V כאן נקרא <b>VIN</b>.</li>
+      <li>אם VIN חסום — הזן מ-<b>3V3</b> (הראדאר מקבל 3.3V).</li>
+      <li>לפירוק פריים אמין השתמש בספריית LD2450 מוכנה.</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    <span>Toilet Monitor · מדריך חיבור ראדאר נוכחות</span>
+    <span>HLK-LD2450 → ESP32 DevKitV1 (NodeMCU, 30 פינים)</span>
+  </div>
+
+</body>
+</html>

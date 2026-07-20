@@ -4,9 +4,11 @@ import api from '../../../lib/api';
 import 'esp-web-tools/dist/web/install-button.js';
 
 /**
- * /flash — browser-based installer for the LD2450 radar sensor bridge
- * (LILYGO T-SIM7670G-S3). Flashes the firmware over WebSerial (Chrome/Edge
- * on desktop), then walks the installer through the captive-portal pairing.
+ * /flash — browser-based installer for the LD2450 radar sensor bridge.
+ * Supports both the LILYGO T-SIM7670G-S3 (ESP32-S3) and the classic
+ * NodeMCU-ESP32 / DevKitV1 (ESP32) — ESP Web Tools picks the matching build
+ * from the connected chip. Flashes over WebSerial (Chrome/Edge on desktop),
+ * then walks the installer through the captive-portal pairing.
  */
 export default function FlashSensorPage() {
   const [restroomId, setRestroomId] = useState('');
@@ -65,7 +67,7 @@ export default function FlashSensorPage() {
         <header>
           <h1 className="text-2xl font-bold">📡 התקנת חיישן נוכחות</h1>
           <p className="text-slate-400 mt-1">
-            צריבת קושחה לגשר החיישן (LILYGO + LD2450) ישירות מהדפדפן, ושיוך לחדר שירותים.
+            צריבת קושחה לגשר החיישן (LILYGO S3 או ESP32 DevKit + LD2450) ישירות מהדפדפן, ושיוך לחדר שירותים.
           </p>
         </header>
 
@@ -114,8 +116,8 @@ export default function FlashSensorPage() {
         <section className="rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4">
           <h2 className="text-lg font-semibold">2️⃣ חיבור וצריבה</h2>
           <ol className="list-decimal pr-5 space-y-1 text-slate-300 text-sm">
-            <li>חבר את לוח ה‑LILYGO למחשב בכבל USB‑C (החיישן יכול להישאר מחובר).</li>
-            <li>לחץ על הכפתור למטה ובחר את הפורט שמופיע (בד״כ "USB JTAG/serial").</li>
+            <li>חבר את הלוח (LILYGO S3 או ESP32 DevKit) למחשב בכבל USB (החיישן יכול להישאר מחובר).</li>
+            <li>לחץ על הכפתור למטה ובחר את הפורט שמופיע (LILYGO: "USB JTAG/serial" · ESP32 DevKit: "CP2102").</li>
             <li>אם שום פורט לא מופיע — החזק את כפתור BOOT שעל הלוח, חבר את ה‑USB תוך כדי, ושחרר.</li>
           </ol>
 

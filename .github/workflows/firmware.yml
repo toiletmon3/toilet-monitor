@@ -41,21 +41,33 @@ jobs:
       - name: Install PlatformIO + esptool
         run: pip install platformio "esptool==4.8.1"
 
-      - name: Build firmware
+      - name: Build firmware (all boards)
         run: cd firmware/sensor-bridge && pio run
 
-      - name: Merge into a single flashable image
+      - name: Merge into flashable images
         run: |
-          BUILD=firmware/sensor-bridge/.pio/build/tsim7670g-s3
           BOOT_APP0=$(find ~/.platformio/packages -name boot_app0.bin | head -1)
           echo "boot_app0: $BOOT_APP0"
           mkdir -p apps/web/public/firmware
+
+          # LILYGO T-SIM7670G-S3 (ESP32-S3) — bootloader at 0x0
+          S3=firmware/sensor-bridge/.pio/build/tsim7670g-s3
           esptool.py --chip esp32s3 merge_bin \
             -o apps/web/public/firmware/toiletmon-sensor.bin \
-            0x0    "$BUILD/bootloader.bin" \
-            0x8000 "$BUILD/partitions.bin" \
+            0x0    "$S3/bootloader.bin" \
+            0x8000 "$S3/partitions.bin" \
             0xe000 "$BOOT_APP0" \
-            0x10000 "$BUILD/firmware.bin"
+            0x10000 "$S3/firmware.bin"
+
+          # NodeMCU-ESP32 / DevKitV1 (ESP32 classic) — bootloader at 0x1000
+          CLASSIC=firmware/sensor-bridge/.pio/build/esp32dev
+          esptool.py --chip esp32 merge_bin \
+            -o apps/web/public/firmware/toiletmon-sensor-esp32.bin \
+            0x1000 "$CLASSIC/bootloader.bin" \
+            0x8000 "$CLASSIC/partitions.bin" \
+            0xe000 "$BOOT_APP0" \
+            0x10000 "$CLASSIC/firmware.bin"
+
           ls -la apps/web/public/firmware/
 
       - name: Commit binary to main
@@ -63,7 +75,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add apps/web/public/firmware/toiletmon-sensor.bin
+          git add apps/web/public/firmware/toiletmon-sensor.bin \
+                  apps/web/public/firmware/toiletmon-sensor-esp32.bin
           if git diff --cached --quiet; then
             echo "Binary unchanged, nothing to commit"
             echo "pushed=false" >> "$GITHUB_OUTPUT"
