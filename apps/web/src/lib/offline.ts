@@ -222,6 +222,14 @@ export function getCachedStaff(idNumber: string): CachedStaff | null {
   } catch { return null; }
 }
 
+/** Whether any staff roster has been cached on this tablet yet. Lets the offline
+ *  login tell "never been online" apart from "this ID isn't on the roster". */
+export function hasCachedRoster(): boolean {
+  try {
+    return Object.keys(JSON.parse(localStorage.getItem(ROSTER_KEY) || '{}')).length > 0;
+  } catch { return false; }
+}
+
 export function setCachedCheckedIn(idNumber: string, checkedIn: boolean): void {
   const s = getCachedStaff(idNumber);
   if (s) cacheStaff(idNumber, { name: s.name, isAdmin: s.isAdmin, checkedIn });

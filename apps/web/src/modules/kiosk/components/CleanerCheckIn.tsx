@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../../lib/api';
 import {
   queueAction, queueReplay, syncPending, flushOffline, getQueuedIncidents,
-  cacheStaff, getCachedStaff, setCachedCheckedIn, refreshRoster,
+  cacheStaff, getCachedStaff, hasCachedRoster, setCachedCheckedIn, refreshRoster,
   cacheRestroomIncidents, getCachedRestroomIncidents,
   cacheIssueTypes, getCachedIssueType,
   markResolvedLocal, getResolvedLocal, clearResolvedLocal,
@@ -210,6 +210,10 @@ export default function CleanerCheckIn({ restroomId, deviceCode, onBack, onReass
           setCheckedIn(cached.checkedIn);
           setIsAdmin(false);
           setStep('action');
+        } else if (hasCachedRoster()) {
+          // We have a roster for this kiosk, this ID just isn't on it.
+          setError('תעודת הזהות לא נמצאה ברשימת העובדים של הנכס הזה');
+          setIdNumber('');
         } else {
           setError('אין חיבור לאינטרנט — כדי להזדהות בפעם הראשונה נדרש חיבור');
           setIdNumber('');
