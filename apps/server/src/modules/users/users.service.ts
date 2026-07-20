@@ -306,16 +306,27 @@ export class UsersService {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    // Property-scoped when the kiosk's building belongs to a property: only the
+    // Property-scoped when the kiosk's building belongs to a property: the
     // cleaners of that property (by their own propertyId or their building's
     // property) appear, so a worker of another property can't identify here.
-    // Falls back to org-wide when the building has no property set.
+    // Unassigned workers (no property tie at all) are included too — they're
+    // allowed on any kiosk online, so the offline roster must match. Falls back
+    // to org-wide when the building has no property set.
     const cleaners = await this.prisma.user.findMany({
       where: {
         orgId,
         isActive: true,
         role: { in: ['CLEANER', 'SHIFT_SUPERVISOR'] },
-        ...(propertyId ? { OR: [{ propertyId }, { building: { propertyId } }] } : {}),
+        ...(propertyId
+          ? {
+              OR: [
+                { propertyId },
+                { building: { propertyId } },
+                { propertyId: null, buildingId: null },
+                { propertyId: null, building: { propertyId: null } },
+              ],
+            }
+          : {}),
       },
       select: {
         idNumber: true,
