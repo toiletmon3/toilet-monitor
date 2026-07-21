@@ -259,7 +259,13 @@
       "sensorCfgOccupied": "Count entry after (seconds of continuous presence)",
       "sensorCfgEmpty": "Visit ends after (seconds of empty room)",
       "sensorCfgHint": "Saved on the server and delivered to the sensor automatically within a minute — no re-flash needed.",
-      "sensorCfgSave": "Save"
+      "sensorCfgSave": "Save",
+      "logTitle": "Visit log",
+      "logEntered": "Entered",
+      "logLeft": "Left",
+      "logDuration": "Duration",
+      "logEmpty": "No visits recorded yet",
+      "logOccupiedNow": "Occupied now since"
     },
     "dashboard": {
       "allBuildings": "All Buildings",

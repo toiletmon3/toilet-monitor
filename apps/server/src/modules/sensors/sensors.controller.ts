@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { SensorsService, SensorReportDto } from './sensors.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -49,5 +49,19 @@ export class SensorsController {
   @Get('restrooms/:restroomId/summary')
   restroomSummary(@CurrentUser() user: any, @Param('restroomId') restroomId: string) {
     return this.sensorsService.restroomSummary(restroomId, { orgId: user.orgId, propertyIds: this.pmScope(user) });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('restrooms/:restroomId/events')
+  eventLog(
+    @CurrentUser() user: any,
+    @Param('restroomId') restroomId: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.sensorsService.eventLog(
+      restroomId,
+      { limit: limit ? Number(limit) : undefined },
+      { orgId: user.orgId, propertyIds: this.pmScope(user) },
+    );
   }
 }
