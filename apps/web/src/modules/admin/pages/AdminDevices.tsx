@@ -62,8 +62,16 @@ export default function AdminDevices() {
   const queryClient = useQueryClient();
   const [buildingId, setBuildingId] = useState<string>(''); // '' = all
 
-  // Per-sensor visit-log dialog
+  // Per-sensor visit-log dialog + its date/time range filter
   const [logDevice, setLogDevice] = useState<any>(null);
+  const [logFrom, setLogFrom] = useState('');
+  const [logTo, setLogTo] = useState('');
+
+  const openLog = (d: any) => {
+    setLogFrom('');
+    setLogTo('');
+    setLogDevice(d);
+  };
 
   // Visit-counting tuning dialog for a sensor device
   const [cfgDevice, setCfgDevice] = useState<any>(null);
@@ -108,10 +116,16 @@ export default function AdminDevices() {
     (sensorSummaries as any[]).map((s: any) => [s.restroomId, s]),
   );
 
-  // Visit log for the sensor whose dialog is open (entry/exit times per visit).
+  // Visit log for the sensor whose dialog is open (entry/exit times per visit),
+  // optionally narrowed to a date/time range. datetime-local values are local
+  // wall-clock; convert to an absolute ISO instant for the server.
+  const toIso = (v: string) => (v ? new Date(v).toISOString() : undefined);
   const { data: visitLog, isLoading: logLoading } = useQuery({
-    queryKey: ['sensor-log', logDevice?.restroomId],
-    queryFn: async () => (await api.get(`/sensors/restrooms/${logDevice.restroomId}/events`)).data,
+    queryKey: ['sensor-log', logDevice?.restroomId, logFrom, logTo],
+    queryFn: async () =>
+      (await api.get(`/sensors/restrooms/${logDevice.restroomId}/events`, {
+        params: { from: toIso(logFrom), to: toIso(logTo) },
+      })).data,
     enabled: !!logDevice,
     refetchInterval: logDevice ? 15_000 : false,
   });
@@ -263,7 +277,7 @@ export default function AdminDevices() {
                             </span>
                           )}
                           <button
-                            onClick={() => setLogDevice(d)}
+                            onClick={() => openLog(d)}
                             className="flex items-center gap-1 hover:underline"
                             style={{ color: 'var(--color-accent)' }}
                           >
@@ -326,6 +340,41 @@ export default function AdminDevices() {
 
             <div className="text-xs font-mono" style={{ color: 'var(--color-text-secondary)' }}>
               {logDevice.deviceCode} · {logDevice.restroomName}
+            </div>
+
+            {/* Date/time range filter */}
+            <div className="flex items-end gap-2 flex-wrap text-xs">
+              <label className="flex flex-col gap-1" style={{ color: 'var(--color-text-secondary)' }}>
+                {t('admin.devices.logFilterFrom')}
+                <input
+                  type="datetime-local"
+                  value={logFrom}
+                  max={logTo || undefined}
+                  onChange={e => setLogFrom(e.target.value)}
+                  className="rounded-lg p-2"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--color-text)', colorScheme: 'dark' }}
+                />
+              </label>
+              <label className="flex flex-col gap-1" style={{ color: 'var(--color-text-secondary)' }}>
+                {t('admin.devices.logFilterTo')}
+                <input
+                  type="datetime-local"
+                  value={logTo}
+                  min={logFrom || undefined}
+                  onChange={e => setLogTo(e.target.value)}
+                  className="rounded-lg p-2"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--color-text)', colorScheme: 'dark' }}
+                />
+              </label>
+              {(logFrom || logTo) && (
+                <button
+                  onClick={() => { setLogFrom(''); setLogTo(''); }}
+                  className="rounded-lg px-3 py-2 hover:underline"
+                  style={{ color: 'var(--color-accent)' }}
+                >
+                  {t('admin.devices.logFilterClear')}
+                </button>
+              )}
             </div>
 
             {visitLog?.occupiedSince && (

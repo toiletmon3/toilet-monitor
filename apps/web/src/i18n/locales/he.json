@@ -265,7 +265,10 @@
       "logLeft": "יצא",
       "logDuration": "שהות",
       "logEmpty": "עדיין אין ביקורים מתועדים",
-      "logOccupiedNow": "בפנים כרגע מאז"
+      "logOccupiedNow": "בפנים כרגע מאז",
+      "logFilterFrom": "מתאריך",
+      "logFilterTo": "עד תאריך",
+      "logFilterClear": "נקה סינון"
     },
     "dashboard": {
       "allBuildings": "כל הבניינים",

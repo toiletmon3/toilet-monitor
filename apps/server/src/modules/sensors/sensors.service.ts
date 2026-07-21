@@ -264,7 +264,7 @@ export class SensorsService {
    */
   async eventLog(
     restroomId: string,
-    opts: { limit?: number },
+    opts: { limit?: number; from?: string; to?: string },
     caller?: { orgId: string; propertyIds?: string[] },
   ) {
     if (caller) {
@@ -283,29 +283,45 @@ export class SensorsService {
 
     const limit = Math.min(Math.max(opts.limit ?? 100, 1), 500);
 
-    const events = await this.prisma.sensorEvent.findMany({
-      where: { restroomId },
-      orderBy: { createdAt: 'desc' },
-      take: limit + 1, // one extra so an open presence_start doesn't crowd out a visit
-      select: { id: true, type: true, durationSec: true, targets: true, createdAt: true },
-    });
+    // Optional date/time range on the visit's exit time (createdAt of the end).
+    const parse = (s?: string) => {
+      if (!s) return undefined;
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? undefined : d;
+    };
+    const from = parse(opts.from);
+    const to = parse(opts.to);
+    const dateFilter =
+      from || to ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {};
 
-    // Occupied right now when the newest event is a start with no matching end.
-    const occupiedSince = events[0]?.type === 'presence_start' ? events[0].createdAt : null;
+    const [latest, endEvents] = await Promise.all([
+      // True current state is independent of the date filter.
+      this.prisma.sensorEvent.findFirst({
+        where: { restroomId },
+        orderBy: { createdAt: 'desc' },
+        select: { type: true, createdAt: true },
+      }),
+      this.prisma.sensorEvent.findMany({
+        where: { restroomId, type: 'presence_end', ...dateFilter },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        select: { id: true, durationSec: true, targets: true, createdAt: true },
+      }),
+    ]);
 
-    const visits = events
-      .filter((e) => e.type === 'presence_end')
-      .slice(0, limit)
-      .map((e) => ({
-        id: e.id,
-        leftAt: e.createdAt,
-        enteredAt:
-          e.durationSec != null
-            ? new Date(e.createdAt.getTime() - e.durationSec * 1000)
-            : null,
-        durationSec: e.durationSec ?? null,
-        targets: e.targets ?? null,
-      }));
+    // Occupied right now when the newest event overall is an unmatched start.
+    const occupiedSince = latest?.type === 'presence_start' ? latest.createdAt : null;
+
+    const visits = endEvents.map((e) => ({
+      id: e.id,
+      leftAt: e.createdAt,
+      enteredAt:
+        e.durationSec != null
+          ? new Date(e.createdAt.getTime() - e.durationSec * 1000)
+          : null,
+      durationSec: e.durationSec ?? null,
+      targets: e.targets ?? null,
+    }));
 
     return { occupiedSince, visits };
   }

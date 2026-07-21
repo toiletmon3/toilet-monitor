@@ -265,7 +265,10 @@
       "logLeft": "Left",
       "logDuration": "Duration",
       "logEmpty": "No visits recorded yet",
-      "logOccupiedNow": "Occupied now since"
+      "logOccupiedNow": "Occupied now since",
+      "logFilterFrom": "From",
+      "logFilterTo": "To",
+      "logFilterClear": "Clear filter"
     },
     "dashboard": {
       "allBuildings": "All Buildings",

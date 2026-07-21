@@ -57,10 +57,12 @@ export class SensorsController {
     @CurrentUser() user: any,
     @Param('restroomId') restroomId: string,
     @Query('limit') limit?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
     return this.sensorsService.eventLog(
       restroomId,
-      { limit: limit ? Number(limit) : undefined },
+      { limit: limit ? Number(limit) : undefined, from, to },
       { orgId: user.orgId, propertyIds: this.pmScope(user) },
     );
   }
