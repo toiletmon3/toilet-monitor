@@ -255,4 +255,58 @@ export class SensorsService {
       sensors,
     };
   }
+
+  /**
+   * Chronological visit log for one restroom's sensor — powers the per-sensor
+   * "visit log" dialog in the admin devices page. Each completed visit is a
+   * presence_end event (entry time = exit time − durationSec). When the newest
+   * event is an unmatched presence_start, the room is occupied right now.
+   */
+  async eventLog(
+    restroomId: string,
+    opts: { limit?: number },
+    caller?: { orgId: string; propertyIds?: string[] },
+  ) {
+    if (caller) {
+      const owned = await this.prisma.restroom.findFirst({
+        where: {
+          id: restroomId,
+          floor: { building: {
+            orgId: caller.orgId,
+            ...(caller.propertyIds ? { propertyId: { in: caller.propertyIds } } : {}),
+          } },
+        },
+        select: { id: true },
+      });
+      if (!owned) throw new NotFoundException('Restroom not found');
+    }
+
+    const limit = Math.min(Math.max(opts.limit ?? 100, 1), 500);
+
+    const events = await this.prisma.sensorEvent.findMany({
+      where: { restroomId },
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1, // one extra so an open presence_start doesn't crowd out a visit
+      select: { id: true, type: true, durationSec: true, targets: true, createdAt: true },
+    });
+
+    // Occupied right now when the newest event is a start with no matching end.
+    const occupiedSince = events[0]?.type === 'presence_start' ? events[0].createdAt : null;
+
+    const visits = events
+      .filter((e) => e.type === 'presence_end')
+      .slice(0, limit)
+      .map((e) => ({
+        id: e.id,
+        leftAt: e.createdAt,
+        enteredAt:
+          e.durationSec != null
+            ? new Date(e.createdAt.getTime() - e.durationSec * 1000)
+            : null,
+        durationSec: e.durationSec ?? null,
+        targets: e.targets ?? null,
+      }));
+
+    return { occupiedSince, visits };
+  }
 }

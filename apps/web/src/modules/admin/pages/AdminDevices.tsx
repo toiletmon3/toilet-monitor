@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Wifi, WifiOff, Building2, Tablet, Radar, Plus, Settings2, X } from 'lucide-react';
+import { Wifi, WifiOff, Building2, Tablet, Radar, Plus, Settings2, X, List, LogIn, LogOut } from 'lucide-react';
 import api from '../../../lib/api';
 import { getSocket, joinOrg } from '../../../lib/socket';
 
@@ -29,11 +29,41 @@ function formatExact(date: string | null, lang: string) {
   });
 }
 
+/** Clock time only, e.g. "10:56:03", for the visit log rows. */
+function formatClock(date: string | null, lang: string) {
+  if (!date) return '—';
+  const tz = localStorage.getItem('orgTimezone') ?? 'Asia/Jerusalem';
+  return new Date(date).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', {
+    timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+}
+
+/** Short date, e.g. "20/07", shown per visit row so multi-day logs stay clear. */
+function formatDay(date: string | null, lang: string) {
+  if (!date) return '';
+  const tz = localStorage.getItem('orgTimezone') ?? 'Asia/Jerusalem';
+  return new Date(date).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', {
+    timeZone: tz, day: '2-digit', month: '2-digit',
+  });
+}
+
+/** Human duration from seconds: "45s", "3:07". */
+function formatDuration(sec: number | null) {
+  if (sec == null) return '—';
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export default function AdminDevices() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const queryClient = useQueryClient();
   const [buildingId, setBuildingId] = useState<string>(''); // '' = all
+
+  // Per-sensor visit-log dialog
+  const [logDevice, setLogDevice] = useState<any>(null);
 
   // Visit-counting tuning dialog for a sensor device
   const [cfgDevice, setCfgDevice] = useState<any>(null);
@@ -77,6 +107,14 @@ export default function AdminDevices() {
   const sensorByRestroom = new Map(
     (sensorSummaries as any[]).map((s: any) => [s.restroomId, s]),
   );
+
+  // Visit log for the sensor whose dialog is open (entry/exit times per visit).
+  const { data: visitLog, isLoading: logLoading } = useQuery({
+    queryKey: ['sensor-log', logDevice?.restroomId],
+    queryFn: async () => (await api.get(`/sensors/restrooms/${logDevice.restroomId}/events`)).data,
+    enabled: !!logDevice,
+    refetchInterval: logDevice ? 15_000 : false,
+  });
 
   useEffect(() => {
     const orgId = localStorage.getItem('orgId');
@@ -225,6 +263,14 @@ export default function AdminDevices() {
                             </span>
                           )}
                           <button
+                            onClick={() => setLogDevice(d)}
+                            className="flex items-center gap-1 hover:underline"
+                            style={{ color: 'var(--color-accent)' }}
+                          >
+                            <List size={12} />
+                            {t('admin.devices.logTitle')}
+                          </button>
+                          <button
                             onClick={() => openConfig(d)}
                             className="flex items-center gap-1 hover:underline"
                             style={{ color: 'var(--color-accent)' }}
@@ -255,6 +301,83 @@ export default function AdminDevices() {
           </div>
         )}
       </div>
+
+      {/* Per-sensor visit log dialog */}
+      {logDevice && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setLogDevice(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl p-6 flex flex-col gap-4"
+            style={{ background: 'var(--color-card)', border: '1px solid rgba(0,229,204,0.25)', maxHeight: '85vh' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-white flex items-center gap-2">
+                <List size={16} style={{ color: 'var(--color-accent)' }} />
+                {t('admin.devices.logTitle')}
+              </h3>
+              <button onClick={() => setLogDevice(null)} style={{ color: 'var(--color-text-secondary)' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="text-xs font-mono" style={{ color: 'var(--color-text-secondary)' }}>
+              {logDevice.deviceCode} · {logDevice.restroomName}
+            </div>
+
+            {visitLog?.occupiedSince && (
+              <div
+                className="text-xs px-3 py-2 rounded-lg flex items-center gap-2"
+                style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.35)', color: '#22c55e' }}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ background: '#22c55e', boxShadow: '0 0 8px rgba(34,197,94,0.6)' }} />
+                {t('admin.devices.logOccupiedNow')} {formatClock(visitLog.occupiedSince, lang)}
+              </div>
+            )}
+
+            {logLoading ? (
+              <div className="py-8 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>…</div>
+            ) : (visitLog?.visits?.length ?? 0) === 0 ? (
+              <div className="py-8 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                {t('admin.devices.logEmpty')}
+              </div>
+            ) : (
+              <div className="overflow-y-auto flex flex-col gap-1.5" style={{ maxHeight: '55vh' }}>
+                <div
+                  className="grid gap-3 text-[11px] font-semibold px-3 pb-1 sticky top-0"
+                  style={{ gridTemplateColumns: '1fr 1fr auto', color: 'var(--color-text-secondary)', background: 'var(--color-card)' }}
+                >
+                  <span className="flex items-center gap-1"><LogIn size={11} />{t('admin.devices.logEntered')}</span>
+                  <span className="flex items-center gap-1"><LogOut size={11} />{t('admin.devices.logLeft')}</span>
+                  <span>{t('admin.devices.logDuration')}</span>
+                </div>
+                {(visitLog.visits as any[]).map((v: any) => (
+                  <div
+                    key={v.id}
+                    className="grid gap-3 items-center text-sm px-3 py-2 rounded-lg"
+                    style={{ gridTemplateColumns: '1fr 1fr auto', background: 'rgba(255,255,255,0.03)' }}
+                  >
+                    <span className="font-mono text-white">
+                      {formatClock(v.enteredAt, lang)}
+                      <span className="block text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>{formatDay(v.enteredAt ?? v.leftAt, lang)}</span>
+                    </span>
+                    <span className="font-mono text-white">
+                      {formatClock(v.leftAt, lang)}
+                      <span className="block text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>{formatDay(v.leftAt, lang)}</span>
+                    </span>
+                    <span className="text-xs font-semibold" style={{ color: 'var(--color-accent)' }}>
+                      {formatDuration(v.durationSec)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Sensor visit-counting tuning dialog */}
       {cfgDevice && (
