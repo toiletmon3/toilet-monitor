@@ -89,17 +89,21 @@ export class AnalyticsService {
     const buildingId = scope?.buildingId;
     const buildingFilter = this.restroomScope(orgId, scope);
     const incidentWhere = { restroom: buildingFilter };
+    // Positive feedback isn't a fault (it auto-resolves on the kiosk), so it must
+    // not inflate the handled/open/total FAULT figures — count it on its own.
+    const faultWhere = { ...incidentWhere, issueType: { code: { not: 'positive_feedback' } } };
 
-    const [total, resolved, open, inProgress] = await Promise.all([
-      this.prisma.incident.count({ where: incidentWhere }),
-      this.prisma.incident.count({ where: { ...incidentWhere, status: 'RESOLVED' } }),
-      this.prisma.incident.count({ where: { ...incidentWhere, status: 'OPEN' } }),
-      this.prisma.incident.count({ where: { ...incidentWhere, status: 'IN_PROGRESS' } }),
+    const [total, resolved, open, inProgress, positiveFeedback] = await Promise.all([
+      this.prisma.incident.count({ where: faultWhere }),
+      this.prisma.incident.count({ where: { ...faultWhere, status: 'RESOLVED' } }),
+      this.prisma.incident.count({ where: { ...faultWhere, status: 'OPEN' } }),
+      this.prisma.incident.count({ where: { ...faultWhere, status: 'IN_PROGRESS' } }),
+      this.prisma.incident.count({ where: { ...incidentWhere, issueType: { code: 'positive_feedback' } } }),
     ]);
 
     const resolved30d = await this.prisma.incident.findMany({
       where: {
-        ...incidentWhere,
+        ...faultWhere,
         status: 'RESOLVED',
         resolvedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
         // response-time measurement restarted system-wide on this date
@@ -157,9 +161,10 @@ export class AnalyticsService {
       restroomName: d.restroom.name,
     }));
 
-    // Breakdown of RESOLVED incidents by issue type (for the overview pie)
+    // Breakdown of RESOLVED incidents by issue type (for the overview pie).
+    // Faults only — positive feedback isn't a handled fault.
     const resolvedIncidentsByType = await this.prisma.incident.findMany({
-      where: { ...incidentWhere, status: 'RESOLVED' },
+      where: { ...faultWhere, status: 'RESOLVED' },
       select: { issueTypeId: true, issueType: { select: { nameI18n: true, icon: true } } },
     });
 
@@ -181,6 +186,7 @@ export class AnalyticsService {
       resolvedIncidents: resolved,
       openIncidents: open,
       inProgressIncidents: inProgress,
+      positiveFeedback,
       avgResolutionMinutes: Math.round(avgMinutes),
       activeCleaners,
       onlineDevices,
@@ -195,6 +201,8 @@ export class AnalyticsService {
       where: {
         restroom: this.restroomScope(orgId, scope),
         reportedAt: { gte: from, lte: to },
+        // Faults only — positive feedback isn't a problem to chart.
+        issueType: { code: { not: 'positive_feedback' } },
       },
       select: { issueTypeId: true, issueType: true, reportedAt: true, notifiedAt: true, resolvedAt: true },
     });
@@ -247,6 +255,8 @@ export class AnalyticsService {
       where: {
         restroom: this.restroomScope(orgId, scope),
         reportedAt: { gte: from, lte: to },
+        // Faults only — a "hot spot" should reflect problems, not praise.
+        issueType: { code: { not: 'positive_feedback' } },
       },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
@@ -262,6 +272,9 @@ export class AnalyticsService {
         status: 'RESOLVED',
         resolvedAt: { not: null },
         reportedAt: { gte: since, lte: to },
+        // Faults only — positive feedback auto-resolves instantly and would
+        // otherwise flatter the SLA/response numbers.
+        issueType: { code: { not: 'positive_feedback' } },
       },
       select: { reportedAt: true, notifiedAt: true, resolvedAt: true, acknowledgedAt: true },
     });
@@ -387,6 +400,8 @@ export class AnalyticsService {
           status: 'RESOLVED',
           resolvedAt: { not: null },
           reportedAt: { gte: avgSince },
+          // Faults only — positive feedback auto-resolves instantly.
+          issueType: { code: { not: 'positive_feedback' } },
         },
         select: { reportedAt: true, notifiedAt: true, resolvedAt: true },
       }),
