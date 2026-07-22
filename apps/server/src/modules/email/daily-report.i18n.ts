@@ -9,6 +9,7 @@ export interface ReportStrings {
   resolved: string;
   open: string;
   inProgress: string;
+  positiveFeedback: string;
   avgResolutionTime: string;
   slaCompliance: (target: number) => string;
   topIssues: string;
@@ -46,10 +47,11 @@ const HE: ReportStrings = {
   htmlLang: 'he',
   subjectPrefix: '📊 סיכום יומי',
   dailySummary: 'סיכום יומי',
-  totalIncidents: 'סה״כ דיווחים',
+  totalIncidents: 'סה״כ תקלות',
   resolved: 'טופלו',
   open: 'פתוחים',
   inProgress: 'בטיפול',
+  positiveFeedback: '😊 משוב חיובי',
   avgResolutionTime: 'זמן טיפול ממוצע',
   slaCompliance: (t) => `עמידה ב-SLA (${t} דק')`,
   topIssues: '🔝 בעיות נפוצות',
@@ -86,10 +88,11 @@ const EN: ReportStrings = {
   htmlLang: 'en',
   subjectPrefix: '📊 Daily Summary',
   dailySummary: 'Daily Summary',
-  totalIncidents: 'Total Reports',
+  totalIncidents: 'Total Faults',
   resolved: 'Resolved',
   open: 'Open',
   inProgress: 'In Progress',
+  positiveFeedback: '😊 Positive Feedback',
   avgResolutionTime: 'Avg. Resolution Time',
   slaCompliance: (t) => `SLA Compliance (${t} min)`,
   topIssues: '🔝 Top Issues',

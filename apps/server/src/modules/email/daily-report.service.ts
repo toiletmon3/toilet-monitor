@@ -288,16 +288,22 @@ export class DailyReportService {
 
     const orgFilter = { restroom: { floor: { building: { orgId, ...(propertyId ? { propertyId } : {}) } } } };
     const dateFilter = { reportedAt: { gte: from, lt: to } };
+    // Positive feedback isn't a fault — it auto-resolves on the kiosk and must
+    // NOT inflate the "handled / open / SLA" fault figures. Keep it as its own
+    // metric and exclude it from every fault count below.
+    const faultFilter = { issueType: { code: { not: 'positive_feedback' } } };
+    const positiveFilter = { issueType: { code: 'positive_feedback' } };
 
-    const [total, resolved, open, inProgress] = await Promise.all([
-      this.prisma.incident.count({ where: { ...orgFilter, ...dateFilter } }),
-      this.prisma.incident.count({ where: { ...orgFilter, ...dateFilter, status: 'RESOLVED' } }),
-      this.prisma.incident.count({ where: { ...orgFilter, ...dateFilter, status: 'OPEN' } }),
-      this.prisma.incident.count({ where: { ...orgFilter, ...dateFilter, status: 'IN_PROGRESS' } }),
+    const [total, resolved, open, inProgress, positiveFeedback] = await Promise.all([
+      this.prisma.incident.count({ where: { ...orgFilter, ...dateFilter, ...faultFilter } }),
+      this.prisma.incident.count({ where: { ...orgFilter, ...dateFilter, ...faultFilter, status: 'RESOLVED' } }),
+      this.prisma.incident.count({ where: { ...orgFilter, ...dateFilter, ...faultFilter, status: 'OPEN' } }),
+      this.prisma.incident.count({ where: { ...orgFilter, ...dateFilter, ...faultFilter, status: 'IN_PROGRESS' } }),
+      this.prisma.incident.count({ where: { ...orgFilter, ...dateFilter, ...positiveFilter } }),
     ]);
 
     const resolvedIncidents = await this.prisma.incident.findMany({
-      where: { ...orgFilter, ...dateFilter, status: 'RESOLVED', resolvedAt: { not: null } },
+      where: { ...orgFilter, ...dateFilter, ...faultFilter, status: 'RESOLVED', resolvedAt: { not: null } },
       select: { reportedAt: true, notifiedAt: true, resolvedAt: true },
     });
 
@@ -314,7 +320,7 @@ export class DailyReportService {
       ? Math.round((withinSla / timedIncidents.length) * 100) : 0;
 
     const issueIncidents = await this.prisma.incident.findMany({
-      where: { ...orgFilter, ...dateFilter },
+      where: { ...orgFilter, ...dateFilter, ...faultFilter },
       select: {
         issueTypeId: true,
         issueType: { select: { nameI18n: true, icon: true } },
@@ -438,6 +444,7 @@ export class DailyReportService {
       resolvedIncidents: resolved,
       openIncidents: open,
       inProgressIncidents: inProgress,
+      positiveFeedback,
       avgResolutionMinutes: avgMinutes,
       slaPercent,
       slaTarget,
