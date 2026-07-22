@@ -23,6 +23,7 @@ export interface DailyReportData {
   resolvedIncidents: number;
   openIncidents: number;
   inProgressIncidents: number;
+  positiveFeedback: number;
   avgResolutionMinutes: number;
   slaPercent: number;
   slaTarget: number;
@@ -198,6 +199,17 @@ function renderReportSections(data: DailyReportData, s: ReportStrings): string {
         ${statCard(s.slaCompliance(data.slaTarget), `${data.slaPercent}%`, slaColor)}
       </tr>
     </table>
+
+    <!-- Positive feedback — separate from fault stats -->
+    ${data.positiveFeedback > 0 ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      <tr><td style="padding:8px;">
+        <div style="background:#22c55e15;border:1px solid #22c55e40;border-radius:12px;padding:16px;text-align:center;">
+          <div style="font-size:28px;font-weight:bold;color:#22c55e;">${data.positiveFeedback}</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:4px;">${s.positiveFeedback}</div>
+        </div>
+      </td></tr>
+    </table>` : ''}
 
     <!-- Top Issues -->
     ${data.topIssues.length > 0 ? `
