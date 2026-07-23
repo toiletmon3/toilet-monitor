@@ -6,6 +6,7 @@ import api from '../../../lib/api';
 import toast from 'react-hot-toast';
 import { translateLocationPath, translateFloorName, translateRestroomName } from '../../../lib/translate-name';
 import { formatDuration } from '../../../lib/format-duration';
+import DateRangeFilter, { type DateRange, DEFAULT_RANGE, rangeToQuery, rangeKey } from '../components/DateRangeFilter';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   OPEN:        { bg: 'rgba(239,68,68,0.15)',  text: '#ef4444' },
@@ -208,23 +209,31 @@ export default function AdminIncidents() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const [showResolved, setShowResolved] = useState(false);
+  const [range, setRange] = useState<DateRange>(DEFAULT_RANGE);
+  const dateQuery = rangeToQuery(range);
+  const rkey = rangeKey(range);
+  const ranged = range.kind !== 'all';
+  // When browsing a specific date range the resolved list is the main content,
+  // so open it automatically; "urgent right now" is hidden as it's live-only.
+  const resolvedVisible = showResolved || ranged;
 
   const { data: urgentData = [] } = useQuery({
     queryKey: ['incidents', 'urgent'],
     queryFn: async () => (await api.get('/incidents/urgent')).data,
     refetchInterval: 15_000,
+    enabled: !ranged,
   });
 
   const { data: activeData, isLoading: loadingActive } = useQuery({
-    queryKey: ['incidents', 'active'],
-    queryFn: async () => (await api.get('/incidents', { params: { limit: 200 } })).data,
-    refetchInterval: 15_000,
+    queryKey: ['incidents', 'active', rkey],
+    queryFn: async () => (await api.get('/incidents', { params: { limit: 500, ...dateQuery } })).data,
+    refetchInterval: ranged ? false : 15_000,
   });
 
   const { data: resolvedData, isLoading: loadingResolved } = useQuery({
-    queryKey: ['incidents', 'resolved'],
-    queryFn: async () => (await api.get('/incidents', { params: { status: 'RESOLVED', limit: 50 } })).data,
-    enabled: showResolved,
+    queryKey: ['incidents', 'resolved', rkey],
+    queryFn: async () => (await api.get('/incidents', { params: { status: 'RESOLVED', limit: ranged ? 500 : 50, ...dateQuery } })).data,
+    enabled: resolvedVisible,
   });
 
   const { data: users } = useQuery({
@@ -248,11 +257,14 @@ export default function AdminIncidents() {
         </div>
       </div>
 
+      {/* Date-range filter — same presets/custom picker as Overview & Statistics */}
+      <DateRangeFilter value={range} onChange={setRange} />
+
       {loadingActive ? (
         <div className="p-12 text-center" style={{ color: 'var(--color-text-secondary)' }}>{t('common.loading')}</div>
       ) : (
         <>
-          {urgentData.length > 0 && (
+          {!ranged && urgentData.length > 0 && (
             <Section title={t('admin.incidents.urgentSection')} icon={<AlertTriangle size={18} />} count={urgentData.length} color="#ef4444">
               {urgentData.map((inc: any) => (
                 <div key={inc.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--color-bg)', border: '1px solid rgba(239,68,68,0.25)' }}>
@@ -290,9 +302,9 @@ export default function AdminIncidents() {
             {openItems.map(inc => <IncidentRow key={inc.id} inc={inc} cleaners={cleaners} />)}
           </Section>
 
-          {/* RESOLVED toggle */}
+          {/* RESOLVED toggle — auto-open when a date range is active */}
           <div className="flex flex-col gap-2">
-            <button onClick={() => setShowResolved(v => !v)} className="flex items-center gap-3 px-1 py-1 w-full text-start">
+            <button onClick={() => setShowResolved(v => !v)} disabled={ranged} className="flex items-center gap-3 px-1 py-1 w-full text-start">
               <span style={{ color: '#22c55e' }}><CheckSquare size={18} /></span>
               <span className="font-bold text-base" style={{ color: 'var(--color-text)' }}>{t('admin.incidents.resolvedSection')}</span>
               {resolvedData && (
@@ -300,12 +312,14 @@ export default function AdminIncidents() {
                   {resolved.length}
                 </span>
               )}
-              <span className="ms-auto text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                {showResolved ? t('admin.incidents.hide') : t('admin.incidents.show')}
-              </span>
+              {!ranged && (
+                <span className="ms-auto text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                  {showResolved ? t('admin.incidents.hide') : t('admin.incidents.show')}
+                </span>
+              )}
             </button>
 
-            {showResolved && (
+            {resolvedVisible && (
               loadingResolved
                 ? <div className="text-sm px-4 py-6 text-center" style={{ color: 'var(--color-text-secondary)' }}>{t('common.loading')}</div>
                 : resolved.length === 0
@@ -316,7 +330,7 @@ export default function AdminIncidents() {
             )}
           </div>
 
-          {showResolved && positiveFeedback.length > 0 && (
+          {resolvedVisible && positiveFeedback.length > 0 && (
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-3 px-1 py-1">
                 <span>😊</span>
