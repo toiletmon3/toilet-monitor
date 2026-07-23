@@ -358,7 +358,10 @@ export default function AdminIncidents() {
                         <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{t('admin.incidents.positiveFeedbackLabel')}</div>
                         <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-secondary)' }}>📍 {location}</div>
                       </div>
-                      <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{timeAgo}</span>
+                      <div className="flex flex-col items-end gap-0.5 whitespace-nowrap">
+                        <span className="text-xs" style={{ color: 'var(--color-text)' }}>{new Date(inc.reportedAt).toLocaleString(lang === 'he' ? 'he-IL' : 'en-US')}</span>
+                        <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>{timeAgo}</span>
+                      </div>
                     </div>
                   );
                 })}
